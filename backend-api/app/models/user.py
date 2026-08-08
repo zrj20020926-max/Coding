@@ -20,6 +20,9 @@ class User(Base):
     bio: Mapped[Optional[str]] = mapped_column(String(300))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    auth_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
     solved_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     submission_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     accepted_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -30,4 +33,3 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
-

@@ -21,6 +21,10 @@ export async function runAuthGuard(to: GuardRoute, auth: AuthGuardState) {
   return true
 }
 
+export function loginRedirect(fullPath: string) {
+  return { name: 'login', query: fullPath === '/login' ? {} : { redirect: fullPath } }
+}
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [

@@ -12,6 +12,21 @@
 
 `PIP_INDEX_URL` 只影响 API 镜像构建。国内开发默认使用清华镜像；生产 CI 应覆盖为组织内部的可信、可审计制品源。
 
+## 认证安全配置
+
+Access Token 默认有效期为 15 分钟。Refresh Token 使用 HttpOnly Cookie，并在每次刷新后轮换；
+服务端只在 Redis 中保存令牌哈希。检测到已轮换令牌重放时，会撤销对应会话族。
+
+生产环境启动前必须满足：
+
+- `JWT_SECRET_KEY` 不是示例值且至少 32 个字符；
+- `REFRESH_COOKIE_SECURE=true`；
+- `REFRESH_COOKIE_SAMESITE` 为 `lax` 或 `strict`；
+- `CORS_ORIGINS` 不包含 `*`；
+- `TRUSTED_PROXY_CIDRS` 只配置实际反向代理地址，防止伪造 `X-Forwarded-For` 绕过 IP 限流。
+
+不满足这些条件时，Pydantic Settings 会拒绝创建应用配置，进程直接启动失败。
+
 ## Alembic 是唯一结构来源
 
 Sprint 0 起不再挂载 `infra/postgres/init/001_schema.sql`。所有 PostgreSQL 结构变更必须新增 Alembic revision，禁止直接修改已发布的历史迁移。

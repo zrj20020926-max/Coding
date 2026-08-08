@@ -8,6 +8,7 @@ from pwdlib import PasswordHash
 from app.core.config import settings
 
 password_hash = PasswordHash.recommended()
+DUMMY_PASSWORD_HASH = password_hash.hash("codearena-dummy-password-never-used")
 
 
 def hash_password(password: str) -> str:
@@ -18,13 +19,21 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return password_hash.verify(password, hashed_password)
 
 
-def create_access_token(user_id: UUID) -> tuple[str, str, int]:
+def create_access_token(
+    user_id: UUID,
+    session_id: str,
+    auth_version: int,
+    *,
+    expires_in_seconds: Optional[int] = None,
+) -> tuple[str, str, int]:
     now = datetime.now(timezone.utc)
-    expires_in = settings.access_token_expire_minutes * 60
+    expires_in = expires_in_seconds or settings.access_token_expire_minutes * 60
     jti = str(uuid4())
     payload: dict[str, Any] = {
         "sub": str(user_id),
         "jti": jti,
+        "sid": session_id,
+        "ver": auth_version,
         "type": "access",
         "iat": now,
         "nbf": now,
@@ -44,7 +53,7 @@ def decode_access_token(token: str) -> Optional[dict[str, Any]]:
             algorithms=[settings.jwt_algorithm],
             audience=settings.jwt_audience,
             issuer=settings.jwt_issuer,
-            options={"require": ["sub", "jti", "type", "exp", "iat"]},
+            options={"require": ["sub", "jti", "sid", "ver", "type", "exp", "iat"]},
         )
     except jwt.PyJWTError:
         return None

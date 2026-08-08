@@ -7,6 +7,7 @@
 - Vue 3、TypeScript 严格模式、Vite、Pinia、Vue Router、Element Plus、Monaco Editor
 - FastAPI、PostgreSQL、Redis、MinIO
 - 注册、登录、JWT + Redis 会话、注销和个人资料
+- 15 分钟 Access Token、HttpOnly Refresh Token 轮换、刷新重放检测和多设备撤销
 - Alembic 版本迁移与旧数据库安全接管
 - 后端 SQLite 快速测试、真实 PostgreSQL 集成测试
 - 前端 Vitest、ESLint、类型检查与生产构建
@@ -48,6 +49,10 @@ docker compose ps
 - MinIO Console：http://localhost:9001
 
 Docker Compose 会在 API 启动前执行安全迁移入口。全新数据库执行 `upgrade head`；旧版 SQL 创建的数据库只有在结构、扩展、ENUM、索引、触发器和种子数据全部通过校验后才会 stamp。
+
+认证接口还包括 `POST /api/v1/auth/refresh`、`POST /api/v1/auth/change-password` 和
+`POST /api/v1/auth/logout-all`。Refresh Token 仅通过 HttpOnly Cookie 传输，不进入响应 JSON；
+登录和注册同时按客户端 IP 与规范化账号执行 Redis 限流。
 
 ## 数据库迁移
 

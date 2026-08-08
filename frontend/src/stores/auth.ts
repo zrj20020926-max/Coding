@@ -1,9 +1,24 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { getMyProfile, loginAccount, logoutAccount, registerAccount, updateMyProfile } from '@/services/auth'
+import {
+  changeAccountPassword,
+  getMyProfile,
+  loginAccount,
+  logoutAccount,
+  logoutAllAccounts,
+  refreshAccount,
+  registerAccount,
+  updateMyProfile,
+} from '@/services/auth'
 import { AUTH_TOKEN_KEY } from '@/services/http'
-import type { LoginPayload, ProfileUpdatePayload, RegisterPayload, UserProfile } from '@/types/api'
+import type {
+  ChangePasswordPayload,
+  LoginPayload,
+  ProfileUpdatePayload,
+  RegisterPayload,
+  UserProfile,
+} from '@/types/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(AUTH_TOKEN_KEY))
@@ -44,8 +59,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function ensureProfile(): Promise<void> {
     if (initialized.value) return
-    if (!token.value) { initialized.value = true; return }
-    try { user.value = await getMyProfile() }
+    try {
+      if (!token.value) {
+        const response = await refreshAccount()
+        acceptSession(response.access_token, response.user)
+      } else {
+        user.value = await getMyProfile()
+      }
+    }
     catch { clearSession() }
     finally { initialized.value = true }
   }
@@ -55,10 +76,34 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout(): Promise<void> {
-    try { if (token.value) await logoutAccount() }
+    try { await logoutAccount() }
     finally { clearSession() }
   }
 
-  return { token, user, loading, initialized, isAuthenticated, login, register, logout, ensureProfile, updateProfile }
-})
+  async function logoutAll(): Promise<void> {
+    try { await logoutAllAccounts() }
+    finally { clearSession() }
+  }
 
+  async function changePassword(payload: ChangePasswordPayload): Promise<void> {
+    try { await changeAccountPassword(payload) }
+    finally { clearSession() }
+  }
+
+  return {
+    token,
+    user,
+    loading,
+    initialized,
+    isAuthenticated,
+    acceptSession,
+    clearSession,
+    login,
+    register,
+    logout,
+    logoutAll,
+    changePassword,
+    ensureProfile,
+    updateProfile,
+  }
+})

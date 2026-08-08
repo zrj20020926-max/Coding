@@ -11,7 +11,6 @@ from app.db.migration_bootstrap import (
     EXPECTED_INDEXES,
     EXPECTED_TABLES,
     EXPECTED_TRIGGERS,
-    INITIAL_REVISION,
     SchemaState,
     inspect_schema,
 )
@@ -19,14 +18,23 @@ from app.db.migration_bootstrap import (
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_initial_migration_preserves_postgresql_features(
+async def test_migrations_preserve_postgresql_features(
     postgres_database_url: str,
 ) -> None:
     engine = create_async_engine(postgres_database_url)
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == INITIAL_REVISION
+            assert revision == "20260808_0002"
+
+            auth_version = await connection.scalar(
+                text(
+                    "SELECT column_default FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = 'users' "
+                    "AND column_name = 'auth_version'"
+                )
+            )
+            assert auth_version == "1"
 
             tables = set(
                 (

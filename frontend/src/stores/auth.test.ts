@@ -58,6 +58,22 @@ describe('auth store', () => {
     expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull()
   })
 
+  it('restores a session from the HttpOnly refresh cookie', async () => {
+    vi.mocked(authService.refreshAccount).mockResolvedValue({
+      access_token: 'restored-access-token',
+      token_type: 'bearer',
+      expires_in: 900,
+      user: profile,
+    })
+    const store = useAuthStore()
+
+    await store.ensureProfile()
+
+    expect(store.user).toEqual(profile)
+    expect(store.token).toBe('restored-access-token')
+    expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('restored-access-token')
+  })
+
   it('always clears local state when logout request fails', async () => {
     localStorage.setItem(AUTH_TOKEN_KEY, 'access-token')
     vi.mocked(authService.logoutAccount).mockRejectedValue(new Error('network error'))

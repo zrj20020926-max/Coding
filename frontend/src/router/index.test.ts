@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { runAuthGuard } from '@/router'
+import { loginRedirect, runAuthGuard } from '@/router'
 import type { AuthGuardState, GuardRoute } from '@/router'
 
 function authState(isAuthenticated: boolean): AuthGuardState {
@@ -29,5 +29,12 @@ describe('authentication route guard', () => {
     const route: GuardRoute = { fullPath: '/', meta: {} }
 
     await expect(runAuthGuard(route, authState(false))).resolves.toBe(true)
+  })
+
+  it('preserves the current location when authentication expires', () => {
+    expect(loginRedirect('/profile?tab=security')).toEqual({
+      name: 'login',
+      query: { redirect: '/profile?tab=security' },
+    })
   })
 })

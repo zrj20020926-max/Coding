@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
+from app.services.auth_sessions import get_refresh_session_user
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -44,15 +45,16 @@ async def get_current_user(
 
     try:
         user_id = UUID(payload["sub"])
-        jti = str(payload["jti"])
+        session_id = str(payload["sid"])
+        auth_version = int(payload["ver"])
     except (KeyError, TypeError, ValueError):
         raise unauthorized() from None
 
-    session_user_id = await cache.get(f"auth:session:{jti}")
-    if session_user_id != str(user_id):
+    session = await get_refresh_session_user(cache, session_id)
+    if session != (str(user_id), auth_version):
         raise unauthorized()
 
     user = await db.scalar(select(User).where(User.id == user_id))
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.auth_version != auth_version:
         raise unauthorized("用户不存在或已被停用")
     return user

@@ -27,9 +27,13 @@ export interface RegisterPayload {
 
 export interface LoginPayload { account: string; password: string }
 
+export interface ChangePasswordPayload {
+  current_password: string
+  new_password: string
+}
+
 export interface ProfileUpdatePayload {
   nickname?: string
   avatar_url?: string | null
   bio?: string | null
 }
-
