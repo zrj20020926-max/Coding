@@ -22,9 +22,10 @@ async function handleLogout(): Promise<void> {
         <span class="brand-mark" aria-hidden="true">&lt;/&gt;</span><span>CodeArena</span>
       </RouterLink>
       <nav class="site-nav" aria-label="主导航">
-        <RouterLink to="/">首页</RouterLink><span class="nav-soon" title="下一迭代开放">题库</span>
+        <RouterLink to="/">首页</RouterLink><RouterLink to="/problems">题库</RouterLink>
       </nav>
       <div class="header-actions">
+        <RouterLink class="mobile-problems-link" to="/problems">题库</RouterLink>
         <button class="theme-button" type="button" :aria-label="themeLabel" @click="ui.toggleTheme">{{ ui.theme === 'dark' ? '☀' : '◐' }}</button>
         <template v-if="auth.isAuthenticated">
           <RouterLink class="text-link" to="/profile">{{ auth.user?.nickname ?? '个人中心' }}</RouterLink>
@@ -39,4 +40,3 @@ async function handleLogout(): Promise<void> {
     <main><RouterView /></main>
   </div>
 </template>
-

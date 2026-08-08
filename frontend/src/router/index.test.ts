@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { loginRedirect, runAuthGuard } from '@/router'
+import router, { loginRedirect, runAuthGuard } from '@/router'
 import type { AuthGuardState, GuardRoute } from '@/router'
 
 function authState(isAuthenticated: boolean): AuthGuardState {
@@ -36,5 +36,11 @@ describe('authentication route guard', () => {
       name: 'login',
       query: { redirect: '/profile?tab=security' },
     })
+  })
+
+  it('registers catalog, slug detail and an independent 404 route', () => {
+    expect(router.resolve('/problems').name).toBe('problems')
+    expect(router.resolve('/problems/a-plus-b').name).toBe('problem-detail')
+    expect(router.resolve('/this-route-does-not-exist').name).toBe('not-found')
   })
 })

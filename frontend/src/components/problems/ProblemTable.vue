@@ -1,0 +1,59 @@
+<script setup lang="ts">
+import DifficultyBadge from '@/components/problems/DifficultyBadge.vue'
+import type { ProblemSummary } from '@/types/problem'
+
+defineProps<{ problems: ProblemSummary[]; authenticated: boolean }>()
+
+function progressLabel(problem: ProblemSummary, authenticated: boolean): string {
+  if (!authenticated) return '登录后记录'
+  if (problem.solved) return '已通过'
+  if (problem.attempted) return `尝试中 · ${problem.attempt_count ?? 0} 次`
+  return '未尝试'
+}
+
+function progressClass(problem: ProblemSummary): string {
+  if (problem.solved) return 'progress-solved'
+  if (problem.attempted) return 'progress-attempted'
+  return 'progress-unattempted'
+}
+</script>
+
+<template>
+  <div class="problem-table" role="table" aria-label="题目列表">
+    <div class="problem-table-head" role="row">
+      <span role="columnheader">题号</span>
+      <span role="columnheader">题目</span>
+      <span role="columnheader">难度</span>
+      <span role="columnheader">标签</span>
+      <span role="columnheader">通过率</span>
+      <span role="columnheader">进度</span>
+    </div>
+    <RouterLink
+      v-for="problem in problems"
+      :key="problem.id"
+      class="problem-row"
+      role="row"
+      :to="{ name: 'problem-detail', params: { slug: problem.slug } }"
+    >
+      <span class="problem-number" role="cell">#{{ String(problem.id).padStart(4, '0') }}</span>
+      <span class="problem-title-cell" role="cell">
+        <strong>{{ problem.title }}</strong>
+        <small>{{ problem.slug }}</small>
+      </span>
+      <span role="cell"><DifficultyBadge :difficulty="problem.difficulty" /></span>
+      <span class="problem-tags" role="cell">
+        <span v-for="tag in problem.tags" :key="tag.id">{{ tag.name }}</span>
+        <small v-if="problem.tags.length === 0">暂无标签</small>
+      </span>
+      <span class="acceptance-cell" role="cell">
+        <strong>{{ problem.acceptance_rate.toFixed(1) }}%</strong>
+        <small>{{ problem.accepted_count }}/{{ problem.submission_count }}</small>
+      </span>
+      <span
+        class="problem-progress"
+        :class="progressClass(problem)"
+        role="cell"
+      >{{ progressLabel(problem, authenticated) }}</span>
+    </RouterLink>
+  </div>
+</template>
