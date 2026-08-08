@@ -77,8 +77,11 @@ alembic upgrade head
 1. 备份并验证恢复点。
 2. 在单独的 migration job 中运行 `python -m app.db.migration_bootstrap`。
 3. 确认 `alembic current` 等于代码仓库的 head。
-4. 再滚动发布 API 实例。
-5. 检查 `/health/ready`、错误率和数据库连接指标。
+4. 如需发布题目，在迁移完成后由单实例任务运行 `python -m app.seed.problems <reviewed-seed.yaml>`。
+5. 再滚动发布 API 实例。
+6. 检查 `/health/ready`、`/openapi.json`、题库分页接口、错误率和数据库连接指标。
+
+Sprint 2 的迁移 head 为 `20260808_0003`。该版本仅新增公开题目默认排序的部分索引；普通 `CREATE INDEX` 会持有表锁，发布前应在接近生产规模的数据副本上评估耗时并安排维护窗口。旧数据库接管脚本只把已验证的旧结构 stamp 到 `20260808_0001`，随后会依次升级认证版本和题库索引，不会跳过增量迁移。
 
 本地 Compose 将迁移串在 API 启动前，便于开发；生产环境不要让多个 API 副本并发执行迁移。
 

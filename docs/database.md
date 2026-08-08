@@ -14,6 +14,7 @@ erDiagram
   PROBLEMS ||--o{ FAVORITES : saved_by
   PROBLEMS ||--o{ PROBLEM_TAGS : classified
   TAGS ||--o{ PROBLEM_TAGS : maps
+  PROBLEMS ||--o{ USER_PROBLEM_PROGRESS : tracked_by
   LANGUAGES ||--o{ SUBMISSIONS : compiles
   SUBMISSIONS ||--o{ SUBMISSION_CASE_RESULTS : produces
   SUBMISSIONS ||--o| AI_ANALYSES : analyzed
@@ -29,5 +30,35 @@ erDiagram
 - `submission_case_results` 不向普通用户暴露隐藏用例输入输出。
 - 收藏、题目进度、题单映射都使用联合唯一约束，所有消费端可以安全重试。
 - 用户统计字段是读优化缓存，正式值可从提交和进度表重建。
+
+## Sprint 2 题库 ORM
+
+`app/models/problem.py` 使用 SQLAlchemy 2.0 typed declarative mapping，并继续以 PostgreSQL DDL 为生产结构权威来源：
+
+| ORM | 表 | 关键关系/约束 |
+| --- | --- | --- |
+| `Problem` | `problems` | `slug` 唯一；难度和可见性使用命名 ENUM；一对多关联 `ProblemTag`、`UserProblemProgress` |
+| `Tag` | `tags` | `slug`、`name` 分别唯一 |
+| `ProblemTag` | `problem_tags` | `(problem_id, tag_id)` 联合主键，级联删除 |
+| `Language` | `languages` | `slug` 唯一；内部保存运行配置，公开 DTO 只输出编辑器元数据 |
+| `UserProblemProgress` | `user_problem_progress` | `(user_id, problem_id)` 联合主键，记录尝试次数与首次通过时间 |
+
+`last_submission_id` 的 PostgreSQL 外键仍由初始迁移维护；提交实体属于后续判题纵切片，因此本次 ORM 只映射列而不引入尚未实现的 `Submission` ORM。异步查询统一预加载标签关联，避免响应序列化期间触发隐式数据库 IO。
+
+## 题库查询与索引
+
+- 所有普通查询强制附加 `problems.visibility = 'public'`。
+- 标签筛选通过 `problem_tags` 的存在性子查询完成，避免连接导致分页重复。
+- 登录用户按 `(user_id, problem_id)` 左连接个人进度；`attempted` 筛选定义为尝试次数大于 0 且尚未通过。
+- 总数与当前页分别查询，排序始终追加稳定的 `id` 次序。
+- `20260808_0003` 增加部分索引 `idx_problems_public_created (created_at DESC, id DESC) WHERE visibility = 'public'`，服务默认最新排序。
+
+## 数据边界
+
+公开 API 和管理员题目 API 都不直接序列化 ORM，而使用 Pydantic 白名单 DTO：
+
+- `LanguagePublic` 不包含 `compile_command`、`run_command`、`docker_image`。
+- 题目 DTO 不关联 `test_cases`，不会输出隐藏输入输出或 MinIO object key。
+- 种子格式只接受题面、限制、可见性和标签，不接受测试用例及沙箱运行配置。
 
 数据库结构由 `backend-api/migrations/versions/` 中的 Alembic 版本迁移维护。初始迁移显式保留 PostgreSQL 的 CITEXT、命名 ENUM、部分索引和 `set_updated_at` 触发器；不再使用只在首次创建数据卷时执行的一次性初始化 SQL。

@@ -25,7 +25,7 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260808_0002"
+            assert revision == "20260808_0003"
 
             auth_version = await connection.scalar(
                 text(
@@ -84,6 +84,7 @@ async def test_migrations_preserve_postgresql_features(
                 ).scalars()
             )
             assert EXPECTED_INDEXES <= indexes
+            assert "idx_problems_public_created" in indexes
 
             triggers = set(
                 (

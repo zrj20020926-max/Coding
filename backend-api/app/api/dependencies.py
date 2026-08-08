@@ -31,13 +31,13 @@ def unauthorized(message: str = "登录状态无效或已过期") -> HTTPExcepti
     )
 
 
-async def get_current_user(
-    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
+async def resolve_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials],
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[Redis, Depends(get_redis_client)],
-) -> User:
+) -> Optional[User]:
     if credentials is None:
-        raise unauthorized()
+        return None
 
     payload = decode_access_token(credentials.credentials)
     if payload is None:
@@ -58,3 +58,30 @@ async def get_current_user(
     if user is None or not user.is_active or user.auth_version != auth_version:
         raise unauthorized("用户不存在或已被停用")
     return user
+
+
+async def get_optional_current_user(
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    cache: Annotated[Redis, Depends(get_redis_client)],
+) -> Optional[User]:
+    return await resolve_current_user(credentials, db, cache)
+
+
+async def get_current_user(
+    current_user: Annotated[Optional[User], Depends(get_optional_current_user)],
+) -> User:
+    if current_user is None:
+        raise unauthorized()
+    return current_user
+
+
+async def get_admin_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "需要管理员权限"},
+        )
+    return current_user

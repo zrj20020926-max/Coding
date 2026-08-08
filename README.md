@@ -1,6 +1,6 @@
 # CodeArena · ACM 模式算法训练平台
 
-面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前完成 **Sprint 0 工程基线**：认证业务保持不变，数据库迁移、自动化测试和持续集成已具备可维护基础。
+面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前完成 **Phase 1 / Sprint 2 题库后端纵切片**：在 Sprint 0 工程基线和认证安全能力上，提供公开题库查询、个人进度筛选、管理员题目生命周期与种子导入。
 
 ## 当前范围
 
@@ -12,8 +12,13 @@
 - 后端 SQLite 快速测试、真实 PostgreSQL 集成测试
 - 前端 Vitest、ESLint、类型检查与生产构建
 - GitHub Actions CI
+- SQLAlchemy 2.0 async 题目、标签、语言与用户题目进度模型
+- 公开题目分页、搜索、难度/标签/个人状态筛选与排序
+- 公开题目详情、标签和启用语言接口
+- 管理员新增、修改、发布和下线题目
+- YAML/JSON 幂等题目种子导入
 
-题库、在线编辑器、提交任务、Judge Worker 和 AI 分析不属于 Sprint 0，本次没有扩展这些业务。
+在线编辑器、提交任务、隐藏测试数据管理、Judge Worker 和 AI 分析不属于本次范围。
 
 ## 目录
 
@@ -23,7 +28,10 @@
 ├─ backend-api/
 │  ├─ alembic.ini
 │  ├─ migrations/                       # PostgreSQL 版本迁移
+│  ├─ seeds/                            # 可审阅的题目种子示例
 │  ├─ app/db/migration_bootstrap.py     # 旧库校验、stamp、upgrade
+│  ├─ app/models/problem.py             # 题库 async ORM
+│  ├─ app/services/problem_import.py    # 幂等种子导入
 │  └─ tests/
 │     ├─ unit/                          # SQLite + FakeRedis 快速测试
 │     └─ integration/                   # 真实 PostgreSQL 测试
@@ -53,6 +61,37 @@ Docker Compose 会在 API 启动前执行安全迁移入口。全新数据库执
 认证接口还包括 `POST /api/v1/auth/refresh`、`POST /api/v1/auth/change-password` 和
 `POST /api/v1/auth/logout-all`。Refresh Token 仅通过 HttpOnly Cookie 传输，不进入响应 JSON；
 登录和注册同时按客户端 IP 与规范化账号执行 Redis 限流。
+
+## 题库 API
+
+公开接口：
+
+- `GET /api/v1/problems`：支持 `q`、`difficulty`、`tag`、`status`、`page`、`page_size`、`sort`。
+- `GET /api/v1/problems/{id}`：公开题目详情。
+- `GET /api/v1/tags`：标签列表。
+- `GET /api/v1/languages`：启用语言的公开编辑器元数据。
+
+`status=solved|attempted|unattempted` 需要登录；其中 `attempted` 表示尝试过但尚未通过。登录后的列表和详情会增加 `solved`、`attempted`、`attempt_count`，匿名响应不包含这些字段。普通用户和匿名用户始终只能读取 `visibility=public` 的题目。
+
+管理员接口：
+
+- `POST /api/v1/admin/problems`
+- `PATCH /api/v1/admin/problems/{id}`
+- `POST /api/v1/admin/problems/{id}/publish`
+- `POST /api/v1/admin/problems/{id}/offline`
+
+公开与管理响应均使用显式字段白名单，不包含隐藏测试用例、MinIO object key、编译/运行命令或 Docker 镜像。
+
+## 导入题目种子
+
+参考 `backend-api/seeds/problems.example.yaml`，从 `backend-api/` 执行：
+
+```powershell
+.\.venv\Scripts\python -m app.seed.problems seeds/problems.example.yaml
+.\.venv\Scripts\python -m app.seed.problems seeds/problems.json
+```
+
+导入以标签和题目的 `slug` 为自然键执行 upsert，并同步题目标签关系；重复执行不会创建重复题目或关系。建议在导入前将种子文件纳入评审，并在生产数据库创建恢复点。
 
 ## 数据库迁移
 
@@ -121,7 +160,7 @@ npm run build
 
 `.github/workflows/ci.yml` 定义了可复现的后端与前端检查：`pytest`（单元与真实 PostgreSQL 集成测试）、`ruff`、`eslint`、`type-check`、Vitest 和生产构建。
 
-当前远端托管在 Gitee，GitHub Actions 文件不会由 Gitee 自动执行。启用 Gitee Go 后，应在其流水线中复用上述命令；也可以将仓库镜像到 GitHub 直接运行现有工作流。Sprint 0 不会主动开通远端流水线或推送代码。
+当前远端通过 Gitee 与 GitHub 镜像。GitHub 仓库运行现有 Actions；如使用 Gitee Go，应在其流水线中复用上述命令。
 
 ## Git 基线
 

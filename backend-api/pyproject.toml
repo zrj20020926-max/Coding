@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "acm-backend-api"
-version = "0.1.0"
+version = "0.2.0"
 description = "FastAPI control plane for the ACM training platform"
 requires-python = ">=3.9"
 dependencies = [
@@ -16,6 +16,7 @@ dependencies = [
   "greenlet>=3.0,<3.2; python_version < '3.10'",
   "pwdlib[argon2]>=0.2,<1",
   "pydantic-settings>=2.4,<3",
+  "PyYAML>=6,<7",
   "PyJWT>=2.9,<3",
   "redis>=5,<7",
   "sqlalchemy[asyncio]>=2.0,<3",
