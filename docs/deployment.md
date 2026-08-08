@@ -81,9 +81,23 @@ alembic upgrade head
 5. 再滚动发布 API 实例。
 6. 检查 `/health/ready`、`/openapi.json`、题库分页接口、错误率和数据库连接指标。
 
-Sprint 2 的迁移 head 为 `20260808_0003`。该版本仅新增公开题目默认排序的部分索引；普通 `CREATE INDEX` 会持有表锁，发布前应在接近生产规模的数据副本上评估耗时并安排维护窗口。旧数据库接管脚本只把已验证的旧结构 stamp 到 `20260808_0001`，随后会依次升级认证版本和题库索引，不会跳过增量迁移。
+提交控制平面的迁移 head 为 `20260808_0004`。普通 `CREATE INDEX` 和新增状态触发器会短暂持有表锁，发布前应在接近生产规模的数据副本上评估耗时并安排维护窗口。旧数据库接管脚本只把已验证的旧结构 stamp 到 `20260808_0001`，随后会依次升级认证、题库和提交控制平面迁移，不会跳过增量版本。
 
 本地 Compose 将迁移串在 API 启动前，便于开发；生产环境不要让多个 API 副本并发执行迁移。
+
+## 提交控制平面发布
+
+最新 Alembic head 为 `20260808_0004`。该迁移新增幂等字段、Outbox 表、部分索引和提交状态转换触发器。部署顺序：
+
+1. 备份并停止旧版写入方。
+2. 执行 `alembic upgrade 20260808_0004`，确认 `alembic current`。
+3. 确认 MinIO bucket 凭证和 Redis Stream 配置，再发布 API。
+4. 单独启动一个或多个 `python -m app.workers.outbox_publisher` 实例。
+5. 监控未发布 Outbox 数量、最老事件年龄、发布失败次数和 Redis Stream 积压。
+
+关键环境变量为 `MINIO_ENDPOINT`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`、`MINIO_BUCKET`、`SUBMISSION_SOURCE_MAX_BYTES`、`SUBMISSION_MIN_INTERVAL_SECONDS`、`SUBMISSION_STREAM_NAME`、`OUTBOX_BATCH_SIZE`、`OUTBOX_POLL_INTERVAL_MS`、`OUTBOX_RETRY_MAX_SECONDS` 和 `OUTBOX_DEDUP_TTL_SECONDS`。
+
+Redis 去重键有保留期，默认 7 天。这个时长必须大于可能的 Outbox 最大重试窗口；Judge 消费端仍需永久或按业务保留期记录 `event_id`，不能只依赖 publisher 去重键。MinIO 应使用独立的最小权限账号，禁止把 Compose 示例 root 凭证直接用于生产。
 
 ## 启动与健康检查
 

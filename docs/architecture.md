@@ -72,5 +72,23 @@ Pending -> Compiling -> Running -> Accepted
 - Phase 2：强化 Docker 沙箱、Redis Streams 可靠消费、MinIO、历史/重提、可观测性。
 - Phase 3：AI 分析、排行榜、企业题单、能力与薄弱点分析。
 
-当前 Sprint 只实现工程基线、核心数据库和认证纵切片。
+当前阶段已实现工程基线、认证、题库和提交控制平面；Judge Worker 与沙箱执行仍未实现。
 
+## 7. 提交控制平面可靠性
+
+```text
+POST submission
+  -> validate auth / public problem / enabled language / size / rate
+  -> put source in MinIO
+  -> PostgreSQL transaction [Submission(Pending) + Outbox]
+  -> 202 Accepted
+
+outbox-publisher (independent process)
+  -> SELECT ... FOR UPDATE SKIP LOCKED
+  -> Redis Lua [dedupe event id + XADD stream]
+  -> mark Outbox published and persist stream message id
+```
+
+API 请求不直接依赖 Redis Streams 是否可用。发布失败时 Outbox 保持未发布状态，记录截断后的错误并指数退避；多个 publisher 使用 `SKIP LOCKED` 分工。Redis Lua 把事件 ID 去重检查、`XADD` 和去重标记放在一次原子执行中，因此数据库提交结果未知后的重试不会产生第二条流消息。事件本身携带稳定 `event_id`，Judge 消费方仍须按该 ID 幂等消费。
+
+MinIO 位于数据库事务之前：写入失败时不创建 Submission；明确的幂等唯一键冲突会删除失败请求刚写入的独立对象。数据库连接中断可能令提交结果未知，此时 API 刻意保留不可变源码，避免“数据库已提交但源码被删除”；生产环境通过生命周期和数据库引用核对清理更安全的孤儿对象失败模式，并为源码 bucket 使用只授予必要前缀权限的独立凭证。

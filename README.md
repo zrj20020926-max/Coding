@@ -1,6 +1,6 @@
 # CodeArena · ACM 模式算法训练平台
 
-面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前完成 **Phase 1 / Sprint 2 题库后端纵切片**：在 Sprint 0 工程基线和认证安全能力上，提供公开题库查询、个人进度筛选、管理员题目生命周期与种子导入。
+面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前已完成工程基线、认证安全、题库纵切片和**提交控制平面**：可靠接收源码、持久化 Pending 提交、Outbox 排队并提供当前用户查询。
 
 ## 当前范围
 
@@ -18,7 +18,7 @@
 - 管理员新增、修改、发布和下线题目
 - YAML/JSON 幂等题目种子导入
 
-在线编辑器、提交任务、隐藏测试数据管理、Judge Worker 和 AI 分析不属于本次范围。
+在线编辑器、隐藏测试数据管理、Judge Worker、用户代码执行和 AI 分析仍不属于当前范围。
 
 ## 目录
 
@@ -171,3 +171,25 @@ npm run build
 - [架构设计](docs/architecture.md)
 - [数据模型](docs/database.md)
 - [部署与迁移](docs/deployment.md)
+- [提交控制平面 API](docs/submissions-api.md)
+
+## 提交控制平面
+
+当前后端已实现提交的可靠接收纵切片，但不执行用户代码：
+
+- `POST /api/v1/submissions` 支持 `Idempotency-Key`、源码大小校验和用户维度 Redis 限频。
+- 源码仅写入 MinIO；PostgreSQL 保存 checksum 与内部 object key，公开 DTO 不返回两者。
+- `Pending` 提交与 Outbox 事件在同一数据库事务中创建。
+- 独立 `outbox-publisher` 服务使用 Redis Lua 原子地去重并写入 Redis Streams；Redis 故障只会延迟发布，不会丢失已接收提交。
+- `GET /api/v1/submissions` 与 `GET /api/v1/submissions/{id}` 只返回当前用户的数据，列表支持 `problem_id` 筛选。
+- `backend-api` 和 `outbox-publisher` 均不包含用户代码执行路径，不挂载 Docker socket。
+
+迁移至最新控制平面结构：
+
+```powershell
+cd backend-api
+alembic upgrade 20260808_0004
+alembic current
+```
+
+启动后可用 `docker compose logs -f outbox-publisher` 观察发布进程，并用 `redis-cli XINFO STREAM codearena:judge:submissions` 检查任务流。

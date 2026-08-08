@@ -59,6 +59,13 @@ services:
       APP_ENV: ${APP_ENV:-local}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-acm}:${POSTGRES_PASSWORD:-acm_local_password}@postgres:5432/${POSTGRES_DB:-acm_platform}
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_local_password}@redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio_local_password}
+      MINIO_BUCKET: ${MINIO_BUCKET:-codearena-submissions}
+      MINIO_SECURE: ${MINIO_SECURE:-false}
+      SUBMISSION_SOURCE_MAX_BYTES: ${SUBMISSION_SOURCE_MAX_BYTES:-262144}
+      SUBMISSION_MIN_INTERVAL_SECONDS: ${SUBMISSION_MIN_INTERVAL_SECONDS:-2}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-only-secret-key-change-before-deploy}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-14}
@@ -82,11 +89,40 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
       interval: 10s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+
+  outbox-publisher:
+    build:
+      context: ./backend-api
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-acm}:${POSTGRES_PASSWORD:-acm_local_password}@postgres:5432/${POSTGRES_DB:-acm_platform}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_local_password}@redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-only-secret-key-change-before-deploy}
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+      REFRESH_COOKIE_SAMESITE: ${REFRESH_COOKIE_SAMESITE:-lax}
+      SUBMISSION_STREAM_NAME: ${SUBMISSION_STREAM_NAME:-codearena:judge:submissions}
+      OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-50}
+      OUTBOX_POLL_INTERVAL_MS: ${OUTBOX_POLL_INTERVAL_MS:-500}
+      OUTBOX_RETRY_MAX_SECONDS: ${OUTBOX_RETRY_MAX_SECONDS:-60}
+      OUTBOX_DEDUP_TTL_SECONDS: ${OUTBOX_DEDUP_TTL_SECONDS:-604800}
+    command: ["python", "-m", "app.workers.outbox_publisher"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend-api:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:

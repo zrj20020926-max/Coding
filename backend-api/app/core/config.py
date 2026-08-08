@@ -17,6 +17,20 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://acm:acm_local_password@localhost:5432/acm_platform"
     redis_url: str = "redis://:redis_local_password@localhost:6379/0"
 
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minio_local_password"
+    minio_bucket: str = "codearena-submissions"
+    minio_secure: bool = False
+
+    submission_source_max_bytes: int = Field(default=262_144, ge=1024, le=1_048_576)
+    submission_min_interval_seconds: int = Field(default=2, ge=0, le=300)
+    submission_stream_name: str = "codearena:judge:submissions"
+    outbox_batch_size: int = Field(default=50, ge=1, le=500)
+    outbox_poll_interval_ms: int = Field(default=500, ge=50, le=60_000)
+    outbox_retry_max_seconds: int = Field(default=60, ge=1, le=3600)
+    outbox_dedup_ttl_seconds: int = Field(default=604_800, ge=3600, le=2_592_000)
+
     jwt_secret_key: str = DEFAULT_JWT_SECRET
     jwt_algorithm: Literal["HS256", "HS384", "HS512"] = "HS256"
     jwt_issuer: str = "acm-training-platform"

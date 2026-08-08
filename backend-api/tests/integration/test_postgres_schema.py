@@ -25,7 +25,7 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260808_0003"
+            assert revision == "20260808_0004"
 
             auth_version = await connection.scalar(
                 text(
@@ -47,6 +47,7 @@ async def test_migrations_preserve_postgresql_features(
                 ).scalars()
             )
             assert EXPECTED_TABLES <= tables
+            assert "outbox_events" in tables
 
             citext_columns = set(
                 (
@@ -85,6 +86,8 @@ async def test_migrations_preserve_postgresql_features(
             )
             assert EXPECTED_INDEXES <= indexes
             assert "idx_problems_public_created" in indexes
+            assert "uq_submissions_user_idempotency_key" in indexes
+            assert "idx_outbox_unpublished_retry" in indexes
 
             triggers = set(
                 (
@@ -97,6 +100,7 @@ async def test_migrations_preserve_postgresql_features(
                 ).scalars()
             )
             assert EXPECTED_TRIGGERS <= triggers
+            assert "trg_submissions_status_transition" in triggers
     finally:
         await engine.dispose()
 
@@ -133,6 +137,61 @@ async def test_citext_uniqueness_is_case_insensitive(postgres_database_url: str)
                         "password_hash": "not-a-real-hash",
                         "nickname": "duplicate",
                     },
+                )
+            await transaction.rollback()
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_database_rejects_skipped_submission_status_transition(
+    postgres_database_url: str,
+) -> None:
+    engine = create_async_engine(postgres_database_url)
+    suffix = uuid4().hex[:12]
+    try:
+        async with engine.connect() as connection:
+            transaction = await connection.begin()
+            user_id = await connection.scalar(
+                text(
+                    "INSERT INTO users (username, email, password_hash, nickname) "
+                    "VALUES (:username, :email, 'hash', 'transition test') RETURNING id"
+                ),
+                {
+                    "username": f"transition_{suffix}",
+                    "email": f"transition-{suffix}@example.com",
+                },
+            )
+            problem_id = await connection.scalar(
+                text(
+                    "INSERT INTO problems (slug, title, description, difficulty, "
+                    "input_description, output_description, visibility) "
+                    "VALUES (:slug, 'transition', 'description', 'easy', 'input', "
+                    "'output', 'public') RETURNING id"
+                ),
+                {"slug": f"transition-{suffix}"},
+            )
+            language_id = await connection.scalar(
+                text("SELECT id FROM languages WHERE slug = 'python'")
+            )
+            submission_id = await connection.scalar(
+                text(
+                    "INSERT INTO submissions (user_id, problem_id, language_id, "
+                    "source_object_key, source_checksum) VALUES (:user_id, :problem_id, "
+                    ":language_id, 'internal', :checksum) RETURNING id"
+                ),
+                {
+                    "user_id": user_id,
+                    "problem_id": problem_id,
+                    "language_id": language_id,
+                    "checksum": "0" * 64,
+                },
+            )
+            with pytest.raises(IntegrityError):
+                await connection.execute(
+                    text("UPDATE submissions SET status = 'Accepted' WHERE id = :id"),
+                    {"id": submission_id},
                 )
             await transaction.rollback()
     finally:
