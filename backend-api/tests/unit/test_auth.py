@@ -46,6 +46,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     await fake_redis.aclose()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_register_login_profile_and_logout(client: AsyncClient) -> None:
     register_response = await client.post(

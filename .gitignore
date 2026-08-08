@@ -13,12 +13,20 @@ __pycache__/
 .venv/
 htmlcov/
 .coverage
+.coverage.*
+coverage.xml
 
 # Node
 node_modules/
 dist/
 .vite/
+coverage/
 *.tsbuildinfo
+
+# Generic tool caches
+.cache/
+.tmp/
+test-results/
 
 # Editors and OS
 .idea/

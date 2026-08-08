@@ -30,5 +30,4 @@ erDiagram
 - 收藏、题目进度、题单映射都使用联合唯一约束，所有消费端可以安全重试。
 - 用户统计字段是读优化缓存，正式值可从提交和进度表重建。
 
-完整 DDL 位于 `infra/postgres/init/001_schema.sql`。
-
+数据库结构由 `backend-api/migrations/versions/` 中的 Alembic 版本迁移维护。初始迁移显式保留 PostgreSQL 的 CITEXT、命名 ENUM、部分索引和 `set_updated_at` 触发器；不再使用只在首次创建数据卷时执行的一次性初始化 SQL。

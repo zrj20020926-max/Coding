@@ -1,5 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteMeta } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+
+export interface GuardRoute {
+  fullPath: string
+  meta: RouteMeta
+}
+
+export interface AuthGuardState {
+  isAuthenticated: boolean
+  ensureProfile: () => Promise<void>
+}
+
+export async function runAuthGuard(to: GuardRoute, auth: AuthGuardState) {
+  await auth.ensureProfile()
+  if (to.meta['requiresAuth'] && !auth.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta['guestOnly'] && auth.isAuthenticated) return { name: 'profile' }
+  return true
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,12 +33,6 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach(async (to) => {
-  const auth = useAuthStore()
-  await auth.ensureProfile()
-  if (to.meta['requiresAuth'] && !auth.isAuthenticated) return { name: 'login', query: { redirect: to.fullPath } }
-  if (to.meta['guestOnly'] && auth.isAuthenticated) return { name: 'profile' }
-  return true
-})
+router.beforeEach((to) => runAuthGuard(to, useAuthStore()))
 
 export default router

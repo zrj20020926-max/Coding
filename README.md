@@ -1,96 +1,129 @@
 # CodeArena · ACM 模式算法训练平台
 
-面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。本仓库按真实商业项目分 Sprint 交付，当前完成 **Phase 1 / Sprint 1：架构基线、核心数据模型与用户认证**。
+面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前完成 **Sprint 0 工程基线**：认证业务保持不变，数据库迁移、自动化测试和持续集成已具备可维护基础。
 
-## 当前能力
+## 当前范围
 
-- Vue 3 + TypeScript 严格模式 + Vite + Pinia + Vue Router + Element Plus 工程基线
-- 响应式首页、注册、登录、个人中心与亮/暗主题
-- FastAPI 注册、登录、JWT + Redis 会话、注销、资料查询/修改接口
-- Argon2id 密码哈希，Redis 会话支持服务端失效
-- PostgreSQL 完整核心 DDL 与语言/标签种子数据
-- PostgreSQL、Redis、MinIO、API、Web 的 Docker Compose 基线
-- 后端认证集成测试、前端 ESLint/类型检查/生产构建
+- Vue 3、TypeScript 严格模式、Vite、Pinia、Vue Router、Element Plus、Monaco Editor
+- FastAPI、PostgreSQL、Redis、MinIO
+- 注册、登录、JWT + Redis 会话、注销和个人资料
+- Alembic 版本迁移与旧数据库安全接管
+- 后端 SQLite 快速测试、真实 PostgreSQL 集成测试
+- 前端 Vitest、ESLint、类型检查与生产构建
+- GitHub Actions CI
 
-Monaco 编辑器、题库 API、提交任务和 Judge Worker 将按后续 Sprint 接入；当前安装 Monaco 依赖是为了锁定前端技术基线，不代表判题功能已完成。
+题库、在线编辑器、提交任务、Judge Worker 和 AI 分析不属于 Sprint 0，本次没有扩展这些业务。
 
 ## 目录
 
 ```text
 .
-├─ frontend/                    # Vue 3 Web 客户端
-├─ backend-api/                 # FastAPI 业务 API
+├─ .github/workflows/ci.yml             # 后端与前端 CI
+├─ backend-api/
+│  ├─ alembic.ini
+│  ├─ migrations/                       # PostgreSQL 版本迁移
+│  ├─ app/db/migration_bootstrap.py     # 旧库校验、stamp、upgrade
+│  └─ tests/
+│     ├─ unit/                          # SQLite + FakeRedis 快速测试
+│     └─ integration/                   # 真实 PostgreSQL 测试
+├─ frontend/
+│  └─ src/**/*.test.ts                  # Vitest 测试
 ├─ docs/
-│  ├─ architecture.md           # 服务边界、判题数据流、安全与状态机
-│  ├─ database.md               # ER 模型与数据约束
-│  └─ deployment.md             # 本地/部署说明
-├─ infra/postgres/init/
-│  └─ 001_schema.sql            # PostgreSQL 初始化 DDL + 种子数据
 ├─ docker-compose.yml
-└─ .env.example
+└─ docker-compose.test.yml
 ```
-
-规划中的独立目录为 `judge-service/` 与 `ai-service/`，在对应 Sprint 开始时创建，避免放置不可运行的空壳服务。
 
 ## 快速启动
 
-要求：Docker 29+ 与 Docker Compose 2+。
-
-```bash
-cp .env.example .env
-docker compose up --build
-```
-
-Windows PowerShell：
-
 ```powershell
 Copy-Item .env.example .env
-docker compose up --build
+docker compose up --build -d
+docker compose ps
 ```
 
-启动后：
+访问地址：
 
 - Web：http://localhost:8080
 - OpenAPI：http://localhost:8000/docs
 - MinIO Console：http://localhost:9001
 
-首次启动 PostgreSQL 时会自动执行 `infra/postgres/init/001_schema.sql`。如果修改初始化脚本，已有数据卷不会自动重放；开发环境可在确认无需保留数据后执行 `docker compose down -v` 再启动。
+Docker Compose 会在 API 启动前执行安全迁移入口。全新数据库执行 `upgrade head`；旧版 SQL 创建的数据库只有在结构、扩展、ENUM、索引、触发器和种子数据全部通过校验后才会 stamp。
 
-## API（当前 Sprint）
+## 数据库迁移
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| POST | `/api/v1/auth/register` | 注册并签发 JWT |
-| POST | `/api/v1/auth/login` | 用户名/邮箱登录 |
-| POST | `/api/v1/auth/logout` | 注销当前 Redis 会话 |
-| GET | `/api/v1/users/me` | 获取当前用户资料 |
-| PATCH | `/api/v1/users/me` | 修改昵称、头像和简介 |
-| GET | `/health/live` | 进程存活检查 |
-| GET | `/health/ready` | PostgreSQL/Redis 就绪检查 |
+以下命令均在 `backend-api/` 目录执行。
 
-## 本地测试
+全新数据库或已经由 Alembic 管理的数据库：
 
-后端：
+```powershell
+alembic current
+alembic upgrade head
+```
+
+由旧版 `infra/postgres/init/001_schema.sql` 创建的已有数据库：
+
+```powershell
+python -m app.db.migration_bootstrap --check-only
+python -m app.db.migration_bootstrap
+alembic current
+```
+
+安全入口会识别三种状态：
+
+- `empty`：直接执行全部迁移。
+- `legacy`：完整验证旧结构，stamp 初始版本后继续 upgrade。
+- `versioned`：按 `alembic_version` 正常 upgrade。
+
+只要检测到部分表、缺失 CITEXT/ENUM、索引、触发器或种子数据，脚本就会拒绝 stamp，防止掩盖数据库漂移。
+
+## 测试
+
+### 后端快速测试
 
 ```powershell
 cd backend-api
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -e ".[dev]"
-.\.venv\Scripts\python -m pytest
 .\.venv\Scripts\ruff check .
+.\.venv\Scripts\python -m pytest -m unit
 ```
 
-前端：
+### 真实 PostgreSQL 集成测试
+
+```powershell
+docker compose -f docker-compose.test.yml up -d --wait
+$env:TEST_DATABASE_URL='postgresql+asyncpg://acm_test:acm_test_password@localhost:55432/acm_platform_test'
+cd backend-api
+.\.venv\Scripts\python -m pytest -m integration
+cd ..
+docker compose -f docker-compose.test.yml down
+```
+
+集成测试数据库名必须以 `_test` 结尾，否则测试会主动拒绝运行。
+
+### 前端
 
 ```powershell
 cd frontend
-npm install
+npm ci
 npm run lint
 npm run type-check
+npm run test:run
 npm run build
 ```
 
-## 下一 Sprint
+## CI
 
-Phase 1 / Sprint 2 将实现题库纵切片：题目与标签 ORM、管理员种子导入、分页/搜索/难度和标签筛选 API，以及题库列表与题目详情页面。之后再进入 Monaco ACM 编辑器与提交/基础判题，保持每个 Sprint 都可运行、可测试。
+`.github/workflows/ci.yml` 定义了可复现的后端与前端检查：`pytest`（单元与真实 PostgreSQL 集成测试）、`ruff`、`eslint`、`type-check`、Vitest 和生产构建。
 
+当前远端托管在 Gitee，GitHub Actions 文件不会由 Gitee 自动执行。启用 Gitee Go 后，应在其流水线中复用上述命令；也可以将仓库镜像到 GitHub 直接运行现有工作流。Sprint 0 不会主动开通远端流水线或推送代码。
+
+## Git 基线
+
+仓库使用 `.gitignore` 和 `.gitattributes`。`node_modules`、`dist`、`.venv`、测试/工具缓存、覆盖率产物、日志和所有非示例 `.env` 文件均不会进入版本库。
+
+## 文档
+
+- [架构设计](docs/architecture.md)
+- [数据模型](docs/database.md)
+- [部署与迁移](docs/deployment.md)

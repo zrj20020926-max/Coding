@@ -14,16 +14,15 @@ http.interceptors.request.use((config) => {
   return config
 })
 
-http.interceptors.response.use(
-  (response) => response,
-  (error: unknown) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      localStorage.removeItem(AUTH_TOKEN_KEY)
-    }
-    const reason = error instanceof Error ? error : new Error('请求失败')
-    return Promise.reject(reason)
-  },
-)
+export function handleHttpError(error: unknown): Promise<never> {
+  if (axios.isAxiosError(error) && error.response?.status === 401) {
+    localStorage.removeItem(AUTH_TOKEN_KEY)
+  }
+  const reason = error instanceof Error ? error : new Error('请求失败')
+  return Promise.reject(reason)
+}
+
+http.interceptors.response.use((response) => response, handleHttpError)
 
 export function getApiErrorMessage(error: unknown, fallback = '请求失败，请稍后重试'): string {
   if (!axios.isAxiosError(error)) return fallback
