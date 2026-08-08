@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "acm-backend-api"
+version = "0.1.0"
+description = "FastAPI control plane for the ACM training platform"
+requires-python = ">=3.9"
+dependencies = [
+  "argon2-cffi>=23.1,<26",
+  "asyncpg>=0.29,<1",
+  "email-validator>=2.1,<3",
+  "fastapi>=0.115,<1",
+  "greenlet>=3.0,<3.2; python_version < '3.10'",
+  "pwdlib[argon2]>=0.2,<1",
+  "pydantic-settings>=2.4,<3",
+  "PyJWT>=2.9,<3",
+  "redis>=5,<7",
+  "sqlalchemy[asyncio]>=2.0,<3",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "aiosqlite>=0.20,<1",
+  "fakeredis>=2.24,<3",
+  "httpx>=0.27,<1",
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.23,<1",
+  "ruff>=0.6,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+ignore = ["UP007"]
