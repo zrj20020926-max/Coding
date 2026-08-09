@@ -72,7 +72,7 @@ Pending -> Compiling -> Running -> Accepted
 - Phase 2：强化 Docker 沙箱、Redis Streams 可靠消费、MinIO、历史/重提、可观测性。
 - Phase 3：AI 分析、排行榜、企业题单、能力与薄弱点分析。
 
-当前阶段已实现工程基线、认证、题库和提交控制平面；Judge Worker 与沙箱执行仍未实现。
+当前阶段已实现工程基线、认证、题库、提交控制平面，以及支持 Python 3.12/C++20 的基础 Judge Worker 与 Docker 沙箱执行。
 
 ## 7. 提交控制平面可靠性
 

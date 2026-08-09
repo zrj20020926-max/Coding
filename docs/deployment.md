@@ -97,7 +97,7 @@ alembic upgrade head
 
 关键环境变量为 `MINIO_ENDPOINT`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`、`MINIO_BUCKET`、`SUBMISSION_SOURCE_MAX_BYTES`、`SUBMISSION_MIN_INTERVAL_SECONDS`、`SUBMISSION_STREAM_NAME`、`OUTBOX_BATCH_SIZE`、`OUTBOX_POLL_INTERVAL_MS`、`OUTBOX_RETRY_MAX_SECONDS` 和 `OUTBOX_DEDUP_TTL_SECONDS`。
 
-Redis 去重键有保留期，默认 7 天。这个时长必须大于可能的 Outbox 最大重试窗口；Judge 消费端仍需永久或按业务保留期记录 `event_id`，不能只依赖 publisher 去重键。MinIO 应使用独立的最小权限账号，禁止把 Compose 示例 root 凭证直接用于生产。
+Redis 去重键有保留期，默认 7 天。这个时长必须大于可能的 Outbox 最大重试窗口；Judge 以 `submission_id` 租约、数据库终态和条件状态更新保证重复事件不会重复落结果，不能只依赖 publisher 去重键。MinIO 应使用独立的最小权限账号，禁止把 Compose 示例 root 凭证直接用于生产。
 
 ## 启动与健康检查
 
@@ -109,6 +109,16 @@ Invoke-RestMethod http://localhost:8000/health/ready
 ```
 
 预期响应为 `{"status":"ready"}`。
+
+Judge Worker 不开放 HTTP 端口。使用以下命令检查进程、消费组与积压：
+
+```powershell
+docker compose ps judge-service
+docker compose logs --tail 100 judge-service
+docker compose exec redis redis-cli -a redis_local_password XINFO GROUPS codearena:judge:submissions
+```
+
+只有 `judge-service` 可以挂载 Docker socket；`backend-api` 和 `outbox-publisher` 禁止挂载。Compose 示例适用于本地开发，生产环境必须将 Judge 部署到专用节点，并按 [Judge 安全与故障模型](judge-security.md) 完成运行时加固。
 
 ## 集成测试数据库
 

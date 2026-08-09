@@ -18,7 +18,7 @@
 - 管理员新增、修改、发布和下线题目
 - YAML/JSON 幂等题目种子导入
 
-在线编辑器、隐藏测试数据管理、Judge Worker、用户代码执行和 AI 分析仍不属于当前范围。
+在线编辑器、隐藏测试数据管理后台和 AI 分析仍不属于当前范围；基础 Judge Worker 已支持 Python 3.12 与 C++20。
 
 ## 目录
 
@@ -172,6 +172,7 @@ npm run build
 - [数据模型](docs/database.md)
 - [部署与迁移](docs/deployment.md)
 - [提交控制平面 API](docs/submissions-api.md)
+- [Judge 安全与故障模型](docs/judge-security.md)
 
 ## 提交控制平面
 
@@ -193,3 +194,14 @@ alembic current
 ```
 
 启动后可用 `docker compose logs -f outbox-publisher` 观察发布进程，并用 `redis-cli XINFO STREAM codearena:judge:submissions` 检查任务流。
+
+## 基础 ACM Judge Worker
+
+`judge-service/` 是独立 Python 3.12 服务，通过 Redis Streams 消费任务，当前支持 Python 3.12 与 C++20。每次编译和测试用例都运行在独立、无网络、只读根目录、非 root、无 capabilities 且受 CPU/内存/PID/tmpfs/输出/墙钟限制的容器中。
+
+```powershell
+docker compose up --build -d minio-init backend-api outbox-publisher judge-service
+docker compose logs -f judge-service
+```
+
+只有 `judge-service` 挂载 Docker socket。`backend-api` 的 Compose 定义没有该挂载，也不得在后续部署中添加。

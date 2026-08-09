@@ -1,0 +1,1 @@
+"""CodeArena isolated judge worker."""
