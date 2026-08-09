@@ -12,11 +12,12 @@ function initialTheme(): Theme {
 
 export const useUiStore = defineStore('ui', () => {
   const theme = ref<Theme>(initialTheme())
+  function setTheme(value: Theme): void { theme.value = value }
   function toggleTheme(): void { theme.value = theme.value === 'light' ? 'dark' : 'light' }
   watch(theme, (value) => {
     localStorage.setItem(THEME_KEY, value)
     document.documentElement.dataset['theme'] = value
     document.documentElement.classList.toggle('dark', value === 'dark')
   }, { immediate: true })
-  return { theme, toggleTheme }
+  return { theme, setTheme, toggleTheme }
 })

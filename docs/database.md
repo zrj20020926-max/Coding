@@ -26,7 +26,7 @@ erDiagram
 
 - 用户名与邮箱使用 `citext`，实现大小写不敏感唯一性。
 - 隐藏测试数据只存 MinIO object key 和 checksum，不在 PostgreSQL 保存明文。
-- `submissions.source_code` 仅用于 MVP/短代码快速查询；接入 MinIO 后以 `source_object_key` 为权威副本，并可按保留策略清理明文。
+- 新提交只在 MinIO 保存源码正文，`submissions` 保存内部 object key 和 checksum；所有公开 DTO 都隐藏这两个内部字段。
 - `submission_case_results` 不向普通用户暴露隐藏用例输入输出。
 - 收藏、题目进度、题单映射都使用联合唯一约束，所有消费端可以安全重试。
 - 用户统计字段是读优化缓存，正式值可从提交和进度表重建。
@@ -43,7 +43,7 @@ erDiagram
 | `Language` | `languages` | `slug` 唯一；内部保存运行配置，公开 DTO 只输出编辑器元数据 |
 | `UserProblemProgress` | `user_problem_progress` | `(user_id, problem_id)` 联合主键，记录尝试次数与首次通过时间 |
 
-`last_submission_id` 的 PostgreSQL 外键仍由初始迁移维护；提交实体属于后续判题纵切片，因此本次 ORM 只映射列而不引入尚未实现的 `Submission` ORM。异步查询统一预加载标签关联，避免响应序列化期间触发隐式数据库 IO。
+`last_submission_id` 的 PostgreSQL 外键由迁移维护。异步查询统一预加载标签关联，避免响应序列化期间触发隐式数据库 IO。
 
 ## 题库查询与索引
 
@@ -65,14 +65,16 @@ erDiagram
 
 ## 提交与 Outbox ORM
 
-`20260808_0004` 将初始 DDL 中已有的 `submissions`、`submission_case_results` 纳入 SQLAlchemy 2.0 async ORM，并新增可靠发布所需结构：
+`20260808_0004` 将初始 DDL 中已有的 `submissions`、`submission_case_results` 纳入 SQLAlchemy 2.0 async ORM，并新增可靠发布所需结构；`20260809_0005` 增加 `submission_mode` ENUM、公开样例 stdout 字段和模式索引：
 
 | ORM | 表 | 关键约束 |
 | --- | --- | --- |
-| `Submission` | `submissions` | UUID 主键；用户/题目/语言外键；命名 `submission_status` ENUM；源码 checksum 和内部 object key |
+| `Submission` | `submissions` | UUID 主键；用户/题目/语言外键；命名 `submission_status` / `submission_mode` ENUM；源码 checksum 和内部 object key |
 | `SubmissionCaseResult` | `submission_case_results` | 提交与隐藏测试用例唯一组合；公开 API 不序列化输出摘录 |
 | `Outbox` | `outbox_events` | 稳定事件 UUID、JSONB payload、重试时间、发布时间与 stream message id |
 
 `(user_id, idempotency_key)` 使用 `idempotency_key IS NOT NULL` 部分唯一索引，既允许未提供幂等键的提交，也能在并发请求下保证单写。`idx_outbox_unpublished_retry` 只覆盖未发布事件，用于 publisher 的重试扫描。
 
 `trg_submissions_status_transition` 在数据库层拒绝跳跃、回退和终态重入；应用服务层提供相同规则，便于在写库前返回明确错误。该触发器与已有 `trg_submissions_updated_at` 同时保留。
+
+`mode=sample` 的终态只保存公开样例的聚合结果和截断 stdout，不写 `submission_case_results`，也不更新 `user_problem_progress`、用户统计或题目统计；`mode=judge` 才会写正式进度与统计。两种模式都不在公开响应中返回隐藏测试数据。

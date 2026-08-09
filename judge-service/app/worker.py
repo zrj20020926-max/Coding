@@ -184,7 +184,7 @@ class JudgeWorker:
                 current_status = SubmissionStatus.COMPILING
 
             try:
-                test_cases = await self.repository.load_test_cases(job.problem_id)
+                test_cases = await self.repository.load_test_cases(job)
                 result = await self.engine.judge(job, test_cases)
             except JudgeConfigurationError as exc:
                 return await self._finalize_configuration_error(

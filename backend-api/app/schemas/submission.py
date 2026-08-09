@@ -5,13 +5,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.submission import SubmissionStatus
+from app.models.submission import SubmissionMode, SubmissionStatus
 
 
 class SubmissionCreate(BaseModel):
     problem_id: int = Field(gt=0)
     language: str = Field(min_length=1, max_length=30, pattern=r"^[a-z0-9+#-]+$")
     source_code: str = Field(min_length=1)
+    mode: SubmissionMode = SubmissionMode.JUDGE
 
 
 class SubmissionProblemPublic(BaseModel):
@@ -32,6 +33,7 @@ class SubmissionPublic(BaseModel):
     problem: SubmissionProblemPublic
     language: SubmissionLanguagePublic
     status: SubmissionStatus
+    mode: SubmissionMode
     time_used_ms: Optional[int]
     memory_used_kb: Optional[int]
     passed_case_count: int
@@ -44,6 +46,13 @@ class SubmissionPublic(BaseModel):
 
 class SubmissionCreated(SubmissionPublic):
     idempotent_replay: bool
+
+
+class SubmissionDetail(SubmissionPublic):
+    source_code: str
+    compiler_output: Optional[str]
+    error_message: Optional[str]
+    sample_output: Optional[str]
 
 
 class SubmissionPage(BaseModel):

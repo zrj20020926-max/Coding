@@ -32,6 +32,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
   "unit: fast tests without Docker",
+  "integration: tests that require a migrated PostgreSQL test database",
   "sandbox: tests that execute hostile programs in a local Docker daemon",
 ]
 

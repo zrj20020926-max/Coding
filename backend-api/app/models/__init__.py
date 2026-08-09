@@ -7,7 +7,13 @@ from app.models.problem import (
     Tag,
     UserProblemProgress,
 )
-from app.models.submission import Outbox, Submission, SubmissionCaseResult, SubmissionStatus
+from app.models.submission import (
+    Outbox,
+    Submission,
+    SubmissionCaseResult,
+    SubmissionMode,
+    SubmissionStatus,
+)
 from app.models.user import User
 
 __all__ = [
@@ -20,6 +26,7 @@ __all__ = [
     "Outbox",
     "Submission",
     "SubmissionCaseResult",
+    "SubmissionMode",
     "SubmissionStatus",
     "User",
     "UserProblemProgress",

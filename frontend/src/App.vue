@@ -22,12 +22,13 @@ async function handleLogout(): Promise<void> {
         <span class="brand-mark" aria-hidden="true">&lt;/&gt;</span><span>CodeArena</span>
       </RouterLink>
       <nav class="site-nav" aria-label="主导航">
-        <RouterLink to="/">首页</RouterLink><RouterLink to="/problems">题库</RouterLink>
+        <RouterLink to="/">首页</RouterLink><RouterLink to="/problems">题库</RouterLink><RouterLink v-if="auth.isAuthenticated" to="/submissions">提交记录</RouterLink>
       </nav>
       <div class="header-actions">
         <RouterLink class="mobile-problems-link" to="/problems">题库</RouterLink>
         <button class="theme-button" type="button" :aria-label="themeLabel" @click="ui.toggleTheme">{{ ui.theme === 'dark' ? '☀' : '◐' }}</button>
         <template v-if="auth.isAuthenticated">
+          <RouterLink class="mobile-submissions-link" to="/submissions">提交</RouterLink>
           <RouterLink class="text-link" to="/profile">{{ auth.user?.nickname ?? '个人中心' }}</RouterLink>
           <button class="plain-button" type="button" @click="handleLogout">退出</button>
         </template>

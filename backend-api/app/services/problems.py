@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.sqltypes import Float
 
+from app.core.config import settings
 from app.models.problem import (
     Language,
     Problem,
@@ -253,7 +254,10 @@ async def list_public_languages(db: AsyncSession) -> list[LanguagePublic]:
     languages = (
         await db.scalars(
             select(Language)
-            .where(Language.enabled.is_(True))
+            .where(
+                Language.enabled.is_(True),
+                Language.slug.in_(settings.judge_supported_language_list),
+            )
             .order_by(Language.sort_order.asc(), Language.id.asc())
         )
     ).all()

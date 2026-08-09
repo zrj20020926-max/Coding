@@ -1,4 +1,5 @@
 import hashlib
+from dataclasses import replace
 from decimal import Decimal
 from uuid import uuid4
 
@@ -7,6 +8,7 @@ import pytest
 from app.domain.models import (
     CompileResult,
     SubmissionJob,
+    SubmissionMode,
     SubmissionStatus,
 )
 from app.domain.models import TestCase as JudgeTestCase
@@ -53,6 +55,7 @@ def fixture(
         problem_id=1,
         language="python",
         status=SubmissionStatus.COMPILING,
+        mode=SubmissionMode.JUDGE,
         source_object_key="private/source",
         source_checksum=hashlib.sha256(source).hexdigest(),
         time_limit_ms=1000,
@@ -90,3 +93,30 @@ async def test_judge_stops_after_wrong_answer_without_exposing_hidden_data() -> 
     assert result.status is SubmissionStatus.WRONG_ANSWER
     assert result.error_message is None
     assert "secret" not in repr(result)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_sample_run_uses_inline_public_case_without_hidden_object_reads() -> None:
+    engine, job, _cases = fixture(b"answer\n", b"answer\n")
+    stdin = b"public input\n"
+    expected = b"answer\n"
+    sample = JudgeTestCase(
+        id=uuid4(),
+        input_object_key=None,
+        output_object_key=None,
+        checksum=hashlib.sha256(stdin + b"\0" + expected).hexdigest(),
+        score=Decimal("100"),
+        sequence=0,
+        inline_input=stdin,
+        inline_output=expected,
+    )
+
+    result = await engine.judge(
+        replace(job, mode=SubmissionMode.SAMPLE),
+        [sample],
+    )
+
+    assert result.status is SubmissionStatus.ACCEPTED
+    assert result.total_case_count == 1
+    assert result.public_output == "answer\n"

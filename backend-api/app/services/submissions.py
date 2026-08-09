@@ -15,10 +15,11 @@ from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
 from app.models.problem import Language, Problem, ProblemVisibility
-from app.models.submission import Outbox, Submission, SubmissionStatus
+from app.models.submission import Outbox, Submission, SubmissionMode, SubmissionStatus
 from app.models.user import User
 from app.schemas.submission import (
     SubmissionCreated,
+    SubmissionDetail,
     SubmissionLanguagePublic,
     SubmissionPage,
     SubmissionProblemPublic,
@@ -31,9 +32,16 @@ def submission_error(http_status: int, code: str, message: str) -> HTTPException
     return HTTPException(status_code=http_status, detail={"code": code, "message": message})
 
 
-def _fingerprint(problem_id: int, language_slug: str, checksum: str) -> str:
+def _fingerprint(
+    problem_id: int, language_slug: str, checksum: str, mode: SubmissionMode
+) -> str:
     serialized = json.dumps(
-        {"problem_id": problem_id, "language": language_slug, "checksum": checksum},
+        {
+            "problem_id": problem_id,
+            "language": language_slug,
+            "checksum": checksum,
+            "mode": mode.value,
+        },
         sort_keys=True,
         separators=(",", ":"),
     )
@@ -67,13 +75,15 @@ async def _find_idempotent_submission(
     )
 
 
-async def _enforce_submission_rate(cache: Redis, user_id: UUID) -> None:
+async def _enforce_submission_rate(
+    cache: Redis, user_id: UUID, mode: SubmissionMode
+) -> None:
     interval = settings.submission_min_interval_seconds
     if interval == 0:
         return
     try:
         accepted = await cache.set(
-            f"rate:submission:user:{user_id}", "1", nx=True, ex=interval
+            f"rate:submission:user:{user_id}:{mode.value}", "1", nx=True, ex=interval
         )
     except Exception as exc:
         raise submission_error(
@@ -107,6 +117,7 @@ def to_submission_public(submission: Submission) -> SubmissionPublic:
             version=submission.language.version,
         ),
         status=submission.status,
+        mode=submission.mode,
         time_used_ms=submission.time_used_ms,
         memory_used_kb=submission.memory_used_kb,
         passed_case_count=submission.passed_case_count,
@@ -124,6 +135,37 @@ def to_submission_created(submission: Submission, replay: bool) -> SubmissionCre
     )
 
 
+async def to_submission_detail(
+    submission: Submission, object_store: SourceObjectStore
+) -> SubmissionDetail:
+    if not submission.source_object_key:
+        raise submission_error(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "SOURCE_UNAVAILABLE",
+            "submission source is temporarily unavailable",
+        )
+    try:
+        source = await object_store.get_source(submission.source_object_key)
+        source_code = source.decode("utf-8")
+    except Exception as exc:
+        raise submission_error(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "SOURCE_UNAVAILABLE",
+            "submission source is temporarily unavailable",
+        ) from exc
+    return SubmissionDetail(
+        **to_submission_public(submission).model_dump(),
+        source_code=source_code,
+        compiler_output=submission.compiler_output,
+        error_message=submission.error_message,
+        sample_output=(
+            submission.sample_output
+            if submission.mode is SubmissionMode.SAMPLE
+            else None
+        ),
+    )
+
+
 async def create_submission(
     db: AsyncSession,
     cache: Redis,
@@ -132,6 +174,7 @@ async def create_submission(
     problem_id: int,
     language_slug: str,
     source_code: str,
+    mode: SubmissionMode,
     idempotency_key: str | None,
 ) -> SubmissionCreated:
     key = normalize_idempotency_key(idempotency_key)
@@ -144,7 +187,7 @@ async def create_submission(
         )
 
     checksum = hashlib.sha256(content).hexdigest()
-    request_fingerprint = _fingerprint(problem_id, language_slug, checksum)
+    request_fingerprint = _fingerprint(problem_id, language_slug, checksum, mode)
     existing = await _find_idempotent_submission(db, user.id, key)
     if existing is not None:
         if existing.request_fingerprint != request_fingerprint:
@@ -166,14 +209,18 @@ async def create_submission(
             status.HTTP_404_NOT_FOUND, "PROBLEM_NOT_FOUND", "public problem not found"
         )
     language = await db.scalar(
-        select(Language).where(Language.slug == language_slug, Language.enabled.is_(True))
+        select(Language).where(
+            Language.slug == language_slug,
+            Language.slug.in_(settings.judge_supported_language_list),
+            Language.enabled.is_(True),
+        )
     )
     if language is None:
         raise submission_error(
             status.HTTP_400_BAD_REQUEST, "LANGUAGE_UNAVAILABLE", "language is not available"
         )
 
-    await _enforce_submission_rate(cache, user.id)
+    await _enforce_submission_rate(cache, user.id, mode)
 
     submission_id = uuid4()
     object_key = (
@@ -195,6 +242,7 @@ async def create_submission(
         problem=problem,
         language=language,
         status=SubmissionStatus.PENDING,
+        mode=mode,
         source_code=None,
         source_object_key=object_key,
         source_checksum=checksum,
@@ -216,6 +264,7 @@ async def create_submission(
             "source_checksum": checksum,
             "time_limit_ms": problem.time_limit_ms,
             "memory_limit_mb": problem.memory_limit_mb,
+            "mode": mode.value,
         },
     )
     db.add_all([submission, event])

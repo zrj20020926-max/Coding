@@ -26,6 +26,9 @@ class FakeSourceObjectStore:
     async def delete_source(self, object_key: str) -> None:
         self.objects.pop(object_key, None)
 
+    async def get_source(self, object_key: str) -> bytes:
+        return self.objects[object_key]
+
 
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:

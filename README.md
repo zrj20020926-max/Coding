@@ -1,6 +1,6 @@
 # CodeArena · ACM 模式算法训练平台
 
-面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前已完成工程基线、认证安全、题库纵切片和**提交控制平面**：可靠接收源码、持久化 Pending 提交、Outbox 排队并提供当前用户查询。
+面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前已打通题目详情、ACM 编辑器、可靠提交、独立 Judge 判题、结果轮询、提交历史与详情的完整做题闭环。
 
 ## 当前范围
 
@@ -17,8 +17,12 @@
 - 公开题目详情、标签和启用语言接口
 - 管理员新增、修改、发布和下线题目
 - YAML/JSON 幂等题目种子导入
+- Monaco 按路由懒加载，支持 Python 3.12 / C++20、高亮、补全、主题、字号、格式化和快捷键
+- 草稿按用户、题目、语言隔离保存；公开样例与正式提交都通过 MinIO、Outbox、Redis Streams 进入独立 Judge
+- 断网/切页恢复、三分钟轮询超时、幂等防重、终态自动停止，以及个人提交历史和安全详情
+- Playwright 关键浏览器流程测试
 
-在线编辑器、隐藏测试数据管理后台和 AI 分析仍不属于当前范围；基础 Judge Worker 已支持 Python 3.12 与 C++20。
+隐藏测试数据管理后台和 AI 分析仍不属于当前范围；浏览器和 `backend-api` 都不会执行用户代码。
 
 ## 目录
 
@@ -36,7 +40,10 @@
 │     ├─ unit/                          # SQLite + FakeRedis 快速测试
 │     └─ integration/                   # 真实 PostgreSQL 测试
 ├─ frontend/
-│  └─ src/**/*.test.ts                  # Vitest 测试
+│  ├─ src/components/editor/            # 懒加载 Monaco 编辑器
+│  ├─ src/stores/submissions.ts         # 提交、防重、轮询与恢复
+│  ├─ src/**/*.test.ts                  # Vitest 测试
+│  └─ e2e/                              # Playwright 关键做题闭环
 ├─ docs/
 ├─ docker-compose.yml
 └─ docker-compose.test.yml
@@ -140,6 +147,9 @@ $env:TEST_DATABASE_URL='postgresql+asyncpg://acm_test:acm_test_password@localhos
 cd backend-api
 .\.venv\Scripts\python -m pytest -m integration
 cd ..
+cd judge-service
+..\.tmp\judge-venv\Scripts\python -m pytest -m integration
+cd ..
 docker compose -f docker-compose.test.yml down
 ```
 
@@ -154,11 +164,20 @@ npm run lint
 npm run type-check
 npm run test:run
 npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
+
+## 完整做题闭环
+
+- `/problems/:slug`：题面与懒加载 ACM 编辑器。`Ctrl/⌘ Enter` 运行公开样例，`Ctrl/⌘ Shift Enter` 正式提交，`Shift Alt F` 格式化。
+- `/submissions`：当前用户提交历史；`/submissions/:id`：源码、编译输出、耗时、内存和聚合用例结果。
+- `mode=sample` 只读取题面公开样例并可返回该次 stdout，不计入正式刷题进度；`mode=judge` 只读取 MinIO 隐藏数据并更新正式统计。
+- API 响应不返回隐藏输入输出、测试数据 object key、源码 object key、编译命令或沙箱镜像。
 
 ## CI
 
-`.github/workflows/ci.yml` 定义了可复现的后端与前端检查：`pytest`（单元与真实 PostgreSQL 集成测试）、`ruff`、`eslint`、`type-check`、Vitest 和生产构建。
+`.github/workflows/ci.yml` 定义了可复现的后端与前端检查：`pytest`（单元与真实 PostgreSQL 集成测试）、`ruff`、`eslint`、`type-check`、Vitest、Playwright 和生产构建。
 
 当前远端通过 Gitee 与 GitHub 镜像。GitHub 仓库运行现有 Actions；如使用 Gitee Go，应在其流水线中复用上述命令。
 

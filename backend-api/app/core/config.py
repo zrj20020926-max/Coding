@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     submission_source_max_bytes: int = Field(default=262_144, ge=1024, le=1_048_576)
     submission_min_interval_seconds: int = Field(default=2, ge=0, le=300)
+    judge_supported_languages: str = "python,cpp"
     submission_stream_name: str = "codearena:judge:submissions"
     outbox_batch_size: int = Field(default=50, ge=1, le=500)
     outbox_poll_interval_ms: int = Field(default=500, ge=50, le=60_000)
@@ -56,6 +57,14 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def judge_supported_language_list(self) -> list[str]:
+        return [
+            language.strip()
+            for language in self.judge_supported_languages.split(",")
+            if language.strip()
+        ]
 
     @field_validator("trusted_proxy_cidrs")
     @classmethod

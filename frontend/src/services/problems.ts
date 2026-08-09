@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ProblemDetail, ProblemListParams, ProblemPage, ProblemTag } from '@/types/problem'
+import type { JudgeLanguage } from '@/types/editor'
 
 export class ProblemNotFoundError extends Error {
   constructor(slug: string) {
@@ -15,6 +16,11 @@ export async function getProblems(params: ProblemListParams): Promise<ProblemPag
 
 export async function getProblemTags(): Promise<ProblemTag[]> {
   const { data } = await http.get<ProblemTag[]>('/tags')
+  return data
+}
+
+export async function getProblemLanguages(): Promise<JudgeLanguage[]> {
+  const { data } = await http.get<JudgeLanguage[]>('/languages')
   return data
 }
 

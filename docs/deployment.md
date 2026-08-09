@@ -81,16 +81,16 @@ alembic upgrade head
 5. 再滚动发布 API 实例。
 6. 检查 `/health/ready`、`/openapi.json`、题库分页接口、错误率和数据库连接指标。
 
-提交控制平面的迁移 head 为 `20260808_0004`。普通 `CREATE INDEX` 和新增状态触发器会短暂持有表锁，发布前应在接近生产规模的数据副本上评估耗时并安排维护窗口。旧数据库接管脚本只把已验证的旧结构 stamp 到 `20260808_0001`，随后会依次升级认证、题库和提交控制平面迁移，不会跳过增量版本。
+当前迁移 head 为 `20260809_0005`。该版本增加 `submission_mode` PostgreSQL ENUM、`submissions.mode`、仅供公开样例 stdout 的 `sample_output` 和用户/模式/时间索引。普通 DDL 会短暂持有表锁，发布前应在接近生产规模的数据副本上评估耗时并安排维护窗口。旧数据库接管脚本只把已验证的旧结构 stamp 到 `20260808_0001`，随后依次执行全部增量迁移。
 
 本地 Compose 将迁移串在 API 启动前，便于开发；生产环境不要让多个 API 副本并发执行迁移。
 
 ## 提交控制平面发布
 
-最新 Alembic head 为 `20260808_0004`。该迁移新增幂等字段、Outbox 表、部分索引和提交状态转换触发器。部署顺序：
+最新 Alembic head 为 `20260809_0005`。`20260808_0004` 新增幂等字段、Outbox 表、部分索引和提交状态转换触发器；`20260809_0005` 新增样例/正式判题模式。部署顺序：
 
 1. 备份并停止旧版写入方。
-2. 执行 `alembic upgrade 20260808_0004`，确认 `alembic current`。
+2. 执行 `alembic upgrade 20260809_0005`，确认 `alembic current`。
 3. 确认 MinIO bucket 凭证和 Redis Stream 配置，再发布 API。
 4. 单独启动一个或多个 `python -m app.workers.outbox_publisher` 实例。
 5. 监控未发布 Outbox 数量、最老事件年龄、发布失败次数和 Redis Stream 积压。

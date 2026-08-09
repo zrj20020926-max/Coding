@@ -43,9 +43,20 @@ class SubmissionStatus(str, enum.Enum):
     SYSTEM_ERROR = "System Error"
 
 
+class SubmissionMode(str, enum.Enum):
+    SAMPLE = "sample"
+    JUDGE = "judge"
+
+
 submission_status_type = Enum(
     SubmissionStatus,
     name="submission_status",
+    values_callable=enum_values,
+    validate_strings=True,
+)
+submission_mode_type = Enum(
+    SubmissionMode,
+    name="submission_mode",
     values_callable=enum_values,
     validate_strings=True,
 )
@@ -73,6 +84,9 @@ class Submission(Base):
     status: Mapped[SubmissionStatus] = mapped_column(
         submission_status_type, nullable=False, default=SubmissionStatus.PENDING
     )
+    mode: Mapped[SubmissionMode] = mapped_column(
+        submission_mode_type, nullable=False, default=SubmissionMode.JUDGE
+    )
     source_code: Mapped[Optional[str]] = mapped_column(Text)
     source_object_key: Mapped[Optional[str]] = mapped_column(Text)
     source_checksum: Mapped[str] = mapped_column(CHAR(64), nullable=False)
@@ -81,6 +95,7 @@ class Submission(Base):
     queue_message_id: Mapped[Optional[str]] = mapped_column(Text)
     compiler_output: Mapped[Optional[str]] = mapped_column(Text)
     error_message: Mapped[Optional[str]] = mapped_column(Text)
+    sample_output: Mapped[Optional[str]] = mapped_column(Text)
     time_used_ms: Mapped[Optional[int]] = mapped_column(Integer)
     memory_used_kb: Mapped[Optional[int]] = mapped_column(Integer)
     passed_case_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

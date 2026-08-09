@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 
 import DifficultyBadge from '@/components/problems/DifficultyBadge.vue'
 import MarkdownContent from '@/components/problems/MarkdownContent.vue'
+import ProblemWorkbench from '@/components/problems/ProblemWorkbench.vue'
 import { useProblemStore } from '@/stores/problems'
 
 const route = useRoute()
@@ -82,8 +83,9 @@ onBeforeUnmount(() => problemStore.clearDetail())
       </section>
       <aside class="editor-notice">
         <strong>ACM 模式说明</strong>
-        <p>请按题面从 stdin 读取输入并向 stdout 输出答案。在线编辑与提交能力将在判题链路完成后开放。</p>
+        <p>请按题面从 stdin 读取输入并向 stdout 输出答案。公开样例运行与正式提交都会进入独立 Judge 沙箱。</p>
       </aside>
+      <ProblemWorkbench :problem="detail" />
     </article>
   </div>
 </template>

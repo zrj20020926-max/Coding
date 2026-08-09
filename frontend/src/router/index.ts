@@ -35,6 +35,18 @@ const router = createRouter({
       name: 'problem-detail',
       component: () => import('@/views/ProblemDetailView.vue'),
     },
+    {
+      path: '/submissions',
+      name: 'submissions',
+      component: () => import('@/views/SubmissionHistoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/submissions/:id',
+      name: 'submission-detail',
+      component: () => import('@/views/SubmissionDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { guestOnly: true } },
     { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue'), meta: { guestOnly: true } },
     { path: '/profile', name: 'profile', component: () => import('@/views/ProfileView.vue'), meta: { requiresAuth: true } },

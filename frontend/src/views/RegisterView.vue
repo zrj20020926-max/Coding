@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import 'element-plus/es/components/message/style/css'
 import { getApiErrorMessage } from '@/services/http'
 import { useAuthStore } from '@/stores/auth'
 
@@ -82,4 +83,3 @@ async function submit(): Promise<void> {
     </div>
   </section>
 </template>
-

@@ -17,6 +17,11 @@ class SubmissionStatus(StrEnum):
     SYSTEM_ERROR = "System Error"
 
 
+class SubmissionMode(StrEnum):
+    SAMPLE = "sample"
+    JUDGE = "judge"
+
+
 TERMINAL_STATUSES = frozenset(
     {
         SubmissionStatus.ACCEPTED,
@@ -36,6 +41,7 @@ class SubmissionJob:
     problem_id: int
     language: str
     status: SubmissionStatus
+    mode: SubmissionMode
     source_object_key: str
     source_checksum: str
     time_limit_ms: int
@@ -45,11 +51,13 @@ class SubmissionJob:
 @dataclass(frozen=True)
 class TestCase:
     id: UUID
-    input_object_key: str
-    output_object_key: str
+    input_object_key: str | None
+    output_object_key: str | None
     checksum: str
     score: Decimal
     sequence: int
+    inline_input: bytes | None = None
+    inline_output: bytes | None = None
 
 
 @dataclass(frozen=True)
@@ -76,6 +84,7 @@ class JudgeResult:
     total_case_count: int = 0
     compiler_output: str | None = None
     error_message: str | None = None
+    public_output: str | None = None
 
     @property
     def time_used_ms(self) -> int:

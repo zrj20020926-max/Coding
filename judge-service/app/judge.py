@@ -5,6 +5,7 @@ from app.domain.models import (
     CaseResult,
     JudgeResult,
     SubmissionJob,
+    SubmissionMode,
     SubmissionStatus,
     TestCase,
 )
@@ -41,9 +42,18 @@ class JudgeEngine:
         results: list[CaseResult] = []
         terminal_status = SubmissionStatus.ACCEPTED
         error_message = None
+        public_output = None
         for test_case in test_cases:
-            stdin = await self.object_store.get_test_input(test_case.input_object_key)
-            expected = await self.object_store.get_test_output(test_case.output_object_key)
+            if test_case.inline_input is not None and test_case.inline_output is not None:
+                stdin = test_case.inline_input
+                expected = test_case.inline_output
+            elif test_case.input_object_key and test_case.output_object_key:
+                stdin = await self.object_store.get_test_input(test_case.input_object_key)
+                expected = await self.object_store.get_test_output(test_case.output_object_key)
+            else:
+                raise JudgeConfigurationError(
+                    f"test case {test_case.sequence} has no readable data source"
+                )
             checksum = hashlib.sha256(stdin + b"\0" + expected).hexdigest()
             if checksum != test_case.checksum:
                 raise InfrastructureError(
@@ -59,6 +69,8 @@ class JudgeEngine:
                 job.memory_limit_mb,
             )
             case_status = run.status
+            if job.mode is SubmissionMode.SAMPLE:
+                public_output = run.stdout.decode("utf-8", errors="replace")
             if case_status is SubmissionStatus.ACCEPTED and not outputs_equal(
                 run.stdout, expected
             ):
@@ -83,4 +95,5 @@ class JudgeEngine:
             case_results=results,
             total_case_count=len(test_cases),
             error_message=error_message,
+            public_output=public_output,
         )

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.main import app
 from app.models.problem import Language, Problem, ProblemDifficulty, ProblemVisibility
-from app.models.submission import Outbox, Submission, SubmissionStatus
+from app.models.submission import Outbox, Submission, SubmissionMode, SubmissionStatus
 from app.services.outbox import publish_outbox_batch
 from app.services.submissions import InvalidSubmissionTransition, transition_submission_status
 from tests.unit.conftest import FakeSourceObjectStore
@@ -80,8 +80,17 @@ async def seed_submission_catalog(db: AsyncSession) -> tuple[Problem, Problem]:
     return public, draft
 
 
-def request(problem_id: int, source: str = "print(input())") -> dict[str, Any]:
-    return {"problem_id": problem_id, "language": "python", "source_code": source}
+def request(
+    problem_id: int,
+    source: str = "print(input())",
+    mode: str = "judge",
+) -> dict[str, Any]:
+    return {
+        "problem_id": problem_id,
+        "language": "python",
+        "source_code": source,
+        "mode": mode,
+    }
 
 
 @pytest.mark.unit
@@ -100,6 +109,7 @@ async def test_submission_is_stored_with_pending_outbox_and_safe_response(
     assert response.status_code == 202
     body = response.json()
     assert body["status"] == "Pending"
+    assert body["mode"] == "judge"
     assert body["idempotent_replay"] is False
     submission = (await db_session.scalars(select(Submission))).one()
     event = (await db_session.scalars(select(Outbox))).one()
@@ -108,6 +118,7 @@ async def test_submission_is_stored_with_pending_outbox_and_safe_response(
     assert fake_object_store.objects[submission.source_object_key] == b"print(input())"
     assert event.aggregate_id == submission.id
     assert event.published_at is None
+    assert event.payload["mode"] == "judge"
     serialized = json.dumps(body)
     for forbidden in (
         "source_object_key",
@@ -142,6 +153,43 @@ async def test_idempotency_replay_creates_one_submission_and_rejects_key_reuse(
     assert conflict.json()["detail"]["code"] == "IDEMPOTENCY_KEY_REUSED"
     assert await db_session.scalar(select(func.count(Submission.id))) == 1
     assert await db_session.scalar(select(func.count(Outbox.id))) == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_sample_and_formal_runs_are_distinct_and_detail_is_owner_safe(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    problem, _ = await seed_submission_catalog(db_session)
+    headers = await register(client, "sample_owner")
+    sample_headers = {**headers, "Idempotency-Key": "run-sample-1"}
+    judge_headers = {**headers, "Idempotency-Key": "submit-judge-1"}
+
+    sample = await client.post(
+        "/api/v1/submissions",
+        json=request(problem.id, mode="sample"),
+        headers=sample_headers,
+    )
+    formal = await client.post(
+        "/api/v1/submissions",
+        json=request(problem.id, mode="judge"),
+        headers=judge_headers,
+    )
+    detail = await client.get(
+        f"/api/v1/submissions/{sample.json()['id']}", headers=headers
+    )
+
+    assert sample.status_code == formal.status_code == 202
+    assert sample.json()["id"] != formal.json()["id"]
+    assert sample.json()["mode"] == "sample"
+    assert formal.json()["mode"] == "judge"
+    assert detail.status_code == 200
+    assert detail.json()["source_code"] == "print(input())"
+    assert detail.json()["sample_output"] is None
+    assert "source_object_key" not in detail.text
+    modes = set((await db_session.scalars(select(Submission.mode))).all())
+    assert modes == {SubmissionMode.SAMPLE, SubmissionMode.JUDGE}
 
 
 @pytest.mark.unit
@@ -311,6 +359,7 @@ def test_submission_openapi_does_not_expose_internal_runtime_fields() -> None:
         "queue_message_id",
         "compile_command",
         "docker_image",
-        "compiler_output",
     ):
         assert forbidden not in openapi
+    assert "compiler_output" in openapi
+    assert "source_code" in openapi

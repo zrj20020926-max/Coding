@@ -10,6 +10,7 @@ from app.models.user import User
 from app.schemas.submission import (
     SubmissionCreate,
     SubmissionCreated,
+    SubmissionDetail,
     SubmissionPage,
     SubmissionPublic,
 )
@@ -19,6 +20,7 @@ from app.services.submissions import (
     get_owned_submission,
     list_owned_submissions,
     submission_error,
+    to_submission_detail,
     to_submission_public,
 )
 
@@ -47,6 +49,7 @@ async def submit_source(
         payload.problem_id,
         payload.language,
         payload.source_code,
+        payload.mode,
         idempotency_key,
     )
 
@@ -63,19 +66,38 @@ async def get_my_submissions(
 
 
 @router.get(
-    "/{submission_id}",
+    "/{submission_id}/status",
     response_model=SubmissionPublic,
-    summary="Get a current-user-owned submission",
+    summary="Poll a current-user-owned submission status",
 )
-async def get_my_submission(
+async def get_my_submission_status(
     submission_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> SubmissionPublic:
     submission = await get_owned_submission(db, submission_id, current_user.id)
     if submission is None:
-        # Returning the same 404 for missing and foreign records avoids leaking ownership.
         raise submission_error(
             status.HTTP_404_NOT_FOUND, "SUBMISSION_NOT_FOUND", "submission not found"
         )
     return to_submission_public(submission)
+
+
+@router.get(
+    "/{submission_id}",
+    response_model=SubmissionDetail,
+    summary="Get a current-user-owned submission",
+)
+async def get_my_submission(
+    submission_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    object_store: Annotated[SourceObjectStore, Depends(get_source_object_store)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> SubmissionDetail:
+    submission = await get_owned_submission(db, submission_id, current_user.id)
+    if submission is None:
+        # Returning the same 404 for missing and foreign records avoids leaking ownership.
+        raise submission_error(
+            status.HTTP_404_NOT_FOUND, "SUBMISSION_NOT_FOUND", "submission not found"
+        )
+    return await to_submission_detail(submission, object_store)

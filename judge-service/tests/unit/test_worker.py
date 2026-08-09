@@ -4,7 +4,12 @@ from uuid import uuid4
 import pytest
 
 from app.core.config import Settings
-from app.domain.models import JudgeResult, SubmissionJob, SubmissionStatus
+from app.domain.models import (
+    JudgeResult,
+    SubmissionJob,
+    SubmissionMode,
+    SubmissionStatus,
+)
 from app.errors import InfrastructureError
 from app.worker import JudgeWorker, MessageDisposition
 
@@ -36,7 +41,7 @@ class FakeRepository:
     async def load_submission(self, _submission_id):
         return self.job
 
-    async def load_test_cases(self, _problem_id):
+    async def load_test_cases(self, _job):
         return [object()]
 
     async def transition(self, _submission_id, expected, next_status):
@@ -71,6 +76,7 @@ def pending_job():
         problem_id=1,
         language="python",
         status=SubmissionStatus.PENDING,
+        mode=SubmissionMode.JUDGE,
         source_object_key="internal",
         source_checksum="0" * 64,
         time_limit_ms=1000,

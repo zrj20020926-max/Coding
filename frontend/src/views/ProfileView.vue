@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import 'element-plus/es/components/message/style/css'
 import { getApiErrorMessage } from '@/services/http'
 import { useAuthStore } from '@/stores/auth'
 
@@ -54,10 +55,10 @@ async function saveProfile(): Promise<void> {
         </el-form>
       </section>
       <aside class="next-sprint-panel">
-        <span>UP NEXT</span><h2>题库与训练记录</h2><p>下一迭代会接入题目搜索、难度/标签筛选，以及真实的做题进度。</p>
+        <span>SUBMISSIONS</span><h2>训练与判题记录</h2><p>查看每次公开样例运行和正式提交的状态、耗时、内存与源代码。</p>
+        <RouterLink class="profile-submissions-link" to="/submissions">查看提交记录 →</RouterLink>
         <div class="progress-preview"><i></i><i></i><i></i><i></i><i></i></div>
       </aside>
     </div>
   </section>
 </template>
-

@@ -16,6 +16,8 @@ class SourceObjectStore(Protocol):
 
     async def delete_source(self, object_key: str) -> None: ...
 
+    async def get_source(self, object_key: str) -> bytes: ...
+
 
 class MinioSourceObjectStore:
     def __init__(self) -> None:
@@ -47,6 +49,20 @@ class MinioSourceObjectStore:
 
     async def delete_source(self, object_key: str) -> None:
         await run_in_threadpool(self.client.remove_object, self.bucket, object_key)
+
+    def _get_source(self, object_key: str) -> bytes:
+        response = self.client.get_object(self.bucket, object_key)
+        try:
+            content = response.read(settings.submission_source_max_bytes + 1)
+            if len(content) > settings.submission_source_max_bytes:
+                raise ValueError("stored source exceeds configured source limit")
+            return content
+        finally:
+            response.close()
+            response.release_conn()
+
+    async def get_source(self, object_key: str) -> bytes:
+        return await run_in_threadpool(self._get_source, object_key)
 
 
 @lru_cache

@@ -13,9 +13,12 @@ Content-Type: application/json
 {
   "problem_id": 1,
   "language": "python",
-  "source_code": "print(input())"
+  "source_code": "print(input())",
+  "mode": "judge"
 }
 ```
+
+`mode=sample` 表示运行题面公开样例，`mode=judge` 表示正式隐藏用例判题。两种模式都走相同的 MinIO、Outbox、Redis Streams 和独立 Judge 链路；限频与幂等指纹包含模式，样例运行不会阻塞正式提交。
 
 成功返回 `202 Accepted`。`Idempotency-Key` 可选、最长 128 个可打印字符；同一用户使用相同键和相同请求重试时返回原提交，并令 `idempotent_replay=true`。相同键用于不同题目、语言或源码时返回 `409 IDEMPOTENCY_KEY_REUSED`。
 
@@ -23,10 +26,11 @@ Content-Type: application/json
 
 ## 查询
 
-- `GET /api/v1/submissions/{id}`：仅查询当前用户自己的提交；不存在和无权访问统一返回 404。
+- `GET /api/v1/submissions/{id}/status`：仅返回轮询所需的安全聚合状态，不读取 MinIO 源码。
+- `GET /api/v1/submissions/{id}`：仅查询当前用户自己的安全详情；不存在和无权访问统一返回 404。详情可返回用户自己的源码、编译输出和诊断；只有 `sample` 模式可返回该次公开样例 stdout。
 - `GET /api/v1/submissions?page=1&page_size=20&problem_id=1`：当前用户提交列表，可按题目 ID 筛选。
 
-响应仅包含题目和语言的公开元数据、状态、耗时、内存、用例计数、分数与时间戳。以下内部字段永不进入公开 DTO：源码正文、MinIO object key、checksum、Outbox/Redis message id、编译输出、编译命令、运行命令和 Docker 镜像。
+列表和状态响应仅包含题目和语言的公开元数据、模式、状态、耗时、内存、用例计数、分数与时间戳。以下内部字段永不进入公开 DTO：MinIO object key、checksum、Outbox/Redis message id、隐藏用例输入输出、编译命令、运行命令和 Docker 镜像。
 
 ## 错误码
 
