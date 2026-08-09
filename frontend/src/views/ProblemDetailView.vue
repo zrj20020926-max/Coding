@@ -1,20 +1,40 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import 'element-plus/es/components/message/style/css'
 import { storeToRefs } from 'pinia'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import DifficultyBadge from '@/components/problems/DifficultyBadge.vue'
 import MarkdownContent from '@/components/problems/MarkdownContent.vue'
 import ProblemWorkbench from '@/components/problems/ProblemWorkbench.vue'
+import { getApiErrorMessage } from '@/services/http'
+import { useAuthStore } from '@/stores/auth'
 import { useProblemStore } from '@/stores/problems'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 const problemStore = useProblemStore()
-const { detail, detailLoading, detailError, detailNotFound } = storeToRefs(problemStore)
+const { detail, detailLoading, detailError, detailNotFound, favoritePendingIds } =
+  storeToRefs(problemStore)
 const slug = computed(() => String(route.params['slug'] ?? ''))
 
 function fetchDetail(): void {
   if (slug.value) void problemStore.loadProblem(slug.value)
+}
+
+async function toggleFavorite(): Promise<void> {
+  if (!detail.value) return
+  if (!auth.isAuthenticated) {
+    await router.push({ name: 'login', query: { redirect: route.fullPath } })
+    return
+  }
+  try {
+    await problemStore.updateFavorite(detail.value.id, !detail.value.favorited)
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '收藏操作失败，请稍后重试'))
+  }
 }
 
 watch(slug, fetchDetail, { immediate: true })
@@ -57,6 +77,14 @@ onBeforeUnmount(() => problemStore.clearDetail())
           <div class="statement-tags">
             <span v-for="tag in detail.tags" :key="tag.id">{{ tag.name }}</span>
           </div>
+          <button
+            class="detail-favorite-button"
+            type="button"
+            :disabled="favoritePendingIds.includes(detail.id)"
+            @click="toggleFavorite"
+          >
+            {{ detail.favorited ? '★ 已收藏' : '☆ 收藏题目' }}
+          </button>
         </div>
         <dl class="statement-limits">
           <div><dt>时间限制</dt><dd>{{ detail.time_limit_ms }} ms</dd></div>

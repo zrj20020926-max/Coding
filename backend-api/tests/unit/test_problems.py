@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.main import app
 from app.models.problem import (
+    Favorite,
     Language,
     Problem,
     ProblemDifficulty,
@@ -184,6 +185,7 @@ async def test_visibility_progress_and_status_filter(
                 attempt_count=3,
                 accepted=False,
             ),
+            Favorite(user_id=user.id, problem_id=problems["window"].id),
         ]
     )
     await db_session.commit()
@@ -191,15 +193,19 @@ async def test_visibility_progress_and_status_filter(
     all_items = (await client.get("/api/v1/problems", headers=headers)).json()["items"]
     by_slug = {item["slug"]: item for item in all_items}
     assert by_slug["a-plus-b"]["solved"] is True
+    assert by_slug["a-plus-b"]["favorited"] is False
     assert by_slug["shortest-path"]["attempted"] is True
     assert by_slug["window-sum"]["attempt_count"] == 0
+    assert by_slug["window-sum"]["favorited"] is True
 
     solved = await client.get("/api/v1/problems?status=solved", headers=headers)
     attempted = await client.get("/api/v1/problems?status=attempted", headers=headers)
     unattempted = await client.get("/api/v1/problems?status=unattempted", headers=headers)
+    favorited = await client.get("/api/v1/problems?status=favorited", headers=headers)
     assert [item["slug"] for item in solved.json()["items"]] == ["a-plus-b"]
     assert [item["slug"] for item in attempted.json()["items"]] == ["shortest-path"]
     assert [item["slug"] for item in unattempted.json()["items"]] == ["window-sum"]
+    assert [item["slug"] for item in favorited.json()["items"]] == ["window-sum"]
 
 
 @pytest.mark.unit

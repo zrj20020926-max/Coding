@@ -27,6 +27,7 @@ const problemSummary = {
   solved: false,
   attempted: false,
   attempt_count: 0,
+  favorited: false,
 }
 
 const problemDetail = {
@@ -75,6 +76,7 @@ async function fulfillJson(route: Route, body: unknown, status = 200): Promise<v
 }
 
 async function mockApi(page: Page, submittedModes: string[]): Promise<void> {
+  let favorited = false
   await page.addInitScript(() => {
     localStorage.setItem('codearena.access-token', 'e2e-access-token')
   })
@@ -83,13 +85,50 @@ async function mockApi(page: Page, submittedModes: string[]): Promise<void> {
     const url = new URL(request.url())
     const path = url.pathname
 
+    if (path.endsWith('/users/me/training')) {
+      return fulfillJson(route, {
+        counters: { solved_count: 1, submission_count: 2, accepted_count: 1 },
+        recent_submissions: [submission('judge-submission', 'judge')],
+        solved_problems: [{
+          id: 7,
+          slug: 'a-plus-b',
+          title: 'A+B 问题',
+          difficulty: 'easy',
+          attempt_count: 2,
+          first_accepted_at: '2026-08-09T00:00:01Z',
+        }],
+        difficulty_stats: [
+          { difficulty: 'easy', total_count: 10, attempted_count: 2, solved_count: 1 },
+          { difficulty: 'medium', total_count: 5, attempted_count: 0, solved_count: 0 },
+          { difficulty: 'hard', total_count: 3, attempted_count: 0, solved_count: 0 },
+        ],
+        tag_stats: [{
+          tag: problemSummary.tags[0], total_count: 4, attempted_count: 2, solved_count: 1,
+        }],
+      })
+    }
     if (path.endsWith('/users/me')) return fulfillJson(route, user)
     if (path.endsWith('/languages')) return fulfillJson(route, [language])
     if (path.endsWith('/tags')) return fulfillJson(route, problemSummary.tags)
-    if (path.endsWith('/problems/7')) return fulfillJson(route, problemDetail)
+    if (path.endsWith('/problems/7/favorite')) {
+      favorited = request.method() === 'POST'
+      return fulfillJson(route, { problem_id: 7, favorited })
+    }
+    if (path.endsWith('/favorites') && request.method() === 'GET') {
+      return fulfillJson(route, {
+        items: favorited ? [{ ...problemSummary, favorited: true }] : [],
+        total: favorited ? 1 : 0,
+        page: 1,
+        page_size: 20,
+        pages: favorited ? 1 : 0,
+      })
+    }
+    if (path.endsWith('/problems/7')) {
+      return fulfillJson(route, { ...problemDetail, favorited })
+    }
     if (path.endsWith('/problems')) {
       return fulfillJson(route, {
-        items: [problemSummary], total: 1, page: 1, page_size: 100, pages: 1,
+        items: [{ ...problemSummary, favorited }], total: 1, page: 1, page_size: 100, pages: 1,
       })
     }
     if (path.endsWith('/submissions') && request.method() === 'POST') {
@@ -163,4 +202,25 @@ test('personal history opens a safe submission detail', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '提交代码' })).toBeVisible()
   await expect(page.getByText('print(sum(map(int, input().split())))')).toBeVisible()
   await expect(page.locator('body')).not.toContainText('object_key')
+})
+
+test('favorite catalog flow and training profile stay user scoped', async ({ page }) => {
+  await mockApi(page, [])
+
+  await page.goto('/problems')
+  await page.getByRole('button', { name: '收藏 A+B 问题' }).click()
+  await expect(page.getByRole('button', { name: '取消收藏 A+B 问题' })).toBeVisible()
+
+  await page.goto('/favorites')
+  await expect(page.getByRole('heading', { name: '我的收藏' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /A\+B 问题/ })).toBeVisible()
+  await page.getByRole('button', { name: '取消收藏 A+B 问题' }).click()
+  await expect(page.getByText('还没有收藏题目')).toBeVisible()
+
+  await page.goto('/profile')
+  await expect(page.getByRole('heading', { name: '难度进度' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '标签统计' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '最近提交' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '已解决题目' })).toBeVisible()
+  await expect(page.getByText('数学')).toBeVisible()
 })

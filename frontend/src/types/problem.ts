@@ -1,7 +1,7 @@
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 
 export type ProblemDifficulty = 'easy' | 'medium' | 'hard'
-export type ProblemProgressStatus = 'solved' | 'attempted' | 'unattempted'
+export type ProblemProgressStatus = 'solved' | 'attempted' | 'unattempted' | 'favorited'
 export type ProblemSort = 'newest' | 'oldest' | 'title' | 'difficulty' | 'acceptance'
 
 export interface ProblemTag {
@@ -23,6 +23,7 @@ export interface ProblemSummary {
   solved?: boolean
   attempted?: boolean
   attempt_count?: number
+  favorited?: boolean
 }
 
 export interface ProblemDetail extends ProblemSummary {
@@ -76,7 +77,7 @@ export const DEFAULT_PROBLEM_FILTERS: Readonly<ProblemFilters> = {
 }
 
 const difficulties: ProblemDifficulty[] = ['easy', 'medium', 'hard']
-const statuses: ProblemProgressStatus[] = ['solved', 'attempted', 'unattempted']
+const statuses: ProblemProgressStatus[] = ['solved', 'attempted', 'unattempted', 'favorited']
 const sorts: ProblemSort[] = ['newest', 'oldest', 'title', 'difficulty', 'acceptance']
 const pageSizes = [10, 20, 50]
 

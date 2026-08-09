@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import 'element-plus/es/components/message/style/css'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -8,18 +10,20 @@ import ProblemListSkeleton from '@/components/problems/ProblemListSkeleton.vue'
 import ProblemTable from '@/components/problems/ProblemTable.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProblemStore } from '@/stores/problems'
+import { getApiErrorMessage } from '@/services/http'
 import {
   parseProblemQuery,
   serializeProblemFilters,
   toProblemListParams,
 } from '@/types/problem'
-import type { ProblemFilters } from '@/types/problem'
+import type { ProblemFilters, ProblemSummary } from '@/types/problem'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const problemStore = useProblemStore()
-const { items, total, listLoading, listError, tags, tagsLoading } = storeToRefs(problemStore)
+const { items, total, listLoading, listError, tags, tagsLoading, favoritePendingIds } =
+  storeToRefs(problemStore)
 const filters = ref<ProblemFilters>(parseProblemQuery(route.query))
 
 function fetchProblems(): void {
@@ -38,6 +42,18 @@ function changePage(page: number): void {
 
 function changePageSize(pageSize: number): void {
   syncFilters({ ...filters.value, page: 1, pageSize })
+}
+
+async function toggleFavorite(problem: ProblemSummary): Promise<void> {
+  if (!auth.isAuthenticated) {
+    await router.push({ name: 'login', query: { redirect: route.fullPath } })
+    return
+  }
+  try {
+    await problemStore.updateFavorite(problem.id, !problem.favorited)
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '收藏操作失败，请稍后重试'))
+  }
 }
 
 watch(
@@ -91,7 +107,12 @@ void problemStore.loadTags()
       </el-empty>
     </section>
     <template v-else>
-      <ProblemTable :problems="items" :authenticated="auth.isAuthenticated" />
+      <ProblemTable
+        :problems="items"
+        :authenticated="auth.isAuthenticated"
+        :favorite-pending-ids="favoritePendingIds"
+        @favorite="toggleFavorite"
+      />
       <div class="catalog-pagination">
         <el-pagination
           background

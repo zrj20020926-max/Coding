@@ -100,6 +100,7 @@ function reset(): void {
         <el-option label="已通过" value="solved" />
         <el-option label="尝试中" value="attempted" />
         <el-option label="未尝试" value="unattempted" />
+        <el-option label="已收藏" value="favorited" />
       </el-select>
     </el-tooltip>
     <el-select v-model="sort" aria-label="题目排序" placeholder="排序">

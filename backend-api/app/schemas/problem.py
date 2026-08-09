@@ -11,6 +11,7 @@ class ProblemProgressStatus(str, Enum):
     SOLVED = "solved"
     ATTEMPTED = "attempted"
     UNATTEMPTED = "unattempted"
+    FAVORITED = "favorited"
 
 
 class ProblemSort(str, Enum):
@@ -53,6 +54,7 @@ class ProblemSummary(BaseModel):
     solved: Optional[bool] = None
     attempted: Optional[bool] = None
     attempt_count: Optional[int] = None
+    favorited: Optional[bool] = None
 
     @computed_field
     @property

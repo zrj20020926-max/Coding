@@ -10,6 +10,7 @@ from sqlalchemy.sql.sqltypes import Float
 
 from app.core.config import settings
 from app.models.problem import (
+    Favorite,
     Language,
     Problem,
     ProblemDifficulty,
@@ -35,15 +36,24 @@ def problem_tags(problem: Problem) -> list[TagPublic]:
 
 
 def progress_fields(
-    progress: UserProblemProgress | None, *, authenticated: bool
+    progress: UserProblemProgress | None,
+    *,
+    authenticated: bool,
+    favorited: bool = False,
 ) -> dict[str, object]:
     if not authenticated:
-        return {"solved": None, "attempted": None, "attempt_count": None}
+        return {
+            "solved": None,
+            "attempted": None,
+            "attempt_count": None,
+            "favorited": None,
+        }
     attempt_count = progress.attempt_count if progress is not None else 0
     return {
         "solved": bool(progress and progress.accepted),
         "attempted": attempt_count > 0,
         "attempt_count": attempt_count,
+        "favorited": favorited,
     }
 
 
@@ -52,6 +62,7 @@ def to_problem_summary(
     progress: UserProblemProgress | None,
     *,
     authenticated: bool,
+    favorited: bool = False,
 ) -> ProblemSummary:
     return ProblemSummary(
         id=problem.id,
@@ -62,7 +73,9 @@ def to_problem_summary(
         accepted_count=problem.accepted_count,
         submission_count=problem.submission_count,
         tags=problem_tags(problem),
-        **progress_fields(progress, authenticated=authenticated),
+        **progress_fields(
+            progress, authenticated=authenticated, favorited=favorited
+        ),
     )
 
 
@@ -71,8 +84,14 @@ def to_problem_detail(
     progress: UserProblemProgress | None,
     *,
     authenticated: bool,
+    favorited: bool = False,
 ) -> ProblemDetail:
-    summary = to_problem_summary(problem, progress, authenticated=authenticated)
+    summary = to_problem_summary(
+        problem,
+        progress,
+        authenticated=authenticated,
+        favorited=favorited,
+    )
     return ProblemDetail(
         **summary.model_dump(exclude={"acceptance_rate"}),
         description=problem.description,
@@ -130,13 +149,17 @@ def apply_problem_filters(
                 UserProblemProgress.attempt_count > 0,
                 UserProblemProgress.accepted.is_(False),
             )
-        else:
+        elif progress_status == ProblemProgressStatus.UNATTEMPTED:
             statement = statement.where(
                 or_(
                     UserProblemProgress.user_id.is_(None),
                     UserProblemProgress.attempt_count == 0,
                 )
             )
+        else:
+            # The authenticated list query already left-joins the current user's
+            # favorite row. Testing the joined key avoids a second correlated query.
+            statement = statement.where(Favorite.problem_id.is_not(None))
     return statement
 
 
@@ -177,13 +200,20 @@ async def list_public_problems(
 ) -> ProblemPage:
     authenticated = user_id is not None
     if authenticated:
-        base = select(Problem, UserProblemProgress).outerjoin(
-            UserProblemProgress,
-            (UserProblemProgress.problem_id == Problem.id)
-            & (UserProblemProgress.user_id == user_id),
+        base = (
+            select(Problem, UserProblemProgress, Favorite.problem_id)
+            .outerjoin(
+                UserProblemProgress,
+                (UserProblemProgress.problem_id == Problem.id)
+                & (UserProblemProgress.user_id == user_id),
+            )
+            .outerjoin(
+                Favorite,
+                (Favorite.problem_id == Problem.id) & (Favorite.user_id == user_id),
+            )
         )
     else:
-        base = select(Problem, literal(None))
+        base = select(Problem, literal(None), literal(None))
 
     filtered = apply_problem_filters(
         base,
@@ -204,8 +234,13 @@ async def list_public_problems(
     )
     rows = (await db.execute(statement)).all()
     items = [
-        to_problem_summary(problem, progress, authenticated=authenticated)
-        for problem, progress in rows
+        to_problem_summary(
+            problem,
+            progress,
+            authenticated=authenticated,
+            favorited=favorite_problem_id is not None,
+        )
+        for problem, progress, favorite_problem_id in rows
     ]
     return ProblemPage(
         items=items,
@@ -241,6 +276,19 @@ async def get_user_progress(
         select(UserProblemProgress).where(
             UserProblemProgress.problem_id == problem_id,
             UserProblemProgress.user_id == user_id,
+        )
+    )
+
+
+async def get_user_favorite(
+    db: AsyncSession, problem_id: int, user_id: UUID | None
+) -> Favorite | None:
+    if user_id is None:
+        return None
+    return await db.scalar(
+        select(Favorite).where(
+            Favorite.problem_id == problem_id,
+            Favorite.user_id == user_id,
         )
     )
 

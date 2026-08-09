@@ -8,6 +8,7 @@ erDiagram
   USERS ||--o{ DISCUSSIONS : writes
   USERS ||--o{ FAVORITES : owns
   USERS ||--o{ USER_PROBLEM_PROGRESS : tracks
+  USERS ||--o{ SUBMISSION_STAT_EVENTS : owns
   PROBLEMS ||--o{ TEST_CASES : contains
   PROBLEMS ||--o{ SUBMISSIONS : receives
   PROBLEMS ||--o{ DISCUSSIONS : has
@@ -15,8 +16,10 @@ erDiagram
   PROBLEMS ||--o{ PROBLEM_TAGS : classified
   TAGS ||--o{ PROBLEM_TAGS : maps
   PROBLEMS ||--o{ USER_PROBLEM_PROGRESS : tracked_by
+  PROBLEMS ||--o{ SUBMISSION_STAT_EVENTS : aggregates
   LANGUAGES ||--o{ SUBMISSIONS : compiles
   SUBMISSIONS ||--o{ SUBMISSION_CASE_RESULTS : produces
+  SUBMISSIONS ||--o| SUBMISSION_STAT_EVENTS : counted_once
   SUBMISSIONS ||--o| AI_ANALYSES : analyzed
   COLLECTIONS ||--o{ COLLECTION_PROBLEMS : contains
   PROBLEMS ||--o{ COLLECTION_PROBLEMS : listed
@@ -42,6 +45,7 @@ erDiagram
 | `ProblemTag` | `problem_tags` | `(problem_id, tag_id)` 联合主键，级联删除 |
 | `Language` | `languages` | `slug` 唯一；内部保存运行配置，公开 DTO 只输出编辑器元数据 |
 | `UserProblemProgress` | `user_problem_progress` | `(user_id, problem_id)` 联合主键，记录尝试次数与首次通过时间 |
+| `Favorite` | `favorites` | `(user_id, problem_id)` 联合主键；按用户收藏时间和题目建索引 |
 
 `last_submission_id` 的 PostgreSQL 外键由迁移维护。异步查询统一预加载标签关联，避免响应序列化期间触发隐式数据库 IO。
 
@@ -78,3 +82,9 @@ erDiagram
 `trg_submissions_status_transition` 在数据库层拒绝跳跃、回退和终态重入；应用服务层提供相同规则，便于在写库前返回明确错误。该触发器与已有 `trg_submissions_updated_at` 同时保留。
 
 `mode=sample` 的终态只保存公开样例的聚合结果和截断 stdout，不写 `submission_case_results`，也不更新 `user_problem_progress`、用户统计或题目统计；`mode=judge` 才会写正式进度与统计。两种模式都不在公开响应中返回隐藏测试数据。
+
+## 训练统计与重建
+
+`20260809_0006` 新增 `submission_stat_events`。该表以 `submission_id` 为主键，并保存用户、题目、终态、是否 Accepted 和应用时间；约束拒绝非终态。Judge 的终态条件更新、用例结果、台账插入、进度 upsert、用户计数和题目计数处于同一事务。重复消息无法再次插入台账，不会重复计数；同一道题后续 Accepted 只增加 Accepted 次数，不再增加 solved 数。
+
+`python -m app.maintenance.rebuild_statistics --apply` 从 `mode=judge` 的终态提交重建全部派生状态。在线终态事务使用共享 advisory lock，重建使用同名独占锁，因此不会与实时 Judge 写入交错。命令必须连接正确数据库并显式提供 `--apply`，生产执行前仍需备份并核对目标环境。

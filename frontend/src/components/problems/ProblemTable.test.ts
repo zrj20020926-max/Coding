@@ -18,6 +18,7 @@ const problem: ProblemSummary = {
   solved: true,
   attempted: true,
   attempt_count: 1,
+  favorited: true,
 }
 
 describe('ProblemTable', () => {
@@ -43,5 +44,8 @@ describe('ProblemTable', () => {
     expect(wrapper.text()).toContain('80.0%')
     expect(wrapper.text()).toContain('已通过')
     expect(wrapper.get('a').attributes('href')).toBe('/problems/a-plus-b')
+
+    await wrapper.get('button[aria-label="取消收藏 A+B 问题"]').trigger('click')
+    expect(wrapper.emitted('favorite')?.[0]).toEqual([problem])
   })
 })

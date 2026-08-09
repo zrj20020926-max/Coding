@@ -47,4 +47,11 @@ describe('problem URL query', () => {
       }),
     ).toEqual({ q: 'dp', tag: 'dynamic-programming' })
   })
+
+  it('keeps the favorite filter in the shareable URL query', () => {
+    const filters = parseProblemQuery({ status: 'favorited' })
+
+    expect(filters.status).toBe('favorited')
+    expect(serializeProblemFilters(filters)).toEqual({ status: 'favorited' })
+  })
 })

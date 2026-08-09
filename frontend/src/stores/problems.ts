@@ -7,6 +7,7 @@ import {
   getProblems,
   getProblemTags,
   ProblemNotFoundError,
+  setProblemFavorite,
 } from '@/services/problems'
 import type { ProblemDetail, ProblemListParams, ProblemSummary, ProblemTag } from '@/types/problem'
 
@@ -24,6 +25,7 @@ export const useProblemStore = defineStore('problems', () => {
   const detailLoading = ref(false)
   const detailError = ref('')
   const detailNotFound = ref(false)
+  const favoritePendingIds = ref<number[]>([])
   let listRequestId = 0
   let detailRequestId = 0
 
@@ -91,6 +93,22 @@ export const useProblemStore = defineStore('problems', () => {
     detailLoading.value = false
   }
 
+  async function updateFavorite(problemId: number, favorited: boolean): Promise<void> {
+    if (favoritePendingIds.value.includes(problemId)) return
+    favoritePendingIds.value = [...favoritePendingIds.value, problemId]
+    try {
+      const state = await setProblemFavorite(problemId, favorited)
+      items.value = items.value.map((problem) =>
+        problem.id === problemId ? { ...problem, favorited: state.favorited } : problem,
+      )
+      if (detail.value?.id === problemId) {
+        detail.value = { ...detail.value, favorited: state.favorited }
+      }
+    } finally {
+      favoritePendingIds.value = favoritePendingIds.value.filter((id) => id !== problemId)
+    }
+  }
+
   return {
     items,
     total,
@@ -105,9 +123,11 @@ export const useProblemStore = defineStore('problems', () => {
     detailLoading,
     detailError,
     detailNotFound,
+    favoritePendingIds,
     loadProblems,
     loadTags,
     loadProblem,
     clearDetail,
+    updateFavorite,
   }
 })

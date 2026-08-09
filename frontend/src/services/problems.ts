@@ -1,6 +1,7 @@
 import { http } from '@/services/http'
 import type { ProblemDetail, ProblemListParams, ProblemPage, ProblemTag } from '@/types/problem'
 import type { JudgeLanguage } from '@/types/editor'
+import type { FavoriteState } from '@/types/training'
 
 export class ProblemNotFoundError extends Error {
   constructor(slug: string) {
@@ -42,4 +43,14 @@ export async function getProblemBySlug(slug: string): Promise<ProblemDetail> {
   if (matchId === undefined) throw new ProblemNotFoundError(slug)
   const { data } = await http.get<ProblemDetail>(`/problems/${matchId}`)
   return data
+}
+
+export async function setProblemFavorite(
+  problemId: number,
+  favorited: boolean,
+): Promise<FavoriteState> {
+  const request = favorited
+    ? http.post<FavoriteState>(`/problems/${problemId}/favorite`)
+    : http.delete<FavoriteState>(`/problems/${problemId}/favorite`)
+  return (await request).data
 }

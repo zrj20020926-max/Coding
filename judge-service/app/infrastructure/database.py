@@ -208,6 +208,19 @@ class JudgeRepository:
             ) AS first_accepted
             """
         )
+        insert_stat_event = text(
+            """
+            INSERT INTO submission_stat_events (
+                submission_id, user_id, problem_id, terminal_status, accepted, applied_at
+            ) VALUES (
+                :submission_id, :user_id, :problem_id,
+                CAST(:terminal_status AS submission_status), :accepted,
+                CAST(:judged_at AS TIMESTAMPTZ)
+            )
+            ON CONFLICT (submission_id) DO NOTHING
+            RETURNING submission_id
+            """
+        )
         update_user_stats = text(
             """
             UPDATE users
@@ -238,6 +251,14 @@ class JudgeRepository:
         )
         try:
             async with self.engine.begin() as connection:
+                # Finalizers share this transaction lock with each other. The statistics
+                # rebuild command takes the exclusive variant, so it cannot race live judges.
+                await connection.execute(
+                    text(
+                        "SELECT pg_advisory_xact_lock_shared("
+                        "hashtext('codearena:training-statistics'))"
+                    )
+                )
                 updated = (
                     await connection.execute(
                         update,
@@ -283,6 +304,19 @@ class JudgeRepository:
                     )
                 if updated["mode"] == SubmissionMode.JUDGE.value:
                     accepted = result.status is SubmissionStatus.ACCEPTED
+                    stat_event_id = await connection.scalar(
+                        insert_stat_event,
+                        {
+                            "submission_id": submission_id,
+                            "user_id": updated["user_id"],
+                            "problem_id": updated["problem_id"],
+                            "terminal_status": result.status.value,
+                            "accepted": accepted,
+                            "judged_at": judged_at,
+                        },
+                    )
+                    if stat_event_id is None:
+                        return True
                     first_accepted = bool(
                         await connection.scalar(
                             update_progress,

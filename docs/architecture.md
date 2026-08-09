@@ -41,7 +41,7 @@ Failed submission ----> ai-service ----> model provider
 3. Judge Worker 使用 consumer group 消费任务，以 submission id 做幂等键并把状态改为 `Compiling` / `Running`。
 4. Worker 从 MinIO 读取源码与测试数据；每次运行创建独立 Docker 容器。
 5. 沙箱禁网、只读根文件系统、非 root 用户运行，并限制 CPU、内存、进程数、输出大小和墙钟时间。
-6. Worker 标准化行尾与末尾空白后比较输出，持久化用例结果并发布状态事件。
+6. Worker 标准化行尾与末尾空白后比较输出，在同一 PostgreSQL 事务中写入终态、用例聚合、统计事件台账、用户进度和计数。
 7. 客户端轮询安全状态接口，终态后再读取安全详情；断网、页面隐藏或重开时从本地活动提交恢复。后续可切换 SSE/WebSocket，不改变判题协议。
 
 公开样例与正式提交共享上述控制平面和沙箱。样例模式从题面读取公开输入输出并允许返回该次 stdout，但不写隐藏用例结果、不更新用户正式进度与题目统计；正式模式只从 MinIO 读取隐藏用例，前端只能看到聚合计数。
@@ -76,7 +76,13 @@ Pending -> Compiling -> Running -> Accepted
 
 当前阶段已实现工程基线、认证、题库、提交控制平面、完整前端做题闭环，以及支持 Python 3.12/C++20 的基础 Judge Worker 与 Docker 沙箱执行。
 
-## 7. 提交控制平面可靠性
+## 7. 训练统计一致性
+
+正式提交进入终态时，Judge 先以条件更新锁定唯一状态流转，再向 `submission_stat_events` 写入以 `submission_id` 为主键的台账。只有台账首次写入成功时才增加 `user_problem_progress.attempt_count`、用户提交/通过计数和题目提交/通过计数。进度表的联合主键串行化同一用户与题目的首次通过，因此并发 Accepted 只会让 `users.solved_count` 增加一次；公开样例不进入台账。
+
+统计重建任务获取独占 advisory lock，在线 Judge 终态事务获取共享 lock，避免重建与实时增量相互覆盖。重建以正式终态提交为事实来源，在一个事务内替换进度、台账和派生计数，可安全重复执行。
+
+## 8. 提交控制平面可靠性
 
 ```text
 POST submission

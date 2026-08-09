@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     SmallInteger,
     String,
@@ -101,6 +102,9 @@ class Problem(Base):
     progress_records: Mapped[list[UserProblemProgress]] = relationship(
         back_populates="problem", cascade="all, delete-orphan"
     )
+    favorite_records: Mapped[list[Favorite]] = relationship(
+        back_populates="problem", cascade="all, delete-orphan"
+    )
 
 
 class Tag(Base):
@@ -185,3 +189,25 @@ class UserProblemProgress(Base):
     )
 
     problem: Mapped[Problem] = relationship(back_populates="progress_records")
+
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    user_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    problem_id: Mapped[int] = mapped_column(
+        problem_id_type,
+        ForeignKey("problems.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    problem: Mapped[Problem] = relationship(back_populates="favorite_records")
+
+
+Index("idx_favorites_user_created", Favorite.user_id, Favorite.created_at, Favorite.problem_id)
+Index("idx_favorites_problem", Favorite.problem_id)

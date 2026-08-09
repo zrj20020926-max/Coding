@@ -2,7 +2,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProblemNotFoundError } from '@/services/problems'
-import { getProblemBySlug, getProblems, getProblemTags } from '@/services/problems'
+import {
+  getProblemBySlug,
+  getProblems,
+  getProblemTags,
+  setProblemFavorite,
+} from '@/services/problems'
 import { useProblemStore } from '@/stores/problems'
 import type { ProblemDetail, ProblemPage } from '@/types/problem'
 
@@ -13,6 +18,7 @@ vi.mock('@/services/problems', async (importOriginal) => {
     getProblems: vi.fn(),
     getProblemTags: vi.fn(),
     getProblemBySlug: vi.fn(),
+    setProblemFavorite: vi.fn(),
   }
 })
 
@@ -29,6 +35,7 @@ const summary = {
   solved: true,
   attempted: true,
   attempt_count: 1,
+  favorited: false,
 }
 
 const page: ProblemPage = {
@@ -92,5 +99,21 @@ describe('problem store', () => {
 
     expect(store.detail).toEqual(detail)
     expect(store.detailLoading).toBe(false)
+  })
+
+  it('updates favorite state in both list and detail', async () => {
+    vi.mocked(getProblems).mockResolvedValue(page)
+    vi.mocked(getProblemBySlug).mockResolvedValue(detail)
+    vi.mocked(setProblemFavorite).mockResolvedValue({ problem_id: 1, favorited: true })
+    const store = useProblemStore()
+
+    await store.loadProblems({ page: 1, page_size: 20, sort: 'newest' })
+    await store.loadProblem('a-plus-b')
+    await store.updateFavorite(1, true)
+
+    expect(setProblemFavorite).toHaveBeenCalledWith(1, true)
+    expect(store.items[0]?.favorited).toBe(true)
+    expect(store.detail?.favorited).toBe(true)
+    expect(store.favoritePendingIds).toEqual([])
   })
 })

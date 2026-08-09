@@ -2,7 +2,14 @@
 import DifficultyBadge from '@/components/problems/DifficultyBadge.vue'
 import type { ProblemSummary } from '@/types/problem'
 
-defineProps<{ problems: ProblemSummary[]; authenticated: boolean }>()
+defineProps<{
+  problems: ProblemSummary[]
+  authenticated: boolean
+  favoritePendingIds?: number[]
+}>()
+const emit = defineEmits<{
+  favorite: [problem: ProblemSummary]
+}>()
 
 function progressLabel(problem: ProblemSummary, authenticated: boolean): string {
   if (!authenticated) return '登录后记录'
@@ -27,18 +34,15 @@ function progressClass(problem: ProblemSummary): string {
       <span role="columnheader">标签</span>
       <span role="columnheader">通过率</span>
       <span role="columnheader">进度</span>
+      <span role="columnheader">收藏</span>
     </div>
-    <RouterLink
-      v-for="problem in problems"
-      :key="problem.id"
-      class="problem-row"
-      role="row"
-      :to="{ name: 'problem-detail', params: { slug: problem.slug } }"
-    >
+    <div v-for="problem in problems" :key="problem.id" class="problem-row" role="row">
       <span class="problem-number" role="cell">#{{ String(problem.id).padStart(4, '0') }}</span>
       <span class="problem-title-cell" role="cell">
-        <strong>{{ problem.title }}</strong>
-        <small>{{ problem.slug }}</small>
+        <RouterLink :to="{ name: 'problem-detail', params: { slug: problem.slug } }">
+          <strong>{{ problem.title }}</strong>
+          <small>{{ problem.slug }}</small>
+        </RouterLink>
       </span>
       <span role="cell"><DifficultyBadge :difficulty="problem.difficulty" /></span>
       <span class="problem-tags" role="cell">
@@ -49,11 +53,21 @@ function progressClass(problem: ProblemSummary): string {
         <strong>{{ problem.acceptance_rate.toFixed(1) }}%</strong>
         <small>{{ problem.accepted_count }}/{{ problem.submission_count }}</small>
       </span>
-      <span
-        class="problem-progress"
-        :class="progressClass(problem)"
-        role="cell"
-      >{{ progressLabel(problem, authenticated) }}</span>
-    </RouterLink>
+      <span class="problem-progress" :class="progressClass(problem)" role="cell">
+        {{ progressLabel(problem, authenticated) }}
+      </span>
+      <span class="favorite-cell" role="cell">
+        <button
+          class="favorite-button"
+          :class="{ 'is-favorited': problem.favorited }"
+          type="button"
+          :disabled="favoritePendingIds?.includes(problem.id)"
+          :aria-label="problem.favorited ? `取消收藏 ${problem.title}` : `收藏 ${problem.title}`"
+          @click="emit('favorite', problem)"
+        >
+          {{ problem.favorited ? '★' : '☆' }}
+        </button>
+      </span>
+    </div>
   </div>
 </template>

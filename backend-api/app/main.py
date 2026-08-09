@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.dependencies import redis_client
-from app.api.routes import admin_problems, auth, health, problems, submissions, users
+from app.api.routes import admin_problems, auth, health, problems, submissions, training, users
 from app.core.config import settings
 from app.db.session import engine
 
@@ -44,3 +44,4 @@ app.include_router(users.router, prefix=settings.api_prefix)
 app.include_router(problems.router, prefix=settings.api_prefix)
 app.include_router(admin_problems.router, prefix=settings.api_prefix)
 app.include_router(submissions.router, prefix=settings.api_prefix)
+app.include_router(training.router, prefix=settings.api_prefix)

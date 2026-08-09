@@ -42,6 +42,7 @@ describe('authentication route guard', () => {
     expect(router.resolve('/problems').name).toBe('problems')
     expect(router.resolve('/problems/a-plus-b').name).toBe('problem-detail')
     expect(router.resolve('/submissions').name).toBe('submissions')
+    expect(router.resolve('/favorites').name).toBe('favorites')
     expect(router.resolve('/submissions/00000000-0000-0000-0000-000000000001').name).toBe('submission-detail')
     expect(router.resolve('/this-route-does-not-exist').name).toBe('not-found')
   })

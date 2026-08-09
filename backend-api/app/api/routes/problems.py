@@ -16,6 +16,7 @@ from app.schemas.problem import (
 )
 from app.services.problems import (
     get_problem_with_tags,
+    get_user_favorite,
     get_user_progress,
     list_public_languages,
     list_public_problems,
@@ -88,7 +89,15 @@ async def get_problem(
     progress = await get_user_progress(
         db, problem.id, current_user.id if current_user else None
     )
-    return to_problem_detail(problem, progress, authenticated=current_user is not None)
+    favorite = await get_user_favorite(
+        db, problem.id, current_user.id if current_user else None
+    )
+    return to_problem_detail(
+        problem,
+        progress,
+        authenticated=current_user is not None,
+        favorited=favorite is not None,
+    )
 
 
 @router.get("/tags", response_model=list[TagPublic], summary="获取标签列表")

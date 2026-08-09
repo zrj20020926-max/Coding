@@ -1,6 +1,6 @@
 # CodeArena · ACM 模式算法训练平台
 
-面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前已打通题目详情、ACM 编辑器、可靠提交、独立 Judge 判题、结果轮询、提交历史与详情的完整做题闭环。
+面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前已打通题目详情、ACM 编辑器、可靠提交、独立 Judge 判题、结果轮询、训练进度、收藏和个人统计的完整做题闭环。
 
 ## 当前范围
 
@@ -20,6 +20,7 @@
 - Monaco 按路由懒加载，支持 Python 3.12 / C++20、高亮、补全、主题、字号、格式化和快捷键
 - 草稿按用户、题目、语言隔离保存；公开样例与正式提交都通过 MinIO、Outbox、Redis Streams 进入独立 Judge
 - 断网/切页恢复、三分钟轮询超时、幂等防重、终态自动停止，以及个人提交历史和安全详情
+- 正式判题终态事务性更新进度与统计，支持收藏列表、难度/标签统计和幂等统计重建
 - Playwright 关键浏览器流程测试
 
 隐藏测试数据管理后台和 AI 分析仍不属于当前范围；浏览器和 `backend-api` 都不会执行用户代码。
@@ -78,7 +79,15 @@ Docker Compose 会在 API 启动前执行安全迁移入口。全新数据库执
 - `GET /api/v1/tags`：标签列表。
 - `GET /api/v1/languages`：启用语言的公开编辑器元数据。
 
-`status=solved|attempted|unattempted` 需要登录；其中 `attempted` 表示尝试过但尚未通过。登录后的列表和详情会增加 `solved`、`attempted`、`attempt_count`，匿名响应不包含这些字段。普通用户和匿名用户始终只能读取 `visibility=public` 的题目。
+`status=solved|attempted|unattempted|favorited` 需要登录；其中 `attempted` 表示尝试过但尚未通过。登录后的列表和详情会增加 `solved`、`attempted`、`attempt_count`、`favorited`，匿名响应不包含这些字段。普通用户和匿名用户始终只能读取 `visibility=public` 的题目。
+
+训练与收藏接口：
+
+- `POST /api/v1/problems/{id}/favorite`、`DELETE /api/v1/problems/{id}/favorite`：幂等收藏/取消收藏公开题目。
+- `GET /api/v1/favorites`：当前用户收藏题目分页列表。
+- `GET /api/v1/users/me/training`：计数、最近提交、已解决题目、按难度和标签统计。
+
+所有接口只读写当前登录用户的数据；收藏列表不会返回其他用户记录。
 
 管理员接口：
 
@@ -191,6 +200,7 @@ npm run test:e2e
 - [数据模型](docs/database.md)
 - [部署与迁移](docs/deployment.md)
 - [提交控制平面 API](docs/submissions-api.md)
+- [训练进度与收藏 API](docs/training-api.md)
 - [Judge 安全与故障模型](docs/judge-security.md)
 
 ## 提交控制平面
@@ -204,12 +214,18 @@ npm run test:e2e
 - `GET /api/v1/submissions` 与 `GET /api/v1/submissions/{id}` 只返回当前用户的数据，列表支持 `problem_id` 筛选。
 - `backend-api` 和 `outbox-publisher` 均不包含用户代码执行路径，不挂载 Docker socket。
 
-迁移至最新控制平面结构：
+迁移至最新结构：
 
 ```powershell
 cd backend-api
-alembic upgrade 20260808_0004
+alembic upgrade 20260809_0006
 alembic current
+```
+
+若缓存计数因历史数据、运维修复或事件补偿需要校正，可在暂停/排空 Judge 写入后执行幂等重建。命令会获取与 Judge 终态事务互斥的 PostgreSQL advisory lock，并在单事务中重建进度、事件台账和计数：
+
+```powershell
+python -m app.maintenance.rebuild_statistics --apply
 ```
 
 启动后可用 `docker compose logs -f outbox-publisher` 观察发布进程，并用 `redis-cli XINFO STREAM codearena:judge:submissions` 检查任务流。

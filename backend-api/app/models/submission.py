@@ -150,6 +150,31 @@ class SubmissionCaseResult(Base):
     submission: Mapped[Submission] = relationship(back_populates="case_results")
 
 
+class SubmissionStatEvent(Base):
+    __tablename__ = "submission_stat_events"
+
+    submission_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("submissions.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    problem_id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        ForeignKey("problems.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    terminal_status: Mapped[SubmissionStatus] = mapped_column(
+        submission_status_type, nullable=False
+    )
+    accepted: Mapped[bool] = mapped_column(nullable=False)
+    applied_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class Outbox(Base):
     __tablename__ = "outbox_events"
 

@@ -1,4 +1,5 @@
 from app.models.problem import (
+    Favorite,
     Language,
     Problem,
     ProblemDifficulty,
@@ -12,11 +13,13 @@ from app.models.submission import (
     Submission,
     SubmissionCaseResult,
     SubmissionMode,
+    SubmissionStatEvent,
     SubmissionStatus,
 )
 from app.models.user import User
 
 __all__ = [
+    "Favorite",
     "Language",
     "Problem",
     "ProblemDifficulty",
@@ -27,6 +30,7 @@ __all__ = [
     "Submission",
     "SubmissionCaseResult",
     "SubmissionMode",
+    "SubmissionStatEvent",
     "SubmissionStatus",
     "User",
     "UserProblemProgress",
