@@ -77,6 +77,21 @@ async function fulfillJson(route: Route, body: unknown, status = 200): Promise<v
 
 async function mockApi(page: Page, submittedModes: string[]): Promise<void> {
   let favorited = false
+  const discussion = {
+    id: 42,
+    problem_id: 7,
+    author: { id: user.id, nickname: user.nickname, avatar_url: null },
+    title: '前缀和解题讨论',
+    content: '<img src=x onerror=alert(1)> **安全思路**',
+    is_pinned: true,
+    is_locked: false,
+    comment_count: 0,
+    review_status: 'approved',
+    created_at: '2026-08-10T00:00:00Z',
+    updated_at: '2026-08-10T00:00:00Z',
+    can_edit: true,
+  }
+  const comments: Array<Record<string, unknown>> = []
   await page.addInitScript(() => {
     localStorage.setItem('codearena.access-token', 'e2e-access-token')
   })
@@ -108,6 +123,49 @@ async function mockApi(page: Page, submittedModes: string[]): Promise<void> {
       })
     }
     if (path.endsWith('/users/me')) return fulfillJson(route, user)
+    if (path.endsWith('/daily-challenge')) {
+      return fulfillJson(route, {
+        challenge_date: '2026-08-10',
+        timezone: 'Asia/Shanghai',
+        problem: problemSummary,
+      })
+    }
+    if (path.endsWith('/collections/interview-top')) {
+      return fulfillJson(route, {
+        id: 1,
+        slug: 'interview-top',
+        title: '数组 TOP 50',
+        description: '**字节高频**数组训练',
+        company: '字节',
+        cover_url: null,
+        problem_count: 1,
+        solved_count: 0,
+        completion_rate: 0,
+        problems: [{ sequence: 0, problem: problemSummary }],
+        page: 1,
+        page_size: 20,
+        pages: 1,
+      })
+    }
+    if (path.endsWith('/collections')) {
+      return fulfillJson(route, {
+        items: [{
+          id: 1,
+          slug: 'interview-top',
+          title: '数组 TOP 50',
+          description: '字节高频数组训练',
+          company: '字节',
+          cover_url: null,
+          problem_count: 1,
+          solved_count: 0,
+          completion_rate: 0,
+        }],
+        total: 1,
+        page: 1,
+        page_size: 12,
+        pages: 1,
+      })
+    }
     if (path.endsWith('/languages')) return fulfillJson(route, [language])
     if (path.endsWith('/tags')) return fulfillJson(route, problemSummary.tags)
     if (path.endsWith('/problems/7/favorite')) {
@@ -121,6 +179,42 @@ async function mockApi(page: Page, submittedModes: string[]): Promise<void> {
         page: 1,
         page_size: 20,
         pages: favorited ? 1 : 0,
+      })
+    }
+    if (path.endsWith('/problems/7/discussions')) {
+      if (request.method() === 'POST') {
+        const payload = request.postDataJSON() as { title: string; content: string }
+        return fulfillJson(route, { ...discussion, id: 43, ...payload }, 201)
+      }
+      return fulfillJson(route, {
+        items: [discussion], total: 1, page: 1, page_size: 10, pages: 1,
+      })
+    }
+    if (path.endsWith('/discussions/42/comments') && request.method() === 'POST') {
+      const payload = request.postDataJSON() as { content: string; parent_id?: number }
+      const comment = {
+        id: 51,
+        discussion_id: 42,
+        parent_id: payload.parent_id ?? null,
+        depth: 0,
+        author: discussion.author,
+        content: payload.content,
+        deleted: false,
+        review_status: 'approved',
+        created_at: '2026-08-10T00:01:00Z',
+        updated_at: '2026-08-10T00:01:00Z',
+        can_edit: true,
+      }
+      comments.push(comment)
+      return fulfillJson(route, comment, 201)
+    }
+    if (path.endsWith('/discussions/42')) {
+      return fulfillJson(route, {
+        discussion: { ...discussion, comment_count: comments.length },
+        comments: {
+          items: comments, total: comments.length, page: 1, page_size: 30,
+          pages: comments.length ? 1 : 0,
+        },
       })
     }
     if (path.endsWith('/problems/7')) {
@@ -223,4 +317,33 @@ test('favorite catalog flow and training profile stay user scoped', async ({ pag
   await expect(page.getByRole('heading', { name: '最近提交' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '已解决题目' })).toBeVisible()
   await expect(page.getByText('数学')).toBeVisible()
+})
+
+test('daily challenge, curated collection and sanitized discussion flow', async ({ page }) => {
+  await mockApi(page, [])
+
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'A+B 问题' })).toBeVisible()
+  await expect(page.getByText('2026-08-10 · Asia/Shanghai')).toBeVisible()
+
+  await page.goto('/collections')
+  await page.getByRole('link', { name: /数组 TOP 50/ }).click()
+  await expect(page.getByRole('heading', { name: '数组 TOP 50' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /A\+B 问题/ })).toBeVisible()
+
+  await page.goto('/problems/a-plus-b')
+  await expect(page.getByRole('heading', { name: '题目讨论' })).toBeVisible()
+  await page.getByRole('button', { name: '发起讨论' }).click()
+  await page.getByLabel('标题').fill('新的解题讨论')
+  await page.getByLabel('内容（支持 Markdown）').fill('使用 **哈希表**')
+  await page.getByRole('button', { name: '发布讨论' }).click()
+  await expect(page.getByRole('heading', { name: '新的解题讨论' })).toBeVisible()
+
+  await page.goto('/discussions/42')
+  await expect(page.getByRole('heading', { name: '前缀和解题讨论' })).toBeVisible()
+  await expect(page.getByText('安全思路')).toBeVisible()
+  await expect(page.locator('.discussion-thread img')).toHaveCount(0)
+  await page.getByPlaceholder('友善讨论，支持 Markdown').fill('边界条件也很重要')
+  await page.getByRole('button', { name: '发表评论' }).click()
+  await expect(page.getByText('边界条件也很重要')).toBeVisible()
 })

@@ -1,10 +1,11 @@
-from uuid import uuid4
+import asyncio
+from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.db.migration_bootstrap import (
     EXPECTED_ENUMS,
@@ -15,6 +16,9 @@ from app.db.migration_bootstrap import (
     inspect_schema,
 )
 from app.maintenance.rebuild_statistics import rebuild_statistics
+from app.models.content import ContentReviewStatus
+from app.models.user import User
+from app.services.discussions import create_report, moderate_comment
 
 
 @pytest.mark.integration
@@ -26,7 +30,7 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260809_0006"
+            assert revision == "20260810_0007"
 
             submission_columns = set(
                 (
@@ -62,6 +66,8 @@ async def test_migrations_preserve_postgresql_features(
             assert EXPECTED_TABLES <= tables
             assert "outbox_events" in tables
             assert "submission_stat_events" in tables
+            assert "content_reports" in tables
+            assert "content_moderation_actions" in tables
 
             citext_columns = set(
                 (
@@ -88,6 +94,7 @@ async def test_migrations_preserve_postgresql_features(
             )
             assert EXPECTED_ENUMS <= enum_names
             assert "submission_mode" in enum_names
+            assert "content_review_status" in enum_names
 
             indexes = set(
                 (
@@ -108,6 +115,9 @@ async def test_migrations_preserve_postgresql_features(
             assert "idx_stat_events_problem_applied" in indexes
             assert "idx_favorites_user_created" in indexes
             assert "idx_favorites_problem" in indexes
+            assert "idx_collections_public_created" in indexes
+            assert "idx_discussions_public_order" in indexes
+            assert "uq_reports_user_discussion" in indexes
 
             triggers = set(
                 (
@@ -335,6 +345,213 @@ async def test_statistics_rebuild_is_repeatable(postgres_database_url: str) -> N
                     text("DELETE FROM users WHERE id = :user_id"),
                     {"user_id": user_id},
                 )
+        await engine.dispose()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_duplicate_report_increments_count_once(
+    postgres_database_url: str,
+) -> None:
+    engine = create_async_engine(postgres_database_url)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    suffix = uuid4().hex[:12]
+    reporter_id: UUID | None = None
+    author_id: UUID | None = None
+    problem_id: int | None = None
+    discussion_id: int | None = None
+    try:
+        async with engine.begin() as connection:
+            author_id = await connection.scalar(
+                text(
+                    "INSERT INTO users (username, email, password_hash, nickname) "
+                    "VALUES (:username, :email, 'hash', 'author') RETURNING id"
+                ),
+                {
+                    "username": f"report_author_{suffix}",
+                    "email": f"report-author-{suffix}@example.com",
+                },
+            )
+            reporter_id = await connection.scalar(
+                text(
+                    "INSERT INTO users (username, email, password_hash, nickname) "
+                    "VALUES (:username, :email, 'hash', 'reporter') RETURNING id"
+                ),
+                {
+                    "username": f"report_user_{suffix}",
+                    "email": f"report-user-{suffix}@example.com",
+                },
+            )
+            problem_id = await connection.scalar(
+                text(
+                    "INSERT INTO problems (slug, title, description, difficulty, "
+                    "input_description, output_description, visibility) VALUES "
+                    "(:slug, 'report', 'd', 'easy', 'i', 'o', 'public') RETURNING id"
+                ),
+                {"slug": f"report-{suffix}"},
+            )
+            discussion_id = await connection.scalar(
+                text(
+                    "INSERT INTO discussions (problem_id, user_id, title, content) "
+                    "VALUES (:problem_id, :user_id, 'report', 'content') RETURNING id"
+                ),
+                {"problem_id": problem_id, "user_id": author_id},
+            )
+
+        assert reporter_id is not None and discussion_id is not None
+
+        async def submit_report() -> bool:
+            async with session_factory() as session:
+                state = await create_report(
+                    session,
+                    reporter_id,
+                    "concurrent duplicate",
+                    discussion_id=discussion_id,
+                )
+                return state.created
+
+        results = await asyncio.gather(submit_report(), submit_report())
+        assert sorted(results) == [False, True]
+
+        async with engine.connect() as connection:
+            report_count = await connection.scalar(
+                text("SELECT report_count FROM discussions WHERE id = :id"),
+                {"id": discussion_id},
+            )
+            rows = await connection.scalar(
+                text("SELECT count(*) FROM content_reports WHERE discussion_id = :id"),
+                {"id": discussion_id},
+            )
+        assert report_count == 1
+        assert rows == 1
+    finally:
+        async with engine.begin() as connection:
+            if discussion_id is not None:
+                await connection.execute(
+                    text("DELETE FROM discussions WHERE id = :id"),
+                    {"id": discussion_id},
+                )
+            if problem_id is not None:
+                await connection.execute(
+                    text("DELETE FROM problems WHERE id = :id"),
+                    {"id": problem_id},
+                )
+            for user_id in (reporter_id, author_id):
+                if user_id is not None:
+                    await connection.execute(
+                        text("DELETE FROM users WHERE id = :id"),
+                        {"id": user_id},
+                    )
+        await engine.dispose()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_comment_approval_increments_count_once(
+    postgres_database_url: str,
+) -> None:
+    engine = create_async_engine(postgres_database_url)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    suffix = uuid4().hex[:12]
+    admin_id: UUID | None = None
+    author_id: UUID | None = None
+    problem_id: int | None = None
+    discussion_id: int | None = None
+    comment_id: int | None = None
+    try:
+        async with engine.begin() as connection:
+            admin_id = await connection.scalar(
+                text(
+                    "INSERT INTO users (username, email, password_hash, nickname, is_admin) "
+                    "VALUES (:username, :email, 'hash', 'admin', true) RETURNING id"
+                ),
+                {
+                    "username": f"moderation_admin_{suffix}",
+                    "email": f"moderation-admin-{suffix}@example.com",
+                },
+            )
+            author_id = await connection.scalar(
+                text(
+                    "INSERT INTO users (username, email, password_hash, nickname) "
+                    "VALUES (:username, :email, 'hash', 'author') RETURNING id"
+                ),
+                {
+                    "username": f"moderation_author_{suffix}",
+                    "email": f"moderation-author-{suffix}@example.com",
+                },
+            )
+            problem_id = await connection.scalar(
+                text(
+                    "INSERT INTO problems (slug, title, description, difficulty, "
+                    "input_description, output_description, visibility) VALUES "
+                    "(:slug, 'moderation', 'd', 'easy', 'i', 'o', 'public') RETURNING id"
+                ),
+                {"slug": f"moderation-{suffix}"},
+            )
+            discussion_id = await connection.scalar(
+                text(
+                    "INSERT INTO discussions (problem_id, user_id, title, content) "
+                    "VALUES (:problem_id, :user_id, 'moderation', 'content') RETURNING id"
+                ),
+                {"problem_id": problem_id, "user_id": author_id},
+            )
+            comment_id = await connection.scalar(
+                text(
+                    "INSERT INTO discussion_comments "
+                    "(discussion_id, user_id, content, review_status) "
+                    "VALUES (:discussion_id, :user_id, 'pending', 'pending') RETURNING id"
+                ),
+                {"discussion_id": discussion_id, "user_id": author_id},
+            )
+
+        assert admin_id is not None and comment_id is not None
+
+        async def approve_comment() -> None:
+            async with session_factory() as session:
+                admin = await session.scalar(select(User).where(User.id == admin_id))
+                assert admin is not None
+                await moderate_comment(
+                    session,
+                    comment_id,
+                    admin,
+                    ContentReviewStatus.APPROVED,
+                    "concurrent approval",
+                )
+
+        await asyncio.gather(approve_comment(), approve_comment())
+
+        async with engine.connect() as connection:
+            comment_count = await connection.scalar(
+                text("SELECT comment_count FROM discussions WHERE id = :id"),
+                {"id": discussion_id},
+            )
+        assert comment_count == 1
+    finally:
+        async with engine.begin() as connection:
+            if comment_id is not None:
+                await connection.execute(
+                    text(
+                        "DELETE FROM content_moderation_actions "
+                        "WHERE target_type = 'comment' AND target_id = :id"
+                    ),
+                    {"id": comment_id},
+                )
+            if discussion_id is not None:
+                await connection.execute(
+                    text("DELETE FROM discussions WHERE id = :id"),
+                    {"id": discussion_id},
+                )
+            if problem_id is not None:
+                await connection.execute(
+                    text("DELETE FROM problems WHERE id = :id"),
+                    {"id": problem_id},
+                )
+            for user_id in (admin_id, author_id):
+                if user_id is not None:
+                    await connection.execute(
+                        text("DELETE FROM users WHERE id = :id"),
+                        {"id": user_id},
+                    )
         await engine.dispose()
 
 

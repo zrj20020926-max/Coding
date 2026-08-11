@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
+import DailyChallengeCard from '@/components/content/DailyChallengeCard.vue'
 
 const auth = useAuthStore()
 </script>
@@ -42,6 +43,8 @@ print(a + b)</code></pre>
     </div>
   </section>
 
+  <DailyChallengeCard />
+
   <section id="workflow" class="workflow-section">
     <div class="page-container">
       <p class="section-kicker">训练闭环</p>
@@ -54,4 +57,3 @@ print(a + b)</code></pre>
     </div>
   </section>
 </template>
-

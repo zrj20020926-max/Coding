@@ -5,7 +5,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.dependencies import redis_client
-from app.api.routes import admin_problems, auth, health, problems, submissions, training, users
+from app.api.routes import (
+    admin_content,
+    admin_discussions,
+    admin_problems,
+    auth,
+    collections,
+    discussions,
+    health,
+    problems,
+    submissions,
+    training,
+    users,
+)
 from app.core.config import settings
 from app.db.session import engine
 
@@ -34,7 +46,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
 )
 
@@ -45,3 +57,7 @@ app.include_router(problems.router, prefix=settings.api_prefix)
 app.include_router(admin_problems.router, prefix=settings.api_prefix)
 app.include_router(submissions.router, prefix=settings.api_prefix)
 app.include_router(training.router, prefix=settings.api_prefix)
+app.include_router(collections.router, prefix=settings.api_prefix)
+app.include_router(discussions.router, prefix=settings.api_prefix)
+app.include_router(admin_content.router, prefix=settings.api_prefix)
+app.include_router(admin_discussions.router, prefix=settings.api_prefix)

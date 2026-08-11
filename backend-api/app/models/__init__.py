@@ -1,3 +1,13 @@
+from app.models.content import (
+    Collection,
+    CollectionProblem,
+    ContentModerationAction,
+    ContentReport,
+    ContentReviewStatus,
+    DailyChallenge,
+    Discussion,
+    DiscussionComment,
+)
 from app.models.problem import (
     Favorite,
     Language,
@@ -19,19 +29,27 @@ from app.models.submission import (
 from app.models.user import User
 
 __all__ = [
+    "Collection",
+    "CollectionProblem",
+    "ContentModerationAction",
+    "ContentReport",
+    "ContentReviewStatus",
+    "DailyChallenge",
+    "Discussion",
+    "DiscussionComment",
     "Favorite",
     "Language",
+    "Outbox",
     "Problem",
     "ProblemDifficulty",
     "ProblemTag",
     "ProblemVisibility",
-    "Tag",
-    "Outbox",
     "Submission",
     "SubmissionCaseResult",
     "SubmissionMode",
     "SubmissionStatEvent",
     "SubmissionStatus",
+    "Tag",
     "User",
     "UserProblemProgress",
 ]

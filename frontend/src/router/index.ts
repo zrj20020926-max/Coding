@@ -30,6 +30,12 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
     { path: '/problems', name: 'problems', component: () => import('@/views/ProblemsView.vue') },
+    { path: '/collections', name: 'collections', component: () => import('@/views/CollectionsView.vue') },
+    {
+      path: '/collections/:slug',
+      name: 'collection-detail',
+      component: () => import('@/views/CollectionDetailView.vue'),
+    },
     {
       path: '/problems/:slug',
       name: 'problem-detail',
@@ -40,6 +46,11 @@ const router = createRouter({
       name: 'submissions',
       component: () => import('@/views/SubmissionHistoryView.vue'),
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/discussions/:id',
+      name: 'discussion-detail',
+      component: () => import('@/views/DiscussionDetailView.vue'),
     },
     {
       path: '/favorites',

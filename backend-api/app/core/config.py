@@ -1,6 +1,7 @@
 from functools import lru_cache
 from ipaddress import ip_network
 from typing import Literal, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -51,6 +52,9 @@ class Settings(BaseSettings):
     register_rate_limit_account_attempts: int = Field(default=5, ge=1, le=1000)
     trusted_proxy_cidrs: str = "127.0.0.1/32,::1/128"
     cors_origins: str = "http://localhost:5173"
+    content_timezone: str = "Asia/Shanghai"
+    content_sensitive_words: str = "赌博,色情,暴力,违法"
+    discussion_max_reply_depth: int = Field(default=3, ge=1, le=3)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -65,6 +69,23 @@ class Settings(BaseSettings):
             for language in self.judge_supported_languages.split(",")
             if language.strip()
         ]
+
+    @property
+    def content_sensitive_word_list(self) -> list[str]:
+        return [
+            word.strip().casefold()
+            for word in self.content_sensitive_words.split(",")
+            if word.strip()
+        ]
+
+    @field_validator("content_timezone")
+    @classmethod
+    def validate_content_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError:
+            raise ValueError("content_timezone must be a valid IANA timezone") from None
+        return value
 
     @field_validator("trusted_proxy_cidrs")
     @classmethod

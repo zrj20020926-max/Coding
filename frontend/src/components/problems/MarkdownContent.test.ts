@@ -18,4 +18,16 @@ describe('MarkdownContent', () => {
     expect(wrapper.html()).not.toContain('onerror')
     expect(wrapper.html()).not.toContain('javascript:')
   })
+
+  it('sanitizes discussion and comment payloads with encoded event handlers', () => {
+    const wrapper = mount(MarkdownContent, {
+      props: {
+        content: '<svg><a xlink:href="javascript:alert(1)">讨论</a></svg>\n\n**正常内容**',
+      },
+    })
+
+    expect(wrapper.find('svg').exists()).toBe(false)
+    expect(wrapper.html()).not.toContain('javascript:')
+    expect(wrapper.text()).toContain('正常内容')
+  })
 })

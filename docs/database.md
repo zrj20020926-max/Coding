@@ -6,6 +6,8 @@
 erDiagram
   USERS ||--o{ SUBMISSIONS : creates
   USERS ||--o{ DISCUSSIONS : writes
+  USERS ||--o{ DISCUSSION_COMMENTS : writes
+  USERS ||--o{ CONTENT_REPORTS : reports
   USERS ||--o{ FAVORITES : owns
   USERS ||--o{ USER_PROBLEM_PROGRESS : tracks
   USERS ||--o{ SUBMISSION_STAT_EVENTS : owns
@@ -23,6 +25,10 @@ erDiagram
   SUBMISSIONS ||--o| AI_ANALYSES : analyzed
   COLLECTIONS ||--o{ COLLECTION_PROBLEMS : contains
   PROBLEMS ||--o{ COLLECTION_PROBLEMS : listed
+  PROBLEMS ||--o{ DAILY_CHALLENGES : scheduled
+  DISCUSSIONS ||--o{ DISCUSSION_COMMENTS : contains
+  DISCUSSIONS ||--o{ CONTENT_REPORTS : reported
+  DISCUSSION_COMMENTS ||--o{ CONTENT_REPORTS : reported
 ```
 
 ## 关键约束
@@ -88,3 +94,19 @@ erDiagram
 `20260809_0006` 新增 `submission_stat_events`。该表以 `submission_id` 为主键，并保存用户、题目、终态、是否 Accepted 和应用时间；约束拒绝非终态。Judge 的终态条件更新、用例结果、台账插入、进度 upsert、用户计数和题目计数处于同一事务。重复消息无法再次插入台账，不会重复计数；同一道题后续 Accepted 只增加 Accepted 次数，不再增加 solved 数。
 
 `python -m app.maintenance.rebuild_statistics --apply` 从 `mode=judge` 的终态提交重建全部派生状态。在线终态事务使用共享 advisory lock，重建使用同名独占锁，因此不会与实时 Judge 写入交错。命令必须连接正确数据库并显式提供 `--apply`，生产执行前仍需备份并核对目标环境。
+
+## 内容运营与审核
+
+`20260810_0007` 将已有题单、每日一题和讨论表纳入可维护的 SQLAlchemy 2.0 async 模型，并增加审核结构：
+
+| ORM | 表 | 关键约束 |
+| --- | --- | --- |
+| `Collection` | `collections` | `slug` 唯一，创建人可空；公开列表使用部分索引 |
+| `CollectionProblem` | `collection_problems` | `(collection_id, problem_id)` 唯一，`(collection_id, sequence)` 唯一并定义稳定顺序 |
+| `DailyChallenge` | `daily_challenges` | 业务日期主键；同一天仅一个题目 |
+| `Discussion` | `discussions` | 作者删除后保留内容并显示注销用户；保存锁定、置顶、审核、举报聚合和软删除状态 |
+| `DiscussionComment` | `discussion_comments` | `parent_id` 自关联；`depth BETWEEN 0 AND 3`；作者删除后保留评论 |
+| `ContentReport` | `content_reports` | 讨论/评论目标严格二选一；按用户和目标的部分唯一索引保证并发幂等举报 |
+| `ContentModerationAction` | `content_moderation_actions` | 记录管理员、目标、动作、原因和时间，不从业务表反推审计历史 |
+
+公开查询只返回已发布题单、公开题目和审核通过且未软删除的内容。作者能看到自己的待审内容，管理员能在审核接口中访问全部状态。举报聚合计数使用条件插入后的原子增量，不依赖先读后写；评论计数仅统计公开可见评论，并在审核状态变化时原子调整。遗留 `like_count` 暂无写接口；启用点赞前必须增加用户—内容关系表，以关系唯一约束作为计数幂等来源。

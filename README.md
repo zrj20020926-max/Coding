@@ -1,6 +1,6 @@
 # CodeArena · ACM 模式算法训练平台
 
-面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前已打通题目详情、ACM 编辑器、可靠提交、独立 Judge 判题、结果轮询、训练进度、收藏和个人统计的完整做题闭环。
+面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前已打通题目详情、ACM 编辑器、可靠提交、独立 Judge 判题、结果轮询、训练进度、收藏、内容运营和个人统计的完整做题闭环。
 
 ## 当前范围
 
@@ -21,6 +21,8 @@
 - 草稿按用户、题目、语言隔离保存；公开样例与正式提交都通过 MinIO、Outbox、Redis Streams 进入独立 Judge
 - 断网/切页恢复、三分钟轮询超时、幂等防重、终态自动停止，以及个人提交历史和安全详情
 - 正式判题终态事务性更新进度与统计，支持收藏列表、难度/标签统计和幂等统计重建
+- 公开题单、用户完成进度、管理员排序/发布/下线，以及按服务端时区生成的每日一题
+- 分页讨论与最多三级回复，支持编辑、软删除、锁帖、置顶、举报、敏感词待审和管理员审计
 - Playwright 关键浏览器流程测试
 
 隐藏测试数据管理后台和 AI 分析仍不属于当前范围；浏览器和 `backend-api` 都不会执行用户代码。
@@ -108,6 +110,16 @@ Docker Compose 会在 API 启动前执行安全迁移入口。全新数据库执
 ```
 
 导入以标签和题目的 `slug` 为自然键执行 upsert，并同步题目标签关系；重复执行不会创建重复题目或关系。建议在导入前将种子文件纳入评审，并在生产数据库创建恢复点。
+
+## 内容运营 API
+
+- `GET /api/v1/collections`、`GET /api/v1/collections/{slug}`：公开题单分页列表、按运营顺序分页的公开题目及当前用户进度。
+- `GET /api/v1/daily-challenge`：按 `CONTENT_TIMEZONE` 返回服务端当天的公开题目：首页展示同一日期与时区。
+- `GET|POST /api/v1/problems/{id}/discussions`、`GET /api/v1/discussions/{id}`：分页讨论与分页评论。
+- 作者可以编辑、软删除自己的讨论和评论；登录用户可以幂等举报。管理员可以锁帖、置顶、审核内容和处理举报。
+- 敏感词命中内容默认进入 `pending`，仅作者和管理员可见；所有 Markdown 在浏览器渲染前经 DOMPurify 白名单清理。
+
+管理员题单、每日一题与审核接口、状态语义和安全边界见[内容运营 API](docs/content-operations.md)。本期未提供点赞入口；数据库遗留的 `like_count` 不作为可写事实源，后续若启用点赞必须先建立用户点赞关系表。
 
 ## 数据库迁移
 
@@ -201,6 +213,7 @@ npm run test:e2e
 - [部署与迁移](docs/deployment.md)
 - [提交控制平面 API](docs/submissions-api.md)
 - [训练进度与收藏 API](docs/training-api.md)
+- [内容运营 API](docs/content-operations.md)
 - [Judge 安全与故障模型](docs/judge-security.md)
 
 ## 提交控制平面
@@ -218,7 +231,7 @@ npm run test:e2e
 
 ```powershell
 cd backend-api
-alembic upgrade 20260809_0006
+alembic upgrade 20260810_0007
 alembic current
 ```
 

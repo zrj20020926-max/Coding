@@ -8,6 +8,7 @@ import { useRoute, useRouter } from 'vue-router'
 import DifficultyBadge from '@/components/problems/DifficultyBadge.vue'
 import MarkdownContent from '@/components/problems/MarkdownContent.vue'
 import ProblemWorkbench from '@/components/problems/ProblemWorkbench.vue'
+import DiscussionSection from '@/components/content/DiscussionSection.vue'
 import { getApiErrorMessage } from '@/services/http'
 import { useAuthStore } from '@/stores/auth'
 import { useProblemStore } from '@/stores/problems'
@@ -114,6 +115,7 @@ onBeforeUnmount(() => problemStore.clearDetail())
         <p>请按题面从 stdin 读取输入并向 stdout 输出答案。公开样例运行与正式提交都会进入独立 Judge 沙箱。</p>
       </aside>
       <ProblemWorkbench :problem="detail" />
+      <DiscussionSection :problem-id="detail.id" />
     </article>
   </div>
 </template>
