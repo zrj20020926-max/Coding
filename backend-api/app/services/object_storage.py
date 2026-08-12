@@ -18,6 +18,8 @@ class SourceObjectStore(Protocol):
 
     async def get_source(self, object_key: str) -> bytes: ...
 
+    async def get_test_data(self, object_key: str) -> bytes: ...
+
 
 class MinioSourceObjectStore:
     def __init__(self) -> None:
@@ -28,6 +30,7 @@ class MinioSourceObjectStore:
             secure=settings.minio_secure,
         )
         self.bucket = settings.minio_bucket
+        self.test_data_bucket = settings.minio_test_data_bucket
 
     def _put_source(self, object_key: str, content: bytes) -> None:
         if not self.client.bucket_exists(self.bucket):
@@ -63,6 +66,20 @@ class MinioSourceObjectStore:
 
     async def get_source(self, object_key: str) -> bytes:
         return await run_in_threadpool(self._get_source, object_key)
+
+    def _get_test_data(self, object_key: str) -> bytes:
+        response = self.client.get_object(self.test_data_bucket, object_key)
+        try:
+            content = response.read(settings.test_data_object_max_bytes + 1)
+            if len(content) > settings.test_data_object_max_bytes:
+                raise ValueError("stored test object exceeds configured limit")
+            return content
+        finally:
+            response.close()
+            response.release_conn()
+
+    async def get_test_data(self, object_key: str) -> bytes:
+        return await run_in_threadpool(self._get_test_data, object_key)
 
 
 @lru_cache

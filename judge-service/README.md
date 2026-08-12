@@ -44,7 +44,7 @@ docker run --rm --group-add 0 `
 
 ## 测试数据约定
 
-隐藏输入输出存入 `MINIO_TEST_DATA_BUCKET`，数据库 `test_cases` 只保存 object key。`checksum` 使用：
+隐藏输入输出存入 `MINIO_TEST_DATA_BUCKET`，数据库 `test_cases` 只保存 object key。每个正式 Submission 在创建时绑定不可变 `test_set_id`，Judge 不按题目查询“当前”版本，因此新测试集激活不会改变排队任务。`checksum` 使用：
 
 ```text
 sha256(input_bytes + b"\0" + expected_output_bytes)

@@ -1,8 +1,10 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.dependencies import redis_client
 from app.api.routes import (
@@ -43,6 +45,30 @@ app = FastAPI(
     redoc_url=None,
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def safe_validation_error(
+    _: Request, exc: RequestValidationError
+) -> JSONResponse:
+    issues = [
+        {
+            "location": [str(part) for part in error.get("loc", ())],
+            "message": error.get("msg", "invalid value"),
+            "type": error.get("type", "validation_error"),
+        }
+        for error in exc.errors()
+    ]
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": {
+                "code": "VALIDATION_ERROR",
+                "message": "请求参数校验失败",
+                "issues": issues,
+            }
+        },
+    )
 
 app.add_middleware(
     CORSMiddleware,

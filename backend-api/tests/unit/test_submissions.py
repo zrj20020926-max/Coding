@@ -13,7 +13,7 @@ from app.models.problem import Language, Problem, ProblemDifficulty, ProblemVisi
 from app.models.submission import Outbox, Submission, SubmissionMode, SubmissionStatus
 from app.services.outbox import publish_outbox_batch
 from app.services.submissions import InvalidSubmissionTransition, transition_submission_status
-from tests.unit.conftest import FakeSourceObjectStore
+from tests.unit.conftest import FakeSourceObjectStore, active_test_set
 
 
 async def register(client: AsyncClient, username: str) -> dict[str, str]:
@@ -53,6 +53,7 @@ async def seed_submission_catalog(db: AsyncSession) -> tuple[Problem, Problem]:
         [
             public,
             draft,
+            active_test_set(public),
             Language(
                 slug="python",
                 display_name="Python",
@@ -118,7 +119,11 @@ async def test_submission_is_stored_with_pending_outbox_and_safe_response(
     assert fake_object_store.objects[submission.source_object_key] == b"print(input())"
     assert event.aggregate_id == submission.id
     assert event.published_at is None
-    assert event.payload["mode"] == "judge"
+    assert set(event.payload) == {"event_id", "submission_id"}
+    assert submission.test_set_id is not None
+    assert submission.problem_version == problem.version
+    assert submission.time_limit_ms_snapshot == problem.time_limit_ms
+    assert submission.memory_limit_mb_snapshot == problem.memory_limit_mb
     serialized = json.dumps(body)
     for forbidden in (
         "source_object_key",

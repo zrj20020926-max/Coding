@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
-from app.models.problem import Language, Problem, ProblemVisibility
+from app.models.problem import Language, Problem, ProblemVisibility, TestSet, TestSetStatus
 from app.models.submission import Outbox, Submission, SubmissionMode, SubmissionStatus
 from app.models.user import User
 from app.schemas.submission import (
@@ -220,6 +220,21 @@ async def create_submission(
             status.HTTP_400_BAD_REQUEST, "LANGUAGE_UNAVAILABLE", "language is not available"
         )
 
+    active_test_set = None
+    if mode is SubmissionMode.JUDGE:
+        active_test_set = await db.scalar(
+            select(TestSet).where(
+                TestSet.problem_id == problem.id,
+                TestSet.status == TestSetStatus.ACTIVE,
+            )
+        )
+        if active_test_set is None:
+            raise submission_error(
+                status.HTTP_409_CONFLICT,
+                "PROBLEM_NOT_READY",
+                "problem has no active hidden test set",
+            )
+
     await _enforce_submission_rate(cache, user.id, mode)
 
     submission_id = uuid4()
@@ -243,6 +258,10 @@ async def create_submission(
         language=language,
         status=SubmissionStatus.PENDING,
         mode=mode,
+        test_set_id=active_test_set.id if active_test_set is not None else None,
+        problem_version=problem.version,
+        time_limit_ms_snapshot=problem.time_limit_ms,
+        memory_limit_mb_snapshot=problem.memory_limit_mb,
         source_code=None,
         source_object_key=object_key,
         source_checksum=checksum,
@@ -258,13 +277,6 @@ async def create_submission(
         payload={
             "event_id": str(event_id),
             "submission_id": str(submission_id),
-            "problem_id": problem.id,
-            "language": language.slug,
-            "source_object_key": object_key,
-            "source_checksum": checksum,
-            "time_limit_ms": problem.time_limit_ms,
-            "memory_limit_mb": problem.memory_limit_mb,
-            "mode": mode.value,
         },
     )
     db.add_all([submission, event])

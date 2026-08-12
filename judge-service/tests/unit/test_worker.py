@@ -5,6 +5,7 @@ import pytest
 
 from app.core.config import Settings
 from app.domain.models import (
+    CheckerType,
     JudgeResult,
     SubmissionJob,
     SubmissionMode,
@@ -77,10 +78,13 @@ def pending_job():
         language="python",
         status=SubmissionStatus.PENDING,
         mode=SubmissionMode.JUDGE,
+        test_set_id=uuid4(),
+        problem_version=1,
         source_object_key="internal",
         source_checksum="0" * 64,
         time_limit_ms=1000,
         memory_limit_mb=64,
+        checker_type=CheckerType.EXACT,
     )
 
 

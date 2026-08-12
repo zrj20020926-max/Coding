@@ -52,7 +52,7 @@ image: registry.example.com/codearena/ai-service@sha256:<reviewed-digest>
 
 PostgreSQL、Redis、MinIO、API、Judge、AI 和前端镜像都应固定 digest；生产禁止 `latest` 和运行时拉取未审核镜像。制品签名须在 admission policy 验证。
 
-发布顺序：备份并验证恢复点；运行单实例 migration job 执行 `alembic upgrade 20260811_0008`；发布 backend-api/outbox publisher；灰度 ai-service；验证指标、审计和一条合成分析；最后发布前端。回滚时先关闭 AI 触发入口并回滚应用镜像，保留向后兼容的 0008 表；不要在事故窗口直接 downgrade 删除分析、台账和审计数据。
+发布顺序：备份并验证恢复点；暂停正式提交/Outbox 并运行单实例 migration job 执行 `alembic upgrade 20260812_0009`；核对被门禁降为 draft 的历史题目；发布 backend-api/outbox publisher 与 judge-service；灰度 ai-service；验证指标、审计和合成提交；最后发布前端。回滚时先关闭写入口并回滚应用镜像，保留 0009 的版本和快照数据；不要在事故窗口直接 downgrade 删除测试集、分析、台账或审计数据。
 
 ## 备份与恢复演练
 

@@ -22,6 +22,12 @@ class SubmissionMode(StrEnum):
     JUDGE = "judge"
 
 
+class CheckerType(StrEnum):
+    EXACT = "exact"
+    TOKEN = "token"
+    FLOAT = "float"
+
+
 TERMINAL_STATUSES = frozenset(
     {
         SubmissionStatus.ACCEPTED,
@@ -42,10 +48,15 @@ class SubmissionJob:
     language: str
     status: SubmissionStatus
     mode: SubmissionMode
+    test_set_id: UUID | None
+    problem_version: int
     source_object_key: str
     source_checksum: str
     time_limit_ms: int
     memory_limit_mb: int
+    checker_type: CheckerType
+    absolute_tolerance: Decimal | None = None
+    relative_tolerance: Decimal | None = None
 
 
 @dataclass(frozen=True)

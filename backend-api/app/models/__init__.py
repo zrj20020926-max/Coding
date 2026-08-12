@@ -10,6 +10,7 @@ from app.models.content import (
     DiscussionComment,
 )
 from app.models.problem import (
+    CheckerType,
     Favorite,
     Language,
     Problem,
@@ -17,6 +18,9 @@ from app.models.problem import (
     ProblemTag,
     ProblemVisibility,
     Tag,
+    TestCase,
+    TestSet,
+    TestSetStatus,
     UserProblemProgress,
 )
 from app.models.submission import (
@@ -49,12 +53,16 @@ __all__ = [
     "ProblemDifficulty",
     "ProblemTag",
     "ProblemVisibility",
+    "CheckerType",
     "Submission",
     "SubmissionCaseResult",
     "SubmissionMode",
     "SubmissionStatEvent",
     "SubmissionStatus",
     "Tag",
+    "TestCase",
+    "TestSet",
+    "TestSetStatus",
     "User",
     "UserProblemProgress",
 ]

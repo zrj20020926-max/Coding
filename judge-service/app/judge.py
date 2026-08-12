@@ -1,8 +1,9 @@
 import hashlib
 
-from app.domain.comparison import outputs_equal
+from app.domain.comparison import float_outputs_equal, outputs_equal, token_outputs_equal
 from app.domain.models import (
     CaseResult,
+    CheckerType,
     JudgeResult,
     SubmissionJob,
     SubmissionMode,
@@ -71,9 +72,8 @@ class JudgeEngine:
             case_status = run.status
             if job.mode is SubmissionMode.SAMPLE:
                 public_output = run.stdout.decode("utf-8", errors="replace")
-            if case_status is SubmissionStatus.ACCEPTED and not outputs_equal(
-                run.stdout, expected
-            ):
+            matches = self._matches(job, run.stdout, expected)
+            if case_status is SubmissionStatus.ACCEPTED and not matches:
                 case_status = SubmissionStatus.WRONG_ANSWER
             results.append(
                 CaseResult(
@@ -97,3 +97,22 @@ class JudgeEngine:
             error_message=error_message,
             public_output=public_output,
         )
+
+    @staticmethod
+    def _matches(job: SubmissionJob, actual: bytes, expected: bytes) -> bool:
+        if job.mode is SubmissionMode.SAMPLE or job.checker_type is CheckerType.EXACT:
+            return outputs_equal(actual, expected)
+        if job.checker_type is CheckerType.TOKEN:
+            return token_outputs_equal(actual, expected)
+        if (
+            job.checker_type is CheckerType.FLOAT
+            and job.absolute_tolerance is not None
+            and job.relative_tolerance is not None
+        ):
+            return float_outputs_equal(
+                actual,
+                expected,
+                job.absolute_tolerance,
+                job.relative_tolerance,
+            )
+        raise JudgeConfigurationError("invalid checker configuration")

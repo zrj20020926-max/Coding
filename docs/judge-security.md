@@ -25,13 +25,16 @@ C++ 编译和每个隐藏用例分别使用新容器。源码与输入不通过�
 1. Redis consumer group 把消息放入 PEL，处理完成前不 XACK。
 2. Worker 用 `submission_id` 获取带心跳的 Redis 租约，阻止重复消息并发执行。
 3. 崩溃消息超过 idle 阈值后由 `XAUTOCLAIM` 领取。
-4. PostgreSQL 使用 `WHERE status = expected` 条件更新；抢不到终态的旧任务不能写 case results。
-5. Redis/MinIO/PostgreSQL/Docker 故障不确认消息；AC/WA/CE/RE/TLE/MLE 和确定的配置 System Error 会确认消息。
-6. Redis 锁只是并发优化，PostgreSQL 状态机和条件终态更新才是最终一致性保障。
+4. Worker 只从消息读取 `submission_id`，随后从 PostgreSQL 加载不可变的 `test_set_id`、题面版本和资源限制快照；激活新测试集不会改变已排队任务。
+5. PostgreSQL 使用 `WHERE status = expected` 条件更新；抢不到终态的旧任务不能写 case results。
+6. Redis/MinIO/PostgreSQL/Docker 故障不确认消息；AC/WA/CE/RE/TLE/MLE 和确定的配置 System Error 会确认消息。
+7. Redis 锁只是并发优化，PostgreSQL 状态机和条件终态更新才是最终一致性保障。
 
 ## 隐藏数据
 
 Judge 只在内存中比较 stdout 与期望输出。数据库不保存隐藏输入、期望输出、实际输出或 stderr 摘录；`submission_case_results.stdout_excerpt` 与 `stderr_excerpt` 固定为 NULL。backend-api 的公开 DTO 不包含测试用例关系、MinIO key、compiler output 或内部 error message。
+
+测试数据对象只能由 Judge 与发布门禁使用。管理员测试集响应也只返回用例序号、分值和验证后大小，不返回 object key 或 checksum；FastAPI 参数错误处理不回显非法请求原文，避免错误响应和日志泄漏私有定位信息。`exact` 按规范化行尾和末尾空白比较，`token` 按 token 比较，`float` 使用测试集固化的绝对/相对容差。
 
 ## 生产要求
 

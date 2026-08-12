@@ -120,6 +120,8 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 
 导入以标签和题目的 `slug` 为自然键执行 upsert，并同步题目标签关系；重复执行不会创建重复题目或关系。建议在导入前将种子文件纳入评审，并在生产数据库创建恢复点。
 
+种子导入只能创建/更新 `draft` 或 `private` 题目，不能绕过发布门禁。管理员需通过 `/api/v1/admin/problems/{id}/test-sets` 创建测试集，写入 MinIO 隐藏用例元数据，依次执行 `validate`、`activate`，最后调用题目 `publish`。每题仅允许一个 active 测试集；正式提交在创建时快照测试集、题面版本、时间和内存限制，已排队任务不受后续版本切换影响。
+
 ## 内容运营 API
 
 - `GET /api/v1/collections`、`GET /api/v1/collections/{slug}`：公开题单分页列表、按运营顺序分页的公开题目及当前用户进度。
@@ -138,7 +140,7 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 
 ```powershell
 alembic current
-alembic upgrade head
+alembic upgrade 20260812_0009
 ```
 
 由旧版 `infra/postgres/init/001_schema.sql` 创建的已有数据库：
@@ -240,9 +242,11 @@ npm run test:e2e
 
 ```powershell
 cd backend-api
-alembic upgrade 20260811_0008
+alembic upgrade 20260812_0009
 alembic current
 ```
+
+`20260812_0009` 会为历史隐藏用例创建 legacy v1 测试集、为旧正式提交回填不可变快照，并把旧公开样例用例保留在独立 inactive 归档版本中；未满足 100 分规则的已公开题目会安全回退为 draft。由于迁移进程不读取 MinIO，历史用例大小元数据为 0，重新发布前应创建并验证新测试集版本。
 
 若缓存计数因历史数据、运维修复或事件补偿需要校正，可在暂停/排空 Judge 写入后执行幂等重建。命令会获取与 Judge 终态事务互斥的 PostgreSQL advisory lock，并在单事务中重建进度、事件台账和计数：
 

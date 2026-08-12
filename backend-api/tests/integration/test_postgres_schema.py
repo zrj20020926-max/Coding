@@ -30,7 +30,7 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260811_0008"
+            assert revision == "20260812_0009"
 
             submission_columns = set(
                 (
@@ -42,7 +42,14 @@ async def test_migrations_preserve_postgresql_features(
                     )
                 ).scalars()
             )
-            assert {"mode", "sample_output"} <= submission_columns
+            assert {
+                "mode",
+                "sample_output",
+                "test_set_id",
+                "problem_version",
+                "time_limit_ms_snapshot",
+                "memory_limit_mb_snapshot",
+            } <= submission_columns
 
             auth_version = await connection.scalar(
                 text(
@@ -70,6 +77,7 @@ async def test_migrations_preserve_postgresql_features(
             assert "content_moderation_actions" in tables
             assert "ai_usage_records" in tables
             assert "audit_logs" in tables
+            assert "test_sets" in tables
 
             citext_columns = set(
                 (
@@ -97,6 +105,7 @@ async def test_migrations_preserve_postgresql_features(
             assert EXPECTED_ENUMS <= enum_names
             assert "submission_mode" in enum_names
             assert "content_review_status" in enum_names
+            assert {"test_set_status", "checker_type"} <= enum_names
 
             indexes = set(
                 (
@@ -108,7 +117,7 @@ async def test_migrations_preserve_postgresql_features(
                     )
                 ).scalars()
             )
-            assert EXPECTED_INDEXES <= indexes
+            assert (EXPECTED_INDEXES - {"idx_test_cases_problem"}) <= indexes
             assert "idx_problems_public_created" in indexes
             assert "uq_submissions_user_idempotency_key" in indexes
             assert "idx_outbox_unpublished_retry" in indexes
@@ -122,6 +131,8 @@ async def test_migrations_preserve_postgresql_features(
             assert "uq_reports_user_discussion" in indexes
             assert "idx_ai_analyses_completed_fingerprint" in indexes
             assert "idx_ai_usage_user_created" in indexes
+            assert "uq_test_sets_active_problem" in indexes
+            assert "idx_test_cases_test_set_sequence" in indexes
 
             triggers = set(
                 (
@@ -135,6 +146,12 @@ async def test_migrations_preserve_postgresql_features(
             )
             assert EXPECTED_TRIGGERS <= triggers
             assert "trg_submissions_status_transition" in triggers
+            assert {
+                "trg_test_sets_protect",
+                "trg_test_cases_protect",
+                "trg_submissions_snapshot_immutable",
+                "trg_problems_version",
+            } <= triggers
     finally:
         await engine.dispose()
 
@@ -212,8 +229,10 @@ async def test_database_rejects_skipped_submission_status_transition(
             submission_id = await connection.scalar(
                 text(
                     "INSERT INTO submissions (user_id, problem_id, language_id, "
-                    "source_object_key, source_checksum) VALUES (:user_id, :problem_id, "
-                    ":language_id, 'internal', :checksum) RETURNING id"
+                    "mode, source_object_key, source_checksum, problem_version, "
+                    "time_limit_ms_snapshot, memory_limit_mb_snapshot) VALUES "
+                    "(:user_id, :problem_id, :language_id, 'sample', 'internal', "
+                    ":checksum, 1, 1000, 256) RETURNING id"
                 ),
                 {
                     "user_id": user_id,
@@ -264,14 +283,23 @@ async def test_statistics_rebuild_is_repeatable(postgres_database_url: str) -> N
             language_id = await connection.scalar(
                 text("SELECT id FROM languages WHERE slug = 'python'")
             )
+            test_set_id = await connection.scalar(
+                text(
+                    "INSERT INTO test_sets (problem_id, version, status, case_count, "
+                    "total_score) VALUES (:problem_id, 1, 'active', 1, 100) RETURNING id"
+                ),
+                {"problem_id": problem_id},
+            )
             for index, status in enumerate(("Accepted", "Wrong Answer"), start=1):
                 await connection.execute(
                     text(
                         "INSERT INTO submissions (user_id, problem_id, language_id, "
-                        "status, mode, source_object_key, source_checksum, judged_at) "
+                        "status, mode, source_object_key, source_checksum, judged_at, "
+                        "test_set_id, problem_version, time_limit_ms_snapshot, "
+                        "memory_limit_mb_snapshot) "
                         "VALUES (:user_id, :problem_id, :language_id, "
                         "CAST(:status AS submission_status), 'judge', :object_key, "
-                        ":checksum, now())"
+                        ":checksum, now(), :test_set_id, 1, 1000, 256)"
                     ),
                     {
                         "user_id": user_id,
@@ -280,6 +308,7 @@ async def test_statistics_rebuild_is_repeatable(postgres_database_url: str) -> N
                         "status": status,
                         "object_key": f"internal/rebuild/{index}",
                         "checksum": str(index) * 64,
+                        "test_set_id": test_set_id,
                     },
                 )
 
@@ -340,6 +369,10 @@ async def test_statistics_rebuild_is_repeatable(postgres_database_url: str) -> N
                     {"user_id": user_id},
                 )
             if problem_id is not None:
+                await connection.execute(
+                    text("UPDATE test_sets SET status = 'draft' WHERE problem_id = :problem_id"),
+                    {"problem_id": problem_id},
+                )
                 await connection.execute(
                     text("DELETE FROM problems WHERE id = :problem_id"),
                     {"problem_id": problem_id},

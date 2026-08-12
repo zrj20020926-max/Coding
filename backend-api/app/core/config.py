@@ -22,7 +22,11 @@ class Settings(BaseSettings):
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minio_local_password"
     minio_bucket: str = "codearena-submissions"
+    minio_test_data_bucket: str = "codearena-test-data"
     minio_secure: bool = False
+    test_data_object_max_bytes: int = Field(
+        default=16_777_216, ge=1024, le=134_217_728
+    )
 
     submission_source_max_bytes: int = Field(default=262_144, ge=1024, le=1_048_576)
     submission_min_interval_seconds: int = Field(default=2, ge=0, le=300)

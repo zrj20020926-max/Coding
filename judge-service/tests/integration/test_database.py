@@ -26,6 +26,7 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
     suffix = uuid4().hex[:10]
     user_id: UUID | None = None
     problem_id: int | None = None
+    test_set_id: UUID | None = None
     test_case_id: UUID | None = None
     judge_id: UUID | None = None
     sample_id: UUID | None = None
@@ -53,13 +54,24 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
             language_id = await connection.scalar(
                 text("SELECT id FROM languages WHERE slug = 'python'")
             )
+            test_set_id = await connection.scalar(
+                text(
+                    "INSERT INTO test_sets (problem_id, version, status, case_count, "
+                    "total_score) VALUES (:problem_id, 1, 'draft', 0, 0) RETURNING id"
+                ),
+                {"problem_id": problem_id},
+            )
             test_case_id = await connection.scalar(
                 text(
-                    "INSERT INTO test_cases (problem_id, input_object_key, "
+                    "INSERT INTO test_cases (test_set_id, input_object_key, "
                     "output_object_key, checksum, score, sequence) VALUES "
-                    "(:problem_id, 'input', 'output', :checksum, 100, 0) RETURNING id"
+                    "(:test_set_id, 'input', 'output', :checksum, 100, 0) RETURNING id"
                 ),
-                {"problem_id": problem_id, "checksum": "0" * 64},
+                {"test_set_id": test_set_id, "checksum": "0" * 64},
+            )
+            await connection.execute(
+                text("UPDATE test_sets SET status = 'active' WHERE id = :id"),
+                {"id": test_set_id},
             )
             common = {
                 "user_id": user_id,
@@ -69,24 +81,60 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
             judge_id = await connection.scalar(
                 text(
                     "INSERT INTO submissions (user_id, problem_id, language_id, status, "
-                    "mode, source_object_key, source_checksum) VALUES (:user_id, "
-                    ":problem_id, :language_id, 'Running', 'judge', 'source', "
-                    ":checksum) RETURNING id"
+                    "mode, source_object_key, source_checksum, test_set_id, "
+                    "problem_version, time_limit_ms_snapshot, memory_limit_mb_snapshot) "
+                    "VALUES (:user_id, :problem_id, :language_id, 'Running', 'judge', "
+                    "'source', :checksum, :test_set_id, 1, 1000, 256) RETURNING id"
                 ),
-                {**common, "checksum": "1" * 64},
+                {**common, "checksum": "1" * 64, "test_set_id": test_set_id},
             )
             sample_id = await connection.scalar(
                 text(
                     "INSERT INTO submissions (user_id, problem_id, language_id, status, "
-                    "mode, source_object_key, source_checksum) VALUES (:user_id, "
+                    "mode, source_object_key, source_checksum, problem_version, "
+                    "time_limit_ms_snapshot, memory_limit_mb_snapshot) VALUES (:user_id, "
                     ":problem_id, :language_id, 'Running', 'sample', 'source', "
-                    ":checksum) RETURNING id"
+                    ":checksum, 1, 1000, 256) RETURNING id"
                 ),
                 {**common, "checksum": "2" * 64},
             )
 
         assert judge_id is not None
         assert test_case_id is not None
+        loaded_job = await repository.load_submission(judge_id)
+        assert loaded_job is not None
+        assert loaded_job.test_set_id == test_set_id
+        assert loaded_job.problem_version == 1
+        assert loaded_job.time_limit_ms == 1000
+        assert loaded_job.memory_limit_mb == 256
+        loaded_cases = await repository.load_test_cases(loaded_job)
+        assert [item.id for item in loaded_cases] == [test_case_id]
+
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("UPDATE test_sets SET status = 'inactive' WHERE id = :id"),
+                {"id": test_set_id},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO test_sets (problem_id, version, status, case_count, "
+                    "total_score, activated_at) VALUES (:problem_id, 2, 'active', 1, 100, now())"
+                ),
+                {"problem_id": problem_id},
+            )
+            await connection.execute(
+                text(
+                    "UPDATE problems SET time_limit_ms = 5000, memory_limit_mb = 512 "
+                    "WHERE id = :id"
+                ),
+                {"id": problem_id},
+            )
+        reloaded = await repository.load_submission(judge_id)
+        assert reloaded is not None
+        assert reloaded.test_set_id == test_set_id
+        assert reloaded.time_limit_ms == 1000
+        assert reloaded.memory_limit_mb == 256
+
         formal = JudgeResult(
             status=SubmissionStatus.ACCEPTED,
             case_results=[
@@ -179,14 +227,28 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
                 if submission_id is not None:
                     await connection.execute(
                         text("DELETE FROM submissions WHERE id = :submission_id"),
-                        {"submission_id": submission_id},
-                    )
+                    {"submission_id": submission_id},
+                )
+            if test_set_id is not None:
+                await connection.execute(
+                    text("UPDATE test_sets SET status = 'draft' WHERE id = :test_set_id"),
+                    {"test_set_id": test_set_id},
+                )
             if test_case_id is not None:
                 await connection.execute(
                     text("DELETE FROM test_cases WHERE id = :test_case_id"),
                     {"test_case_id": test_case_id},
                 )
+            if test_set_id is not None:
+                await connection.execute(
+                    text("DELETE FROM test_sets WHERE id = :test_set_id"),
+                    {"test_set_id": test_set_id},
+                )
             if problem_id is not None:
+                await connection.execute(
+                    text("UPDATE test_sets SET status = 'draft' WHERE problem_id = :problem_id"),
+                    {"problem_id": problem_id},
+                )
                 await connection.execute(
                     text("DELETE FROM problems WHERE id = :problem_id"),
                     {"problem_id": problem_id},
@@ -214,6 +276,7 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
     suffix = uuid4().hex[:10]
     user_id: UUID | None = None
     problem_id: int | None = None
+    test_set_id: UUID | None = None
     submission_ids: list[UUID] = []
     try:
         async with engine.begin() as connection:
@@ -239,13 +302,21 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
             language_id = await connection.scalar(
                 text("SELECT id FROM languages WHERE slug = 'python'")
             )
+            test_set_id = await connection.scalar(
+                text(
+                    "INSERT INTO test_sets (problem_id, version, status, case_count, "
+                    "total_score) VALUES (:problem_id, 1, 'active', 1, 100) RETURNING id"
+                ),
+                {"problem_id": problem_id},
+            )
             for index in range(2):
                 submission_id = await connection.scalar(
                     text(
                         "INSERT INTO submissions (user_id, problem_id, language_id, "
-                        "status, mode, source_object_key, source_checksum) VALUES "
+                        "status, mode, source_object_key, source_checksum, test_set_id, "
+                        "problem_version, time_limit_ms_snapshot, memory_limit_mb_snapshot) VALUES "
                         "(:user_id, :problem_id, :language_id, 'Running', 'judge', "
-                        ":object_key, :checksum) RETURNING id"
+                        ":object_key, :checksum, :test_set_id, 1, 1000, 256) RETURNING id"
                     ),
                     {
                         "user_id": user_id,
@@ -253,6 +324,7 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
                         "language_id": language_id,
                         "object_key": f"source/{index}",
                         "checksum": str(index + 3) * 64,
+                        "test_set_id": test_set_id,
                     },
                 )
                 assert submission_id is not None
@@ -330,6 +402,10 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
                     {"user_id": user_id},
                 )
             if problem_id is not None:
+                await connection.execute(
+                    text("UPDATE test_sets SET status = 'draft' WHERE problem_id = :problem_id"),
+                    {"problem_id": problem_id},
+                )
                 await connection.execute(
                     text("DELETE FROM problems WHERE id = :problem_id"),
                     {"problem_id": problem_id},

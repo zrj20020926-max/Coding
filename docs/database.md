@@ -11,7 +11,9 @@ erDiagram
   USERS ||--o{ FAVORITES : owns
   USERS ||--o{ USER_PROBLEM_PROGRESS : tracks
   USERS ||--o{ SUBMISSION_STAT_EVENTS : owns
-  PROBLEMS ||--o{ TEST_CASES : contains
+  PROBLEMS ||--o{ TEST_SETS : versions
+  TEST_SETS ||--o{ TEST_CASES : contains
+  TEST_SETS ||--o{ SUBMISSIONS : snapshots
   PROBLEMS ||--o{ SUBMISSIONS : receives
   PROBLEMS ||--o{ DISCUSSIONS : has
   PROBLEMS ||--o{ FAVORITES : saved_by
@@ -39,6 +41,22 @@ erDiagram
 - `submission_case_results` 不向普通用户暴露隐藏用例输入输出。
 - 收藏、题目进度、题单映射都使用联合唯一约束，所有消费端可以安全重试。
 - 用户统计字段是读优化缓存，正式值可从提交和进度表重建。
+- `(problem_id) WHERE status='active'` 部分唯一索引保证每题最多一个 active 测试集；`(test_set_id, sequence)` 保证版本内序号唯一。
+- 正式 Submission 通过复合外键绑定同一道题的 TestSet，并快照题面版本与资源限制。
+
+## 测试集版本与 Submission 快照
+
+`20260812_0009` 新增 `test_sets`，把 `test_cases.problem_id` 替换为 `test_set_id`，并为正式提交增加快照：
+
+| ORM | 表 | 关键约束 |
+| --- | --- | --- |
+| `TestSet` | `test_sets` | `(problem_id, version)` 唯一；每题 active 部分唯一；checker 配置 CHECK；聚合用例数/总分 |
+| `TestCase` | `test_cases` | `(test_set_id, sequence)` 唯一；数据库仅保存 object key、组合 checksum、验证后大小和分值 |
+| `Submission` | `submissions` | `test_set_id + problem_id` 复合外键；正式/样例模式 CHECK；版本、时间和内存快照不可变 |
+
+数据库触发器拒绝修改或删除已被 Submission 引用的测试集/用例，并拒绝修改 Submission 判题快照。测试用例写入后触发器维护 `case_count` 与 `total_score`；ready/active 必须至少一个用例且总分为 100。服务状态流转为 `draft/invalid -> validating -> ready|invalid -> active -> inactive`；只有未引用 draft 可物理删除。
+
+迁移将历史隐藏用例归档为 v1；满足正分且总分 100 时激活，否则保持 inactive 并把对应 public 题目降为 draft。历史非隐藏/样例记录为保留外键进入单独 inactive v2，Judge 不读取它。历史正式提交快照到 v1，样例提交保持 `test_set_id=NULL`；历史未发布 Outbox payload 被收紧为 `event_id + submission_id`。
 
 ## Sprint 2 题库 ORM
 

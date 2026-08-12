@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.models.ai import AIAnalysis, AIAnalysisStatus, AuditLog
 from app.models.problem import Language, Problem, ProblemDifficulty, ProblemVisibility
 from app.models.submission import Outbox, Submission, SubmissionStatus
+from tests.unit.conftest import active_test_set
 
 
 async def register(client: AsyncClient, username: str) -> dict[str, str]:
@@ -46,7 +47,7 @@ async def seed_catalog(db: AsyncSession) -> tuple[Problem, Language]:
         docker_image="internal",
         enabled=True,
     )
-    db.add_all([problem, language])
+    db.add_all([problem, language, active_test_set(problem)])
     await db.commit()
     return problem, language
 
@@ -147,6 +148,10 @@ async def test_ai_quota_returns_standard_429(
         problem_id=first.problem_id,
         language_id=first.language_id,
         status=SubmissionStatus.RUNTIME_ERROR,
+        test_set_id=first.test_set_id,
+        problem_version=first.problem_version,
+        time_limit_ms_snapshot=first.time_limit_ms_snapshot,
+        memory_limit_mb_snapshot=first.memory_limit_mb_snapshot,
         source_object_key="submissions/another/source.py",
         source_checksum="1" * 64,
         judged_at=datetime.now(timezone.utc),
@@ -198,6 +203,10 @@ async def test_completed_fingerprint_cache_does_not_consume_model_quota(
         problem_id=problem.id,
         language_id=language.id,
         status=SubmissionStatus.WRONG_ANSWER,
+        test_set_id=first.test_set_id,
+        problem_version=first.problem_version,
+        time_limit_ms_snapshot=first.time_limit_ms_snapshot,
+        memory_limit_mb_snapshot=first.memory_limit_mb_snapshot,
         source_object_key="submissions/cache/source.py",
         source_checksum=first.source_checksum,
         compiler_output=first.compiler_output,

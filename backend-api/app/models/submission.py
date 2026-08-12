@@ -11,9 +11,11 @@ from sqlalchemy import (
     CHAR,
     JSON,
     BigInteger,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -66,6 +68,19 @@ outbox_payload_type = JSON().with_variant(JSONB(), "postgresql")
 
 class Submission(Base):
     __tablename__ = "submissions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["test_set_id", "problem_id"],
+            ["test_sets.id", "test_sets.problem_id"],
+            name="fk_submissions_test_set_problem",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "(mode = 'sample' AND test_set_id IS NULL) OR "
+            "(mode = 'judge' AND test_set_id IS NOT NULL)",
+            name="ck_submissions_test_set_mode",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
@@ -87,6 +102,10 @@ class Submission(Base):
     mode: Mapped[SubmissionMode] = mapped_column(
         submission_mode_type, nullable=False, default=SubmissionMode.JUDGE
     )
+    test_set_id: Mapped[Optional[UUID]] = mapped_column(Uuid(as_uuid=True))
+    problem_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    time_limit_ms_snapshot: Mapped[int] = mapped_column(Integer, nullable=False, default=1000)
+    memory_limit_mb_snapshot: Mapped[int] = mapped_column(Integer, nullable=False, default=256)
     source_code: Mapped[Optional[str]] = mapped_column(Text)
     source_object_key: Mapped[Optional[str]] = mapped_column(Text)
     source_checksum: Mapped[str] = mapped_column(CHAR(64), nullable=False)
@@ -135,8 +154,11 @@ class SubmissionCaseResult(Base):
         ForeignKey("submissions.id", ondelete="CASCADE"),
         nullable=False,
     )
-    # test_cases has no API-side ORM because hidden test data belongs to the judge boundary.
-    test_case_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    test_case_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("test_cases.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
     status: Mapped[SubmissionStatus] = mapped_column(submission_status_type, nullable=False)
     time_used_ms: Mapped[Optional[int]] = mapped_column(Integer)
     memory_used_kb: Mapped[Optional[int]] = mapped_column(Integer)

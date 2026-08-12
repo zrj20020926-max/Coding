@@ -39,9 +39,9 @@ AI 队列与 Judge 队列使用不同 Redis Stream 和 consumer group。API 事�
 ## 3. 核心数据流
 
 1. 客户端把代码提交给 API；API 校验题目、语言和大小限制。
-2. API 将源码写入 MinIO，数据库事务内创建 `submissions(Pending)`，随后使用 outbox/可靠发布把任务写入 Redis Stream。
+2. 正式提交在事务内快照 `test_set_id`、题面版本、时间和内存限制；API 将源码写入 MinIO，数据库事务内创建 `submissions(Pending)` 和只含稳定 ID 的 Outbox，随后可靠发布到 Redis Stream。
 3. Judge Worker 使用 consumer group 消费任务，以 submission id 做幂等键并把状态改为 `Compiling` / `Running`。
-4. Worker 从 MinIO 读取源码与测试数据；每次运行创建独立 Docker 容器。
+4. Worker 从 PostgreSQL 重新加载 Submission 快照，严格按 `submission.test_set_id` 从 MinIO 读取隐藏数据；每次运行创建独立 Docker 容器。
 5. 沙箱禁网、只读根文件系统、非 root 用户运行，并限制 CPU、内存、进程数、输出大小和墙钟时间。
 6. Worker 标准化行尾与末尾空白后比较输出，在同一 PostgreSQL 事务中写入终态、用例聚合、统计事件台账、用户进度和计数。
 7. 客户端轮询安全状态接口，终态后再读取安全详情；断网、页面隐藏或重开时从本地活动提交恢复。后续可切换 SSE/WebSocket，不改变判题协议。
@@ -104,3 +104,14 @@ outbox-publisher (independent process)
 API 请求不直接依赖 Redis Streams 是否可用。发布失败时 Outbox 保持未发布状态，记录截断后的错误并指数退避；多个 publisher 使用 `SKIP LOCKED` 分工。Redis Lua 把事件 ID 去重检查、`XADD` 和去重标记放在一次原子执行中，因此数据库提交结果未知后的重试不会产生第二条流消息。事件本身携带稳定 `event_id`，Judge 消费方仍须按该 ID 幂等消费。
 
 MinIO 位于数据库事务之前：写入失败时不创建 Submission；明确的幂等唯一键冲突会删除失败请求刚写入的独立对象。数据库连接中断可能令提交结果未知，此时 API 刻意保留不可变源码，避免“数据库已提交但源码被删除”；生产环境通过生命周期和数据库引用核对清理更安全的孤儿对象失败模式，并为源码 bucket 使用只授予必要前缀权限的独立凭证。
+
+## 9. 测试集版本与发布门禁
+
+```text
+draft -> validating -> ready -> active -> inactive
+             `-----> invalid -> validating
+```
+
+测试用例只属于明确的 TestSet，不再直接属于 Problem。部分唯一索引保证每题最多一个 active 版本；激活服务先锁题目行，再在同一事务停用旧 active 并激活 ready 版本。被 Submission 引用的测试集和用例不可修改或物理删除，仅允许旧 active 在切换时变为 inactive；只有未引用 draft 可删除。
+
+题目发布不是可见性字段的普通更新。管理员发布时会重新校验 active 测试集的用例数、100 分规则、序号、MinIO 对象存在性/大小/checksum、checker 配置，以及 Python 3.12/C++20 可用性；失败返回 `PROBLEM_NOT_READY` 和不含私有定位信息的 issues。创建接口与种子导入均禁止直接写 public，从入口上封堵绕过门禁。

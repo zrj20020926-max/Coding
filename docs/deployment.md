@@ -81,25 +81,26 @@ alembic upgrade head
 5. 再滚动发布 API 实例。
 6. 检查 `/health/ready`、`/openapi.json`、题库分页接口、错误率和数据库连接指标。
 
-当前迁移 head 为 `20260811_0008`。该版本在内容运营结构之后增加 AI 分析所有权、配额成本台账和通用审计日志。普通 DDL 会短暂持有表锁，发布前应在接近生产规模的数据副本上评估耗时并安排维护窗口。旧数据库接管脚本只把已验证的旧结构 stamp 到 `20260808_0001`，随后依次执行全部增量迁移。
+当前迁移 head 为 `20260812_0009`。该版本在 AI 分析结构之后增加测试集版本、Submission 判题快照、部分唯一索引和不可变触发器。迁移会重写 `test_cases` 关联并回填 Submission，发布前必须在接近生产规模的数据副本上评估表锁和扫描耗时并安排维护窗口。旧数据库接管脚本只把已验证的旧结构 stamp 到 `20260808_0001`，随后依次执行全部增量迁移。
 
 本地 Compose 将迁移串在 API 启动前，便于开发；生产环境不要让多个 API 副本并发执行迁移。
 
 ## 提交控制平面发布
 
-最新 Alembic head 为 `20260811_0008`。`20260808_0004` 新增幂等字段、Outbox 表、部分索引和提交状态转换触发器；`20260809_0005` 新增样例/正式判题模式；`20260809_0006` 新增终态统计台账和收藏索引；`20260810_0007` 新增内容运营结构；`20260811_0008` 新增 AI 分析、成本和审计结构。部署顺序：
+最新 Alembic head 为 `20260812_0009`。`20260808_0004` 新增幂等字段、Outbox 表、部分索引和提交状态转换触发器；`20260809_0005` 新增样例/正式判题模式；`20260809_0006` 新增终态统计台账和收藏索引；`20260810_0007` 新增内容运营结构；`20260811_0008` 新增 AI 分析、成本和审计结构；`20260812_0009` 新增版本测试集和提交快照。部署顺序：
 
 1. 备份并停止旧版写入方。
-2. 执行 `alembic upgrade 20260811_0008`，确认 `alembic current`。
-3. 确认 MinIO bucket 凭证和 Redis Stream 配置，再发布 API。
-4. 单独启动一个或多个 `python -m app.workers.outbox_publisher` 实例。
-5. 监控未发布 Outbox 数量、最老事件年龄、发布失败次数和 Redis Stream 积压。
+2. 停止接收新正式提交并排空 Outbox publisher，执行 `alembic upgrade 20260812_0009`，确认 `alembic current`。
+3. 核对原 public 题目：不满足隐藏用例 100 分规则的题目会自动降为 draft；迁移无法从 MinIO 验证历史对象大小，因此重新发布应创建、验证并激活新测试集版本。
+4. 确认 MinIO bucket 凭证和 Redis Stream 配置，再发布 API。
+5. 单独启动一个或多个 `python -m app.workers.outbox_publisher` 实例。
+6. 监控未发布 Outbox 数量、最老事件年龄、发布失败次数和 Redis Stream 积压。
 
 内容运营部署还需要设置 `CONTENT_TIMEZONE`（IANA 时区，默认 `Asia/Shanghai`）、`CONTENT_SENSITIVE_WORDS`（逗号分隔）和 `DISCUSSION_MAX_REPLY_DEPTH`（范围 1–3）。时区配置非法时应用会拒绝启动；敏感词列表是首层同步规则，生产应由运营审核流程和更完整的内容安全服务补充。升级 0007 前应预估讨论表外键与索引变更的锁时间；降级会删除 0007 期间作者已注销的讨论/评论，以恢复旧版本非空且级联删除的外键约束，因此必须先备份。
 
 如需修复历史派生统计，先确认迁移已到 head、备份数据库并排空 Judge 任务，然后从 `backend-api/` 执行 `python -m app.maintenance.rebuild_statistics --apply`。重建与在线 Judge 使用 PostgreSQL advisory lock 互斥，但维护窗口仍可降低长事务和锁等待风险；执行后核对用户/题目总计及事件台账数量。
 
-关键环境变量为 `MINIO_ENDPOINT`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`、`MINIO_BUCKET`、`SUBMISSION_SOURCE_MAX_BYTES`、`SUBMISSION_MIN_INTERVAL_SECONDS`、`SUBMISSION_STREAM_NAME`、`OUTBOX_BATCH_SIZE`、`OUTBOX_POLL_INTERVAL_MS`、`OUTBOX_RETRY_MAX_SECONDS` 和 `OUTBOX_DEDUP_TTL_SECONDS`。
+关键环境变量为 `MINIO_ENDPOINT`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`、`MINIO_BUCKET`、`MINIO_TEST_DATA_BUCKET`、`TEST_DATA_OBJECT_MAX_BYTES`、`JUDGE_SUPPORTED_LANGUAGES`、`SUBMISSION_SOURCE_MAX_BYTES`、`SUBMISSION_MIN_INTERVAL_SECONDS`、`SUBMISSION_STREAM_NAME`、`OUTBOX_BATCH_SIZE`、`OUTBOX_POLL_INTERVAL_MS`、`OUTBOX_RETRY_MAX_SECONDS` 和 `OUTBOX_DEDUP_TTL_SECONDS`。
 
 Redis 去重键有保留期，默认 7 天。这个时长必须大于可能的 Outbox 最大重试窗口；Judge 以 `submission_id` 租约、数据库终态和条件状态更新保证重复事件不会重复落结果，不能只依赖 publisher 去重键。MinIO 应使用独立的最小权限账号，禁止把 Compose 示例 root 凭证直接用于生产。
 

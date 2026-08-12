@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.domain.models import (
+    CheckerType,
     JudgeResult,
     SubmissionJob,
     SubmissionMode,
@@ -30,10 +31,13 @@ class JudgeRepository:
             SELECT s.id, s.problem_id, l.slug AS language, s.status::text AS status,
                    s.mode::text AS mode,
                    s.source_object_key, s.source_checksum,
-                   p.time_limit_ms, p.memory_limit_mb
+                   s.test_set_id, s.problem_version,
+                   s.time_limit_ms_snapshot, s.memory_limit_mb_snapshot,
+                   COALESCE(ts.checker_type::text, 'exact') AS checker_type,
+                   ts.absolute_tolerance, ts.relative_tolerance
               FROM submissions s
-              JOIN problems p ON p.id = s.problem_id
               JOIN languages l ON l.id = s.language_id
+              LEFT JOIN test_sets ts ON ts.id = s.test_set_id
              WHERE s.id = :submission_id
             """
         )
@@ -53,16 +57,31 @@ class JudgeRepository:
             language=row["language"],
             status=SubmissionStatus(row["status"]),
             mode=SubmissionMode(row["mode"]),
+            test_set_id=row["test_set_id"],
+            problem_version=row["problem_version"],
             source_object_key=row["source_object_key"],
             source_checksum=row["source_checksum"],
-            time_limit_ms=row["time_limit_ms"],
-            memory_limit_mb=row["memory_limit_mb"],
+            time_limit_ms=row["time_limit_ms_snapshot"],
+            memory_limit_mb=row["memory_limit_mb_snapshot"],
+            checker_type=CheckerType(row["checker_type"]),
+            absolute_tolerance=(
+                Decimal(row["absolute_tolerance"])
+                if row["absolute_tolerance"] is not None
+                else None
+            ),
+            relative_tolerance=(
+                Decimal(row["relative_tolerance"])
+                if row["relative_tolerance"] is not None
+                else None
+            ),
         )
 
     async def load_test_cases(self, job: SubmissionJob) -> list[TestCase]:
         if job.mode is SubmissionMode.SAMPLE:
             return await self._load_sample_case(job.problem_id)
-        return await self._load_hidden_test_cases(job.problem_id)
+        if job.test_set_id is None:
+            return []
+        return await self._load_hidden_test_cases(job.test_set_id)
 
     async def _load_sample_case(self, problem_id: int) -> list[TestCase]:
         statement = text(
@@ -92,18 +111,18 @@ class JudgeRepository:
             )
         ]
 
-    async def _load_hidden_test_cases(self, problem_id: int) -> list[TestCase]:
+    async def _load_hidden_test_cases(self, test_set_id: UUID) -> list[TestCase]:
         statement = text(
             """
             SELECT id, input_object_key, output_object_key, checksum, score, sequence
-              FROM test_cases
-             WHERE problem_id = :problem_id AND is_hidden = TRUE
+             FROM test_cases
+             WHERE test_set_id = :test_set_id
              ORDER BY sequence
             """
         )
         try:
             async with self.engine.connect() as connection:
-                result = await connection.execute(statement, {"problem_id": problem_id})
+                result = await connection.execute(statement, {"test_set_id": test_set_id})
                 rows = result.mappings().all()
         except SQLAlchemyError as exc:
             raise InfrastructureError("PostgreSQL test-case lookup failed") from exc

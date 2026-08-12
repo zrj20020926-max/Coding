@@ -10,12 +10,14 @@ from app.api.dependencies import get_redis_client
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.models.problem import CheckerType, Problem, TestSet, TestSetStatus
 from app.services.object_storage import get_source_object_store
 
 
 class FakeSourceObjectStore:
     def __init__(self) -> None:
         self.objects: dict[str, bytes] = {}
+        self.test_objects: dict[str, bytes] = {}
         self.fail_put = False
 
     async def put_source(self, object_key: str, content: bytes) -> None:
@@ -28,6 +30,20 @@ class FakeSourceObjectStore:
 
     async def get_source(self, object_key: str) -> bytes:
         return self.objects[object_key]
+
+    async def get_test_data(self, object_key: str) -> bytes:
+        return self.test_objects[object_key]
+
+
+def active_test_set(problem: Problem, version: int = 1) -> TestSet:
+    return TestSet(
+        problem=problem,
+        version=version,
+        status=TestSetStatus.ACTIVE,
+        checker_type=CheckerType.EXACT,
+        case_count=1,
+        total_score=100,
+    )
 
 
 @pytest.fixture

@@ -15,6 +15,8 @@ from app.models.problem import (
     Tag,
     UserProblemProgress,
 )
+from app.models.problem import TestSet as ProblemTestSet
+from app.models.problem import TestSetStatus as ProblemTestSetStatus
 from app.models.submission import Submission, SubmissionMode, SubmissionStatus
 from app.models.user import User
 
@@ -79,7 +81,21 @@ async def seed_training_catalog(
         enabled=True,
         sort_order=10,
     )
-    db.add_all([easy, hard, private, language])
+    easy_set = ProblemTestSet(
+        problem=easy,
+        version=1,
+        status=ProblemTestSetStatus.ACTIVE,
+        case_count=1,
+        total_score=100,
+    )
+    hard_set = ProblemTestSet(
+        problem=hard,
+        version=1,
+        status=ProblemTestSetStatus.ACTIVE,
+        case_count=1,
+        total_score=100,
+    )
+    db.add_all([easy, hard, private, language, easy_set, hard_set])
     await db.commit()
     return easy, hard, private, language
 
@@ -176,6 +192,7 @@ async def test_training_dashboard_is_scoped_to_current_user(
                 language_id=language.id,
                 status=SubmissionStatus.ACCEPTED,
                 mode=SubmissionMode.JUDGE,
+                test_set_id=easy.test_sets[0].id,
                 source_object_key="internal/alice/accepted",
                 source_checksum="1" * 64,
                 judged_at=accepted_at,
@@ -186,6 +203,7 @@ async def test_training_dashboard_is_scoped_to_current_user(
                 language_id=language.id,
                 status=SubmissionStatus.WRONG_ANSWER,
                 mode=SubmissionMode.JUDGE,
+                test_set_id=hard.test_sets[0].id,
                 source_object_key="internal/alice/wrong",
                 source_checksum="2" * 64,
                 judged_at=accepted_at,
@@ -196,6 +214,7 @@ async def test_training_dashboard_is_scoped_to_current_user(
                 language_id=language.id,
                 status=SubmissionStatus.ACCEPTED,
                 mode=SubmissionMode.JUDGE,
+                test_set_id=hard.test_sets[0].id,
                 source_object_key="internal/bob/accepted",
                 source_checksum="3" * 64,
                 judged_at=accepted_at,

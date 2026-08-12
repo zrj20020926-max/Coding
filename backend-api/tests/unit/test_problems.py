@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 import pytest
@@ -18,6 +19,7 @@ from app.models.problem import (
 )
 from app.models.user import User
 from app.services.problem_import import import_problem_seed, load_seed_document
+from tests.unit.conftest import FakeSourceObjectStore
 
 
 async def register_user(client: AsyncClient, username: str = "catalog_user") -> dict[str, str]:
@@ -241,7 +243,9 @@ async def test_public_responses_do_not_leak_runtime_configuration(
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_admin_permissions_crud_publish_and_offline(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient,
+    db_session: AsyncSession,
+    fake_object_store: FakeSourceObjectStore,
 ) -> None:
     await seed_catalog(db_session)
     payload = {
@@ -282,6 +286,87 @@ async def test_admin_permissions_crud_publish_and_offline(
     published = await client.post(
         f"/api/v1/admin/problems/{problem_id}/publish", headers=headers
     )
+    assert published.status_code == 409
+    assert published.json()["detail"] == {
+        "code": "PROBLEM_NOT_READY",
+        "message": "题目缺少有效的隐藏测试集",
+        "issues": [],
+    }
+
+    db_session.add(
+        Language(
+            slug="cpp",
+            display_name="C++",
+            version="C++20",
+            monaco_language="cpp",
+            source_filename="main.cpp",
+            compile_command="internal",
+            run_command="internal",
+            docker_image="internal",
+            enabled=True,
+        )
+    )
+    await db_session.commit()
+    test_set_response = await client.post(
+        f"/api/v1/admin/problems/{problem_id}/test-sets",
+        json={"checker_type": "exact"},
+        headers=headers,
+    )
+    assert test_set_response.status_code == 201
+    test_set_id = test_set_response.json()["id"]
+    stdin = b"1 2\n"
+    expected = b"3\n"
+    fake_object_store.test_objects["tests/input"] = stdin
+    fake_object_store.test_objects["tests/output"] = expected
+    checksum = hashlib.sha256(stdin + b"\0" + expected).hexdigest()
+    added = await client.post(
+        f"/api/v1/admin/problems/test-sets/{test_set_id}/cases",
+        json={
+            "sequence": 1,
+            "score": "100.00",
+            "input_object_key": "tests/input",
+            "output_object_key": "tests/output",
+            "checksum": checksum,
+        },
+        headers=headers,
+    )
+    assert added.status_code == 201
+    assert "object_key" not in added.text and "checksum" not in added.text
+    validated = await client.post(
+        f"/api/v1/admin/problems/test-sets/{test_set_id}/validate", headers=headers
+    )
+    assert validated.status_code == 200
+    assert validated.json()["issues"] == []
+    activated = await client.post(
+        f"/api/v1/admin/problems/test-sets/{test_set_id}/activate", headers=headers
+    )
+    assert activated.status_code == 200
+    del fake_object_store.test_objects["tests/input"]
+    missing_on_publish = await client.post(
+        f"/api/v1/admin/problems/{problem_id}/publish", headers=headers
+    )
+    assert missing_on_publish.status_code == 409
+    assert missing_on_publish.json()["detail"]["issues"][0]["code"] == (
+        "TEST_DATA_UNAVAILABLE"
+    )
+    assert "tests/input" not in missing_on_publish.text
+
+    fake_object_store.test_objects["tests/input"] = stdin
+    fake_object_store.test_objects["tests/output"] = b"tampered\n"
+    checksum_on_publish = await client.post(
+        f"/api/v1/admin/problems/{problem_id}/publish", headers=headers
+    )
+    assert checksum_on_publish.status_code == 409
+    issue_codes = {
+        issue["code"] for issue in checksum_on_publish.json()["detail"]["issues"]
+    }
+    assert "CHECKSUM_MISMATCH" in issue_codes
+    assert checksum not in checksum_on_publish.text
+
+    fake_object_store.test_objects["tests/output"] = expected
+    published = await client.post(
+        f"/api/v1/admin/problems/{problem_id}/publish", headers=headers
+    )
     assert published.status_code == 200
     assert (await client.get(f"/api/v1/problems/{problem_id}")).status_code == 200
 
@@ -308,7 +393,7 @@ async def test_yaml_and_json_seed_import_is_idempotent(
                 "difficulty": "easy",
                 "input_description": "输入",
                 "output_description": "输出",
-                "visibility": "public",
+                "visibility": "draft",
                 "tag_slugs": ["array"],
             }
         ],
@@ -326,7 +411,7 @@ async def test_yaml_and_json_seed_import_is_idempotent(
         "tags:\n  - slug: array\n    name: 数组\nproblems:\n"
         "  - slug: seeded-problem\n    title: YAML 更新题\n    description: 描述\n"
         "    difficulty: medium\n    input_description: 输入\n    output_description: 输出\n"
-        "    visibility: public\n    tag_slugs: [array]\n",
+        "    visibility: draft\n    tag_slugs: [array]\n",
         encoding="utf-8",
     )
     await import_problem_seed(db_session, load_seed_document(yaml_path))
@@ -336,3 +421,89 @@ async def test_yaml_and_json_seed_import_is_idempotent(
     assert len(problems) == 1
     assert len(links) == 1
     assert problems[0].title == "YAML 更新题"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_test_set_admin_endpoints_reject_non_admin_and_never_leak_hidden_fields(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    fake_object_store: FakeSourceObjectStore,
+) -> None:
+    problems = await seed_catalog(db_session)
+    normal_headers = await register_user(client, "test_set_normal")
+    forbidden = await client.post(
+        f"/api/v1/admin/problems/{problems['draft'].id}/test-sets",
+        json={"checker_type": "exact"},
+        headers=normal_headers,
+    )
+    assert forbidden.status_code == 403
+
+    user = await db_session.scalar(select(User).where(User.username == "test_set_normal"))
+    assert user is not None
+    user.is_admin = True
+    db_session.add(
+        Language(
+            slug="cpp",
+            display_name="C++",
+            version="C++20",
+            monaco_language="cpp",
+            source_filename="main.cpp",
+            compile_command="private compile command",
+            run_command="private run command",
+            docker_image="private image",
+            enabled=True,
+        )
+    )
+    await db_session.commit()
+    created = await client.post(
+        f"/api/v1/admin/problems/{problems['draft'].id}/test-sets",
+        json={"checker_type": "exact"},
+        headers=normal_headers,
+    )
+    test_set_id = created.json()["id"]
+    missing = await client.post(
+        f"/api/v1/admin/problems/test-sets/{test_set_id}/cases",
+        json={
+            "sequence": 1,
+            "score": 100,
+            "input_object_key": "secret/missing-input",
+            "output_object_key": "secret/missing-output",
+            "checksum": "a" * 64,
+        },
+        headers=normal_headers,
+    )
+    assert missing.status_code == 422
+    assert missing.json()["detail"]["code"] == "TEST_DATA_UNAVAILABLE"
+    assert "secret/" not in missing.text and "a" * 64 not in missing.text
+
+    fake_object_store.test_objects["secret/input"] = b"1 2\n"
+    fake_object_store.test_objects["secret/output"] = b"3\n"
+    mismatch = await client.post(
+        f"/api/v1/admin/problems/test-sets/{test_set_id}/cases",
+        json={
+            "sequence": 1,
+            "score": 100,
+            "input_object_key": "secret/input",
+            "output_object_key": "secret/output",
+            "checksum": "b" * 64,
+        },
+        headers=normal_headers,
+    )
+    assert mismatch.status_code == 422
+    assert mismatch.json()["detail"]["code"] == "TEST_DATA_CHECKSUM_MISMATCH"
+    assert "secret/" not in mismatch.text and "b" * 64 not in mismatch.text
+
+    listed = await client.get(
+        f"/api/v1/admin/problems/{problems['draft'].id}/test-sets",
+        headers=normal_headers,
+    )
+    serialized = listed.text
+    for forbidden_field in (
+        "input_object_key",
+        "output_object_key",
+        "checksum",
+        "docker_image",
+        "compile_command",
+    ):
+        assert forbidden_field not in serialized

@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 
 from app.domain.models import (
+    CheckerType,
     CompileResult,
     SubmissionJob,
     SubmissionMode,
@@ -56,10 +57,13 @@ def fixture(
         language="python",
         status=SubmissionStatus.COMPILING,
         mode=SubmissionMode.JUDGE,
+        test_set_id=uuid4(),
+        problem_version=1,
         source_object_key="private/source",
         source_checksum=hashlib.sha256(source).hexdigest(),
         time_limit_ms=1000,
         memory_limit_mb=64,
+        checker_type=CheckerType.EXACT,
     )
     test_case = JudgeTestCase(
         id=uuid4(),
@@ -120,3 +124,26 @@ async def test_sample_run_uses_inline_public_case_without_hidden_object_reads() 
     assert result.status is SubmissionStatus.ACCEPTED
     assert result.total_case_count == 1
     assert result.public_output == "answer\n"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_token_and_float_checkers_use_submission_snapshot() -> None:
+    engine, job, cases = fixture(b"1   2\n", b"1 2\n")
+    token_result = await engine.judge(
+        replace(job, checker_type=CheckerType.TOKEN),
+        cases,
+    )
+    assert token_result.status is SubmissionStatus.ACCEPTED
+
+    float_engine, float_job, float_cases = fixture(b"1.0009\n", b"1.0\n")
+    float_result = await float_engine.judge(
+        replace(
+            float_job,
+            checker_type=CheckerType.FLOAT,
+            absolute_tolerance=Decimal("0.001"),
+            relative_tolerance=Decimal("0"),
+        ),
+        float_cases,
+    )
+    assert float_result.status is SubmissionStatus.ACCEPTED

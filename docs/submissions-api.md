@@ -22,7 +22,7 @@ Content-Type: application/json
 
 成功返回 `202 Accepted`。`Idempotency-Key` 可选、最长 128 个可打印字符；同一用户使用相同键和相同请求重试时返回原提交，并令 `idempotent_replay=true`。相同键用于不同题目、语言或源码时返回 `409 IDEMPOTENCY_KEY_REUSED`。
 
-服务校验账号状态、公开题目、启用语言、UTF-8 源码字节数和用户提交间隔。源码写入 MinIO 后，API 在一个 PostgreSQL 事务中创建 `Pending` Submission 与 `submission.created` Outbox 事件。MinIO 失败返回 503，且不产生数据库记录。
+服务校验账号状态、公开题目、启用语言、UTF-8 源码字节数和用户提交间隔。正式模式还要求题目存在 active 测试集。源码写入 MinIO 后，API 在一个 PostgreSQL 事务中创建 `Pending` Submission 与 `submission.created` Outbox 事件，并快照 `test_set_id`、题面版本、时间限制和内存限制；事件 payload 只含 `event_id` 与 `submission_id`。MinIO 失败返回 503，且不产生数据库记录。
 
 ## 查询
 
@@ -44,6 +44,7 @@ Content-Type: application/json
 | 404 | `PROBLEM_NOT_FOUND` | 题目不存在或不是公开状态 |
 | 404 | `SUBMISSION_NOT_FOUND` | 提交不存在或不属于当前用户 |
 | 409 | `IDEMPOTENCY_KEY_REUSED` | 幂等键绑定了不同请求 |
+| 409 | `PROBLEM_NOT_READY` | 正式提交的题目没有 active 隐藏测试集 |
 | 413 | `SOURCE_TOO_LARGE` | 源码超过字节上限 |
 | 429 | `SUBMISSION_RATE_LIMITED` | 提交过于频繁，响应包含 `Retry-After` |
 | 503 | `SOURCE_STORAGE_UNAVAILABLE` | MinIO 暂时不可用 |

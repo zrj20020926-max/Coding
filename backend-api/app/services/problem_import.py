@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.problem import Problem, ProblemTag, Tag
+from app.models.problem import Problem, ProblemTag, ProblemVisibility, Tag
 from app.schemas.problem import ProblemCreate
 
 
@@ -87,6 +87,10 @@ async def import_problem_seed(
         ).all()
     }
     for seed_problem in document.problems:
+        if seed_problem.visibility is ProblemVisibility.PUBLIC:
+            raise SeedImportError(
+                f"题目 {seed_problem.slug} 不能通过种子直接发布；请先导入草稿并通过测试集门禁"
+            )
         missing_tags = sorted(set(seed_problem.tag_slugs) - set(existing_tags))
         if missing_tags:
             raise SeedImportError(
@@ -100,6 +104,22 @@ async def import_problem_seed(
             existing_problems[problem.slug] = problem
             result.problems_created += 1
         else:
+            versioned_fields = {
+                "title",
+                "description",
+                "difficulty",
+                "input_description",
+                "output_description",
+                "sample_input",
+                "sample_output",
+                "time_limit_ms",
+                "memory_limit_mb",
+            }
+            if any(
+                field_name in versioned_fields and getattr(problem, field_name) != value
+                for field_name, value in values.items()
+            ):
+                problem.version += 1
             for field_name, value in values.items():
                 setattr(problem, field_name, value)
             result.problems_updated += 1
