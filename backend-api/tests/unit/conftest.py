@@ -19,6 +19,8 @@ class FakeSourceObjectStore:
         self.objects: dict[str, bytes] = {}
         self.test_objects: dict[str, bytes] = {}
         self.fail_put = False
+        self.fail_test_put_after: int | None = None
+        self.test_put_count = 0
 
     async def put_source(self, object_key: str, content: bytes) -> None:
         if self.fail_put:
@@ -38,6 +40,12 @@ class FakeSourceObjectStore:
         return object_key in self.test_objects
 
     async def put_test_data(self, object_key: str, content: bytes) -> None:
+        self.test_put_count += 1
+        if self.fail_put or (
+            self.fail_test_put_after is not None
+            and self.test_put_count > self.fail_test_put_after
+        ):
+            raise OSError("MinIO unavailable")
         self.test_objects[object_key] = content
 
     async def delete_test_data(self, object_key: str) -> None:

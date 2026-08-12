@@ -30,6 +30,8 @@ from app.schemas.content import (
     CollectionProblemPublic,
     CollectionSummary,
     CollectionUpdate,
+    DailyChallengeAdminItem,
+    DailyChallengeAdminPage,
     DailyChallengePublic,
 )
 from app.services.problems import to_problem_summary
@@ -348,8 +350,12 @@ async def reorder_collection(
     collection = await _load_collection(db, collection_id=collection_id)
     if collection is None:
         raise content_error(404, "COLLECTION_NOT_FOUND", "题单不存在")
-    await _replace_items(db, collection, problem_ids)
-    return await _to_admin_collection(db, await _save_collection(db, collection))
+    try:
+        await _replace_items(db, collection, problem_ids)
+        return await _to_admin_collection(db, await _save_collection(db, collection))
+    except Exception:
+        await db.rollback()
+        raise
 
 
 async def set_collection_public(
@@ -410,3 +416,53 @@ async def set_daily_challenge(
         timezone=settings.content_timezone,
         problem=to_problem_summary(problem, None, authenticated=False),
     )
+
+
+async def list_daily_challenges(
+    db: AsyncSession,
+    start_date: date,
+    end_date: date,
+    page: int,
+    page_size: int,
+) -> DailyChallengeAdminPage:
+    if start_date > end_date:
+        raise content_error(400, "INVALID_DATE_RANGE", "开始日期不能晚于结束日期")
+    filters = [
+        DailyChallenge.challenge_date >= start_date,
+        DailyChallenge.challenge_date <= end_date,
+    ]
+    total = int(
+        await db.scalar(select(func.count(DailyChallenge.challenge_date)).where(*filters))
+        or 0
+    )
+    rows = (
+        await db.scalars(
+            select(DailyChallenge)
+            .where(*filters)
+            .order_by(DailyChallenge.challenge_date.asc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).all()
+    return DailyChallengeAdminPage(
+        items=[
+            DailyChallengeAdminItem(
+                challenge_date=row.challenge_date,
+                timezone=settings.content_timezone,
+                problem=to_problem_summary(row.problem, None, authenticated=False),
+            )
+            for row in rows
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=math.ceil(total / page_size) if total else 0,
+    )
+
+
+async def delete_daily_challenge(db: AsyncSession, challenge_date: date) -> None:
+    challenge = await db.get(DailyChallenge, challenge_date)
+    if challenge is None:
+        raise content_error(404, "DAILY_CHALLENGE_NOT_FOUND", "每日一题不存在")
+    await db.delete(challenge)
+    await db.commit()

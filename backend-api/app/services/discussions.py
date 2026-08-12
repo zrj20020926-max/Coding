@@ -29,6 +29,7 @@ from app.schemas.content import (
     DiscussionPublic,
     ReportState,
 )
+from app.services.audit import record_audit
 from app.services.collections import content_error
 
 
@@ -536,6 +537,14 @@ async def moderate_discussion(
     add_moderation_action(
         db, admin.id, "discussion", discussion_id, f"review:{review_status.value}", reason
     )
+    record_audit(
+        db,
+        action="discussion.moderate",
+        target_type="discussion",
+        target_id=discussion_id,
+        actor_user_id=admin.id,
+        metadata={"review_status": review_status.value, "reason_provided": bool(reason)},
+    )
     await db.commit()
     await db.refresh(discussion)
     return to_discussion(discussion, admin)
@@ -573,6 +582,14 @@ async def moderate_comment(
     add_moderation_action(
         db, admin.id, "comment", comment_id, f"review:{review_status.value}", reason
     )
+    record_audit(
+        db,
+        action="comment.moderate",
+        target_type="comment",
+        target_id=comment_id,
+        actor_user_id=admin.id,
+        metadata={"review_status": review_status.value, "reason_provided": bool(reason)},
+    )
     await db.commit()
     await db.refresh(comment)
     return to_comment(comment, admin)
@@ -599,6 +616,14 @@ async def set_discussion_controls(
         raise content_error(400, "EMPTY_ADMIN_UPDATE", "未提供管理操作")
     add_moderation_action(
         db, admin.id, "discussion", discussion_id, "+".join(actions), None
+    )
+    record_audit(
+        db,
+        action="discussion.controls",
+        target_type="discussion",
+        target_id=discussion_id,
+        actor_user_id=admin.id,
+        metadata={"actions": actions},
     )
     await db.commit()
     await db.refresh(discussion)
@@ -655,6 +680,14 @@ async def handle_report(
     report.handled_by = admin.id
     report.handled_at = datetime.now(timezone.utc)
     add_moderation_action(db, admin.id, "report", report.id, report_status, reason)
+    record_audit(
+        db,
+        action="report.handle",
+        target_type="report",
+        target_id=report.id,
+        actor_user_id=admin.id,
+        metadata={"status": report_status, "reason_provided": bool(reason)},
+    )
     await db.commit()
     return ContentReportPublic(
         id=report.id,

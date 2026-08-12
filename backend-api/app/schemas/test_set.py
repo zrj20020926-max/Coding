@@ -66,3 +66,14 @@ class TestSetAdminPublic(BaseModel):
 class TestSetValidationPublic(BaseModel):
     test_set: TestSetAdminPublic
     issues: list[TestSetIssue]
+
+
+class TestCaseBatchUploadPublic(BaseModel):
+    test_set: TestSetAdminPublic
+    uploaded_count: int
+
+
+class ProblemReadinessPublic(BaseModel):
+    ready: bool
+    active_test_set: Optional[TestSetAdminPublic] = None
+    issues: list[TestSetIssue] = Field(default_factory=list)

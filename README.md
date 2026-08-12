@@ -152,6 +152,25 @@ docker compose -f docker-compose.content-test.yml run --rm catalog-cpp-validator
 
 详细格式、单题/单题单导入、生产保护和恢复方式见[内容初始化系统](docs/content-bootstrap.md)。
 
+### 管理员初始化
+
+首次管理员必须通过受控 CLI 创建或提升，密码不会写入源码、Compose、README 或日志：
+
+```powershell
+cd backend-api
+.\.venv\Scripts\python -m app.bootstrap.admin create
+.\.venv\Scripts\python -m app.bootstrap.admin promote --username existing_user
+```
+
+非交互环境可传 `--username`、`--email`、`--nickname`、`--password`，或使用
+`--secret-file C:\secure\codearena-admin.json` 读取 UTF-8 JSON Secret。Secret 文件字段为
+`username`、`email`、`nickname`、`password`，不得提交到仓库。创建与提升操作幂等并写入
+`audit_logs`；账号/邮箱冲突和弱密码会明确失败，CLI 输出不会包含密码、Token 或密码哈希。
+
+管理员 API 仍由后端 `get_admin_user` 强制鉴权。管理入口包括题目、测试集、题单、每日一题、
+讨论审核、举报和 `/api/v1/admin/audit-logs`。测试集批量上传接受包含 `manifest.json` 的 ZIP，
+先完成路径、符号链接、压缩比、大小、UTF-8、序号、分值与 checksum 校验后再原子保存。
+
 ## 数据库迁移
 
 以下命令均在 `backend-api/` 目录执行。

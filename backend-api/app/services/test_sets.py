@@ -384,3 +384,23 @@ async def delete_test_set(db: AsyncSession, test_set_id: UUID) -> None:
         )
     await db.delete(test_set)
     await db.commit()
+
+
+async def deactivate_test_set(db: AsyncSession, test_set_id: UUID) -> TestSetAdminPublic:
+    test_set = await get_test_set(db, test_set_id, lock=True)
+    if test_set is None:
+        raise test_set_error(status.HTTP_404_NOT_FOUND, "TEST_SET_NOT_FOUND", "测试集不存在")
+    referenced = await db.scalar(
+        select(func.count(Submission.id)).where(Submission.test_set_id == test_set_id)
+    )
+    if referenced or test_set.status is not TestSetStatus.DRAFT:
+        raise test_set_error(
+            status.HTTP_409_CONFLICT,
+            "TEST_SET_CANNOT_DEACTIVATE",
+            "只能停用未被提交引用的草稿测试集",
+        )
+    test_set.status = TestSetStatus.INACTIVE
+    await db.commit()
+    loaded = await get_test_set(db, test_set_id)
+    assert loaded is not None
+    return to_test_set_public(loaded)

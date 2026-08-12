@@ -5,6 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.ai import AuditLog
 from app.models.content import (
     Collection,
     ContentModerationAction,
@@ -137,6 +138,20 @@ async def test_collection_admin_order_publish_and_personal_progress(
         second.id,
         offline.id,
     ]
+    failed_reorder = await client.put(
+        f"/api/v1/admin/collections/{collection_id}/problems",
+        json={"problem_ids": [first.id, 999999999]},
+        headers=admin_headers,
+    )
+    assert failed_reorder.status_code == 400
+    unchanged = await client.get(
+        f"/api/v1/admin/collections/{collection_id}", headers=admin_headers
+    )
+    assert [item["problem"]["id"] for item in unchanged.json()["problems"]] == [
+        first.id,
+        second.id,
+        offline.id,
+    ]
     published = await client.post(
         f"/api/v1/admin/collections/{collection_id}/publish",
         headers=admin_headers,
@@ -204,12 +219,32 @@ async def test_daily_challenge_uses_server_date_and_hides_offline_problem(
     assert daily.json()["timezone"] == "Asia/Shanghai"
     assert daily.json()["problem"]["slug"] == "content-first"
 
+    date_range = await client.get(
+        f"/api/v1/admin/daily-challenges?start_date={today.isoformat()}"
+        f"&end_date={today.isoformat()}&page=1&page_size=20",
+        headers=admin_headers,
+    )
+    assert date_range.status_code == 200
+    assert date_range.json()["total"] == 1
+    assert date_range.json()["items"][0]["timezone"] == "Asia/Shanghai"
+
     await client.put(
         f"/api/v1/admin/daily-challenges/{today.isoformat()}",
         json={"problem_id": offline.id},
         headers=admin_headers,
     )
     assert (await client.get("/api/v1/daily-challenge")).status_code == 404
+    deleted = await client.delete(
+        f"/api/v1/admin/daily-challenges/{today.isoformat()}", headers=admin_headers
+    )
+    assert deleted.status_code == 204
+    assert (
+        await client.get(
+            f"/api/v1/admin/daily-challenges?start_date={today.isoformat()}"
+            f"&end_date={today.isoformat()}",
+            headers=admin_headers,
+        )
+    ).json()["total"] == 0
 
 
 @pytest.mark.unit
@@ -351,6 +386,12 @@ async def test_discussion_moderation_lock_reports_and_permissions(
     ).status_code == 423
     action_count = await db_session.scalar(select(func.count(ContentModerationAction.id)))
     assert action_count == 3
+    audit_actions = set((await db_session.scalars(select(AuditLog.action))).all())
+    assert {
+        "discussion.moderate",
+        "discussion.controls",
+        "report.handle",
+    }.issubset(audit_actions)
 
     persisted_problem = await db_session.get(Problem, problem_id)
     assert persisted_problem is not None

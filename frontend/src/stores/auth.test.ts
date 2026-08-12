@@ -15,6 +15,7 @@ const profile: UserProfile = {
   nickname: '候选人一号',
   avatar_url: null,
   bio: null,
+  is_admin: false,
   solved_count: 0,
   submission_count: 0,
   accepted_count: 0,

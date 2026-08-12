@@ -22,6 +22,13 @@ class ProblemSort(str, Enum):
     ACCEPTANCE = "acceptance"
 
 
+class AdminProblemSort(str, Enum):
+    CREATED_DESC = "created_desc"
+    CREATED_ASC = "created_asc"
+    UPDATED_DESC = "updated_desc"
+    UPDATED_ASC = "updated_asc"
+
+
 class TagPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -146,3 +153,11 @@ class ProblemUpdate(BaseModel):
 class AdminProblem(ProblemDetail):
     visibility: ProblemVisibility
     created_by: Optional[str]
+
+
+class AdminProblemPage(BaseModel):
+    items: list[AdminProblem]
+    total: int
+    page: int
+    page_size: int
+    pages: int

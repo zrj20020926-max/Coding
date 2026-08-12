@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     test_data_object_max_bytes: int = Field(
         default=16_777_216, ge=1024, le=134_217_728
     )
+    test_data_archive_max_bytes: int = Field(
+        default=67_108_864, ge=1024, le=536_870_912
+    )
+    test_data_archive_uncompressed_max_bytes: int = Field(
+        default=134_217_728, ge=1024, le=1_073_741_824
+    )
+    test_data_archive_max_files: int = Field(default=1000, ge=2, le=10_000)
+    test_data_archive_max_ratio: int = Field(default=100, ge=1, le=1000)
 
     submission_source_max_bytes: int = Field(default=262_144, ge=1024, le=1_048_576)
     submission_min_interval_seconds: int = Field(default=2, ge=0, le=300)

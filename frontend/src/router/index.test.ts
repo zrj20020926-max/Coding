@@ -38,6 +38,18 @@ describe('authentication route guard', () => {
     })
   })
 
+  it('hides the administrator route from normal users', async () => {
+    const result = await runAuthGuard(
+      { fullPath: '/admin', meta: { requiresAuth: true, requiresAdmin: true } },
+      {
+        isAuthenticated: true,
+        user: { is_admin: false },
+        ensureProfile: vi.fn().mockResolvedValue(undefined),
+      },
+    )
+    expect(result).toEqual({ name: 'not-found' })
+  })
+
   it('registers catalog, slug detail and an independent 404 route', () => {
     expect(router.resolve('/problems').name).toBe('problems')
     expect(router.resolve('/problems/a-plus-b').name).toBe('problem-detail')

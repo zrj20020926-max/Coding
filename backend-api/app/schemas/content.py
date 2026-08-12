@@ -119,6 +119,20 @@ class DailyChallengeSet(BaseModel):
     problem_id: int = Field(gt=0)
 
 
+class DailyChallengeAdminItem(BaseModel):
+    challenge_date: date
+    timezone: str
+    problem: ProblemSummary
+
+
+class DailyChallengeAdminPage(BaseModel):
+    items: list[DailyChallengeAdminItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
 class DiscussionCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     content: str = Field(min_length=2, max_length=50_000)

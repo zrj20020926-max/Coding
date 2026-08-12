@@ -5,6 +5,7 @@ export interface UserProfile {
   nickname: string
   avatar_url: string | null
   bio: string | null
+  is_admin: boolean
   solved_count: number
   submission_count: number
   accepted_count: number

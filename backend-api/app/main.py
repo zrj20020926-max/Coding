@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.dependencies import redis_client
 from app.api.routes import (
+    admin_audit,
     admin_content,
     admin_discussions,
     admin_problems,
@@ -91,3 +92,4 @@ app.include_router(collections.router, prefix=settings.api_prefix)
 app.include_router(discussions.router, prefix=settings.api_prefix)
 app.include_router(admin_content.router, prefix=settings.api_prefix)
 app.include_router(admin_discussions.router, prefix=settings.api_prefix)
+app.include_router(admin_audit.router, prefix=settings.api_prefix)

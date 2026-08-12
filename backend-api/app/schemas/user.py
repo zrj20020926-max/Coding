@@ -12,6 +12,7 @@ class UserPublic(BaseModel):
     nickname: str
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
+    is_admin: bool
     solved_count: int
     submission_count: int
     accepted_count: int
@@ -21,6 +22,8 @@ class UserPublic(BaseModel):
 
 
 class UserProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     nickname: Optional[str] = Field(default=None, min_length=1, max_length=50)
     avatar_url: Optional[str] = Field(default=None, max_length=2000)
     bio: Optional[str] = Field(default=None, max_length=300)

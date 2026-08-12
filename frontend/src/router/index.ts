@@ -9,6 +9,7 @@ export interface GuardRoute {
 
 export interface AuthGuardState {
   isAuthenticated: boolean
+  user?: { is_admin: boolean } | null
   ensureProfile: () => Promise<void>
 }
 
@@ -17,6 +18,7 @@ export async function runAuthGuard(to: GuardRoute, auth: AuthGuardState) {
   if (to.meta['requiresAuth'] && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
+  if (to.meta['requiresAdmin'] && !auth.user?.is_admin) return { name: 'not-found' }
   if (to.meta['guestOnly'] && auth.isAuthenticated) return { name: 'profile' }
   return true
 }
@@ -67,6 +69,12 @@ const router = createRouter({
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { guestOnly: true } },
     { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue'), meta: { guestOnly: true } },
     { path: '/profile', name: 'profile', component: () => import('@/views/ProfileView.vue'), meta: { requiresAuth: true } },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/views/AdminView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
   ],
   scrollBehavior: () => ({ top: 0 }),
