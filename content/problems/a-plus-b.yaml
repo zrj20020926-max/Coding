@@ -1,30 +1,64 @@
 slug: a-plus-b
-title: A+B 问题
-description: |
-  给定两个整数 $a$ 和 $b$，计算它们的和。
-
-  请从标准输入读取数据，并将结果写到标准输出。
+title: 边界求和
+description: 读取两个整数，输出它们的和。结果可能超出 32 位有符号整数范围。
 difficulty: easy
-tags: [math]
-input_description: 一行包含两个整数 a 和 b，以空格分隔。
-output_description: 输出一个整数，表示 a+b。
-sample_input: |
-  1 2
-sample_output: |
-  3
+tags:
+- basic-io
+- math
+input_description: 一行包含两个整数 `a b`。
+output_description: 输出一个整数 `a+b`。
+data_constraints: '`-10^18 <= a,b <= 10^18`，且答案保证在 64 位有符号整数范围内。'
+sample_input: '7 -3
+
+  '
+sample_output: '4
+
+  '
+sample_explanation: 七与负三相加得到四。
 time_limit_ms: 1000
 memory_limit_mb: 128
-source: CodeArena 基础训练
+source: CodeArena 原创题库
 publish: true
+reference_solutions:
+  python: reference-solutions/a-plus-b/solution.py
+  cpp: reference-solutions/a-plus-b/solution.cpp
 test_set:
   version: 1
   checker_type: exact
   cases:
-    - sequence: 1
-      score: 50
-      input_file: a-plus-b/01.in
-      output_file: a-plus-b/01.out
-    - sequence: 2
-      score: 50
-      input_file: a-plus-b/02.in
-      output_file: a-plus-b/02.out
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 边界求和 在该类输入下的正确性。
+    input_file: a-plus-b/01.in
+    output_file: a-plus-b/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 边界求和 在该类输入下的正确性。
+    input_file: a-plus-b/02.in
+    output_file: a-plus-b/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 边界求和 在该类输入下的正确性。
+    input_file: a-plus-b/03.in
+    output_file: a-plus-b/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 边界求和 在该类输入下的正确性。
+    input_file: a-plus-b/04.in
+    output_file: a-plus-b/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 边界求和 在该类输入下的正确性。
+    input_file: a-plus-b/05.in
+    output_file: a-plus-b/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 边界求和 在该类输入下的正确性。
+    input_file: a-plus-b/06.in
+    output_file: a-plus-b/06.out

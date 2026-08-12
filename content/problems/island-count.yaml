@@ -1,0 +1,72 @@
+slug: island-count
+title: 四向岛屿计数
+description: 在零一网格中，四个方向相邻的陆地格属于同一岛屿，统计岛屿数量。
+difficulty: medium
+tags:
+- bfs
+- matrix
+input_description: 第一行 `n m`，随后 `n` 行长度为 `m` 的零一字符串。
+output_description: 输出岛屿数量。
+data_constraints: '`1 <= n,m <= 500`，`n*m <= 250000`。'
+sample_input: '4 5
+
+  11000
+
+  11010
+
+  00100
+
+  00011
+
+  '
+sample_output: '4
+
+  '
+sample_explanation: 左上角、中央单格、右侧单格和右下角分别形成四座岛屿。
+time_limit_ms: 1800
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/island-count/solution.py
+  cpp: reference-solutions/island-count/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 四向岛屿计数 在该类输入下的正确性。
+    input_file: island-count/01.in
+    output_file: island-count/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 四向岛屿计数 在该类输入下的正确性。
+    input_file: island-count/02.in
+    output_file: island-count/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 四向岛屿计数 在该类输入下的正确性。
+    input_file: island-count/03.in
+    output_file: island-count/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 四向岛屿计数 在该类输入下的正确性。
+    input_file: island-count/04.in
+    output_file: island-count/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 四向岛屿计数 在该类输入下的正确性。
+    input_file: island-count/05.in
+    output_file: island-count/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 四向岛屿计数 在该类输入下的正确性。
+    input_file: island-count/06.in
+    output_file: island-count/06.out

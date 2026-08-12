@@ -1,0 +1,64 @@
+slug: balanced-brackets
+title: 多类括号校验
+description: 判断只由圆括号、方括号和花括号组成的字符串是否正确匹配且嵌套。
+difficulty: easy
+tags:
+- stack
+- string
+input_description: 一行括号字符串。
+output_description: 合法输出 `YES`，否则输出 `NO`。
+data_constraints: '`1 <= |s| <= 200000`。'
+sample_input: '{[()()]}
+
+  '
+sample_output: 'YES
+
+  '
+sample_explanation: 每个右括号都与最近的同类左括号配对。
+time_limit_ms: 1000
+memory_limit_mb: 128
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/balanced-brackets/solution.py
+  cpp: reference-solutions/balanced-brackets/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 多类括号校验 在该类输入下的正确性。
+    input_file: balanced-brackets/01.in
+    output_file: balanced-brackets/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 多类括号校验 在该类输入下的正确性。
+    input_file: balanced-brackets/02.in
+    output_file: balanced-brackets/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 多类括号校验 在该类输入下的正确性。
+    input_file: balanced-brackets/03.in
+    output_file: balanced-brackets/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 多类括号校验 在该类输入下的正确性。
+    input_file: balanced-brackets/04.in
+    output_file: balanced-brackets/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 多类括号校验 在该类输入下的正确性。
+    input_file: balanced-brackets/05.in
+    output_file: balanced-brackets/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 多类括号校验 在该类输入下的正确性。
+    input_file: balanced-brackets/06.in
+    output_file: balanced-brackets/06.out

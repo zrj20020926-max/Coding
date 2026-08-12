@@ -1,0 +1,66 @@
+slug: first-occurrence
+title: 第一个目标位置
+description: 在非递减数组中查找目标值第一次出现的位置。
+difficulty: easy
+tags:
+- binary-search
+- array
+input_description: 第一行 `n target`，第二行 `n` 个非递减整数。
+output_description: 输出一基位置；不存在输出 `-1`。
+data_constraints: '`1 <= n <= 200000`，整数绝对值不超过 `10^9`。'
+sample_input: '7 2
+
+  -1 2 2 2 5 8 9
+
+  '
+sample_output: '2
+
+  '
+sample_explanation: 目标值二第一次出现在第二个位置。
+time_limit_ms: 1000
+memory_limit_mb: 128
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/first-occurrence/solution.py
+  cpp: reference-solutions/first-occurrence/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 第一个目标位置 在该类输入下的正确性。
+    input_file: first-occurrence/01.in
+    output_file: first-occurrence/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 第一个目标位置 在该类输入下的正确性。
+    input_file: first-occurrence/02.in
+    output_file: first-occurrence/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 第一个目标位置 在该类输入下的正确性。
+    input_file: first-occurrence/03.in
+    output_file: first-occurrence/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 第一个目标位置 在该类输入下的正确性。
+    input_file: first-occurrence/04.in
+    output_file: first-occurrence/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 第一个目标位置 在该类输入下的正确性。
+    input_file: first-occurrence/05.in
+    output_file: first-occurrence/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 第一个目标位置 在该类输入下的正确性。
+    input_file: first-occurrence/06.in
+    output_file: first-occurrence/06.out

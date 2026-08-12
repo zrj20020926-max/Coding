@@ -1,0 +1,76 @@
+slug: merge-intervals
+title: 闭区间合并
+description: 合并所有相交或端点相接的闭区间，并按左端点递增输出。
+difficulty: medium
+tags:
+- interval
+- sorting
+input_description: 第一行 `n`，随后 `n` 行为 `l r`。
+output_description: 先输出合并后数量，再逐行输出区间。
+data_constraints: '`1 <= n <= 200000`，`-10^9 <= l <= r <= 10^9`。'
+sample_input: '4
+
+  1 3
+
+  2 6
+
+  8 10
+
+  10 12
+
+  '
+sample_output: '2
+
+  1 6
+
+  8 12
+
+  '
+sample_explanation: 前两个合并为 1 到 6，后两个在端点十相接，合并为 8 到 12。
+time_limit_ms: 1500
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/merge-intervals/solution.py
+  cpp: reference-solutions/merge-intervals/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 闭区间合并 在该类输入下的正确性。
+    input_file: merge-intervals/01.in
+    output_file: merge-intervals/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 闭区间合并 在该类输入下的正确性。
+    input_file: merge-intervals/02.in
+    output_file: merge-intervals/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 闭区间合并 在该类输入下的正确性。
+    input_file: merge-intervals/03.in
+    output_file: merge-intervals/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 闭区间合并 在该类输入下的正确性。
+    input_file: merge-intervals/04.in
+    output_file: merge-intervals/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 闭区间合并 在该类输入下的正确性。
+    input_file: merge-intervals/05.in
+    output_file: merge-intervals/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 闭区间合并 在该类输入下的正确性。
+    input_file: merge-intervals/06.in
+    output_file: merge-intervals/06.out

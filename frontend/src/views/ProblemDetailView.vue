@@ -102,6 +102,7 @@ onBeforeUnmount(() => problemStore.clearDetail())
       <section class="statement-section statement-columns">
         <div><h2>输入说明</h2><MarkdownContent :content="detail.input_description" /></div>
         <div><h2>输出说明</h2><MarkdownContent :content="detail.output_description" /></div>
+        <div><h2>数据范围</h2><MarkdownContent :content="detail.data_constraints" /></div>
       </section>
       <section class="statement-section">
         <h2>样例</h2>
@@ -109,6 +110,7 @@ onBeforeUnmount(() => problemStore.clearDetail())
           <div><span>输入</span><pre><code>{{ detail.sample_input || '（空）' }}</code></pre></div>
           <div><span>输出</span><pre><code>{{ detail.sample_output || '（空）' }}</code></pre></div>
         </div>
+        <div><h2>样例解释</h2><MarkdownContent :content="detail.sample_explanation" /></div>
       </section>
       <aside class="editor-notice">
         <strong>ACM 模式说明</strong>

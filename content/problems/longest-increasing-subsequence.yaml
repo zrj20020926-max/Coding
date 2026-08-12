@@ -1,0 +1,67 @@
+slug: longest-increasing-subsequence
+title: 严格递增子序列
+description: 求数组的最长严格递增子序列长度。子序列可删除任意元素，但不能改变剩余元素相对顺序。
+difficulty: hard
+tags:
+- longest-increasing-subsequence
+- binary-search
+- dynamic-programming
+input_description: 第一行 `n`，第二行 n 个整数。
+output_description: 输出最长长度。
+data_constraints: '`1 <= n <= 200000`，元素绝对值不超过 `10^9`。'
+sample_input: '8
+
+  10 9 2 5 3 7 101 18
+
+  '
+sample_output: '4
+
+  '
+sample_explanation: 例如 2,3,7,18 是长度四的严格递增子序列。
+time_limit_ms: 1800
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/longest-increasing-subsequence/solution.py
+  cpp: reference-solutions/longest-increasing-subsequence/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 严格递增子序列 在该类输入下的正确性。
+    input_file: longest-increasing-subsequence/01.in
+    output_file: longest-increasing-subsequence/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 严格递增子序列 在该类输入下的正确性。
+    input_file: longest-increasing-subsequence/02.in
+    output_file: longest-increasing-subsequence/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 严格递增子序列 在该类输入下的正确性。
+    input_file: longest-increasing-subsequence/03.in
+    output_file: longest-increasing-subsequence/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 严格递增子序列 在该类输入下的正确性。
+    input_file: longest-increasing-subsequence/04.in
+    output_file: longest-increasing-subsequence/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 严格递增子序列 在该类输入下的正确性。
+    input_file: longest-increasing-subsequence/05.in
+    output_file: longest-increasing-subsequence/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 严格递增子序列 在该类输入下的正确性。
+    input_file: longest-increasing-subsequence/06.in
+    output_file: longest-increasing-subsequence/06.out

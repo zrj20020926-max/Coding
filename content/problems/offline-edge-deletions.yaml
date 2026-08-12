@@ -1,0 +1,86 @@
+slug: offline-edge-deletions
+title: 离线删边连通性
+description: 无向图执行若干删边与连通询问。每条边最多删除一次，删除发生后永久有效。输出每次询问的答案。
+difficulty: hard
+tags:
+- union-find
+- graph-connectivity
+input_description: 第一行 `n m q`；随后 m 行边；再 q 行 `D i` 删除第 i 条边，或 `Q u v` 询问。
+output_description: 每个询问输出 `YES` 或 `NO`。
+data_constraints: '`1 <= n,m,q <= 200000`，无自环，删除操作不重复。'
+sample_input: '4 4 5
+
+  1 2
+
+  2 3
+
+  3 4
+
+  1 4
+
+  Q 1 3
+
+  D 2
+
+  Q 1 3
+
+  D 4
+
+  Q 1 3
+
+  '
+sample_output: 'YES
+
+  YES
+
+  NO
+
+  '
+sample_explanation: 先连通；删第二条边后仍可绕行；再删第四条边后不连通。
+time_limit_ms: 3000
+memory_limit_mb: 512
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/offline-edge-deletions/solution.py
+  cpp: reference-solutions/offline-edge-deletions/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 离线删边连通性 在该类输入下的正确性。
+    input_file: offline-edge-deletions/01.in
+    output_file: offline-edge-deletions/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 离线删边连通性 在该类输入下的正确性。
+    input_file: offline-edge-deletions/02.in
+    output_file: offline-edge-deletions/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 离线删边连通性 在该类输入下的正确性。
+    input_file: offline-edge-deletions/03.in
+    output_file: offline-edge-deletions/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 离线删边连通性 在该类输入下的正确性。
+    input_file: offline-edge-deletions/04.in
+    output_file: offline-edge-deletions/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 离线删边连通性 在该类输入下的正确性。
+    input_file: offline-edge-deletions/05.in
+    output_file: offline-edge-deletions/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 离线删边连通性 在该类输入下的正确性。
+    input_file: offline-edge-deletions/06.in
+    output_file: offline-edge-deletions/06.out

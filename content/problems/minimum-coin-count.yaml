@@ -1,0 +1,65 @@
+slug: minimum-coin-count
+title: 最少硬币数
+description: 硬币面额可以无限次使用，凑出目标金额所需硬币数最少是多少；无法凑出输出 -1。
+difficulty: medium
+tags:
+- dynamic-programming
+input_description: 第一行 `n target`，第二行 n 个互不相同的正面额。
+output_description: 输出最少硬币数或 `-1`。
+data_constraints: '`1 <= n <= 100`，`0 <= target <= 100000`，面额不超过 `10^5`。'
+sample_input: '3 11
+
+  1 5 7
+
+  '
+sample_output: '3
+
+  '
+sample_explanation: 五加五加一共三枚。
+time_limit_ms: 6000
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/minimum-coin-count/solution.py
+  cpp: reference-solutions/minimum-coin-count/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 最少硬币数 在该类输入下的正确性。
+    input_file: minimum-coin-count/01.in
+    output_file: minimum-coin-count/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 最少硬币数 在该类输入下的正确性。
+    input_file: minimum-coin-count/02.in
+    output_file: minimum-coin-count/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 最少硬币数 在该类输入下的正确性。
+    input_file: minimum-coin-count/03.in
+    output_file: minimum-coin-count/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 最少硬币数 在该类输入下的正确性。
+    input_file: minimum-coin-count/04.in
+    output_file: minimum-coin-count/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 最少硬币数 在该类输入下的正确性。
+    input_file: minimum-coin-count/05.in
+    output_file: minimum-coin-count/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 最少硬币数 在该类输入下的正确性。
+    input_file: minimum-coin-count/06.in
+    output_file: minimum-coin-count/06.out

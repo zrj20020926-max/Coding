@@ -1,0 +1,66 @@
+slug: array-total
+title: 长数组总和
+description: 给定一个整数数组，计算所有元素之和。需要使用足够大的整数类型保存答案。
+difficulty: easy
+tags:
+- basic-io
+- array
+input_description: 第一行一个整数 `n`，第二行 `n` 个整数。
+output_description: 输出数组元素总和。
+data_constraints: '`1 <= n <= 20000`，`-10^9 <= a_i <= 10^9`。'
+sample_input: '5
+
+  1 2 -3 4 5
+
+  '
+sample_output: '9
+
+  '
+sample_explanation: 依次累加得到九。
+time_limit_ms: 1000
+memory_limit_mb: 128
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/array-total/solution.py
+  cpp: reference-solutions/array-total/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 长数组总和 在该类输入下的正确性。
+    input_file: array-total/01.in
+    output_file: array-total/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 长数组总和 在该类输入下的正确性。
+    input_file: array-total/02.in
+    output_file: array-total/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 长数组总和 在该类输入下的正确性。
+    input_file: array-total/03.in
+    output_file: array-total/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 长数组总和 在该类输入下的正确性。
+    input_file: array-total/04.in
+    output_file: array-total/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 长数组总和 在该类输入下的正确性。
+    input_file: array-total/05.in
+    output_file: array-total/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 长数组总和 在该类输入下的正确性。
+    input_file: array-total/06.in
+    output_file: array-total/06.out

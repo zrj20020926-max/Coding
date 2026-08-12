@@ -1,3 +1,29 @@
 daily_challenges:
-  - date: today
-    problem: a-plus-b
+- date: today
+  problem: a-plus-b
+- date: today+1
+  problem: array-total
+- date: today+2
+  problem: reverse-line
+- date: today+3
+  problem: frequency-queries
+- date: today+4
+  problem: sorted-pair-exists
+- date: today+5
+  problem: balanced-brackets
+- date: today+6
+  problem: queue-commands
+- date: today+7
+  problem: first-occurrence
+- date: today+8
+  problem: stable-score-sort
+- date: today+9
+  problem: matrix-diagonal-sum
+- date: today+10
+  problem: longest-unique-segment
+- date: today+11
+  problem: range-sum-queries
+- date: today+12
+  problem: merge-intervals
+- date: today+13
+  problem: rotated-array-search

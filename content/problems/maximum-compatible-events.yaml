@@ -1,0 +1,74 @@
+slug: maximum-compatible-events
+title: 最多可参加活动
+description: 每个活动占用半开区间 `[start,end)`，同一时刻只能参加一个活动，求最多可完整参加多少个。
+difficulty: medium
+tags:
+- greedy
+- interval
+input_description: 第一行 `n`，随后每行 `start end`。
+output_description: 输出最多活动数。
+data_constraints: '`1 <= n <= 200000`，`0 <= start < end <= 10^9`。'
+sample_input: '5
+
+  1 4
+
+  3 5
+
+  0 6
+
+  5 7
+
+  7 8
+
+  '
+sample_output: '3
+
+  '
+sample_explanation: 选择 1-4、5-7、7-8 共三个活动。
+time_limit_ms: 1500
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/maximum-compatible-events/solution.py
+  cpp: reference-solutions/maximum-compatible-events/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 最多可参加活动 在该类输入下的正确性。
+    input_file: maximum-compatible-events/01.in
+    output_file: maximum-compatible-events/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 最多可参加活动 在该类输入下的正确性。
+    input_file: maximum-compatible-events/02.in
+    output_file: maximum-compatible-events/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 最多可参加活动 在该类输入下的正确性。
+    input_file: maximum-compatible-events/03.in
+    output_file: maximum-compatible-events/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 最多可参加活动 在该类输入下的正确性。
+    input_file: maximum-compatible-events/04.in
+    output_file: maximum-compatible-events/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 最多可参加活动 在该类输入下的正确性。
+    input_file: maximum-compatible-events/05.in
+    output_file: maximum-compatible-events/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 最多可参加活动 在该类输入下的正确性。
+    input_file: maximum-compatible-events/06.in
+    output_file: maximum-compatible-events/06.out

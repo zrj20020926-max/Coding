@@ -1,0 +1,66 @@
+slug: sorted-pair-exists
+title: 有序双数之和
+description: 在非递减数组中判断是否存在两个不同位置的元素之和等于目标值。
+difficulty: easy
+tags:
+- two-pointers
+- array
+input_description: 第一行 `n target`，第二行 `n` 个非递减整数。
+output_description: 存在则输出 `YES`，否则输出 `NO`。
+data_constraints: '`2 <= n <= 200000`，元素和目标值绝对值不超过 `10^18`。'
+sample_input: '6 9
+
+  1 2 3 4 7 10
+
+  '
+sample_output: 'YES
+
+  '
+sample_explanation: 二与七的和为九。
+time_limit_ms: 1000
+memory_limit_mb: 128
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/sorted-pair-exists/solution.py
+  cpp: reference-solutions/sorted-pair-exists/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 有序双数之和 在该类输入下的正确性。
+    input_file: sorted-pair-exists/01.in
+    output_file: sorted-pair-exists/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 有序双数之和 在该类输入下的正确性。
+    input_file: sorted-pair-exists/02.in
+    output_file: sorted-pair-exists/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 有序双数之和 在该类输入下的正确性。
+    input_file: sorted-pair-exists/03.in
+    output_file: sorted-pair-exists/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 有序双数之和 在该类输入下的正确性。
+    input_file: sorted-pair-exists/04.in
+    output_file: sorted-pair-exists/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 有序双数之和 在该类输入下的正确性。
+    input_file: sorted-pair-exists/05.in
+    output_file: sorted-pair-exists/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 有序双数之和 在该类输入下的正确性。
+    input_file: sorted-pair-exists/06.in
+    output_file: sorted-pair-exists/06.out

@@ -1,0 +1,70 @@
+slug: weighted-grid-route
+title: 加权网格最低代价
+description: 从左上角到右下角，每步上下左右移动，进入每个格子都会支付该格权值；起点权值也计入，求最小总代价。
+difficulty: hard
+tags:
+- shortest-path
+- matrix
+input_description: 第一行 `n m`，随后 n 行每行 m 个正整数。
+output_description: 输出最小总代价。
+data_constraints: '`1 <= n,m <= 500`，`n*m <= 250000`，权值不超过 `10^9`。'
+sample_input: '3 3
+
+  1 9 1
+
+  1 2 1
+
+  9 1 1
+
+  '
+sample_output: '6
+
+  '
+sample_explanation: 路径 1,1,2,1,1 的总代价为六。
+time_limit_ms: 3000
+memory_limit_mb: 512
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/weighted-grid-route/solution.py
+  cpp: reference-solutions/weighted-grid-route/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 加权网格最低代价 在该类输入下的正确性。
+    input_file: weighted-grid-route/01.in
+    output_file: weighted-grid-route/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 加权网格最低代价 在该类输入下的正确性。
+    input_file: weighted-grid-route/02.in
+    output_file: weighted-grid-route/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 加权网格最低代价 在该类输入下的正确性。
+    input_file: weighted-grid-route/03.in
+    output_file: weighted-grid-route/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 加权网格最低代价 在该类输入下的正确性。
+    input_file: weighted-grid-route/04.in
+    output_file: weighted-grid-route/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 加权网格最低代价 在该类输入下的正确性。
+    input_file: weighted-grid-route/05.in
+    output_file: weighted-grid-route/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 加权网格最低代价 在该类输入下的正确性。
+    input_file: weighted-grid-route/06.in
+    output_file: weighted-grid-route/06.out

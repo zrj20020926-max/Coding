@@ -1,0 +1,70 @@
+slug: matrix-diagonal-sum
+title: 交叉对角线之和
+description: 计算方阵主对角线与副对角线上所有不同单元格的和。奇数阶中心格只能计算一次。
+difficulty: easy
+tags:
+- matrix
+- basic-io
+input_description: 第一行 `n`，随后 `n` 行每行 `n` 个整数。
+output_description: 输出交叉对角线元素和。
+data_constraints: '`1 <= n <= 1000`，元素绝对值不超过 `10^9`。'
+sample_input: '3
+
+  1 2 3
+
+  4 5 6
+
+  7 8 9
+
+  '
+sample_output: '25
+
+  '
+sample_explanation: 两条对角线为 1,5,9 与 3,5,7，中心五只计一次，总和二十五。
+time_limit_ms: 1200
+memory_limit_mb: 128
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/matrix-diagonal-sum/solution.py
+  cpp: reference-solutions/matrix-diagonal-sum/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 交叉对角线之和 在该类输入下的正确性。
+    input_file: matrix-diagonal-sum/01.in
+    output_file: matrix-diagonal-sum/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 交叉对角线之和 在该类输入下的正确性。
+    input_file: matrix-diagonal-sum/02.in
+    output_file: matrix-diagonal-sum/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 交叉对角线之和 在该类输入下的正确性。
+    input_file: matrix-diagonal-sum/03.in
+    output_file: matrix-diagonal-sum/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 交叉对角线之和 在该类输入下的正确性。
+    input_file: matrix-diagonal-sum/04.in
+    output_file: matrix-diagonal-sum/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 交叉对角线之和 在该类输入下的正确性。
+    input_file: matrix-diagonal-sum/05.in
+    output_file: matrix-diagonal-sum/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 交叉对角线之和 在该类输入下的正确性。
+    input_file: matrix-diagonal-sum/06.in
+    output_file: matrix-diagonal-sum/06.out

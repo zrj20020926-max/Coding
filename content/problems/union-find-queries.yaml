@@ -1,0 +1,82 @@
+slug: union-find-queries
+title: 动态连通查询
+description: 初始有 n 个互不连通的点，在线处理合并操作和连通性询问。
+difficulty: medium
+tags:
+- union-find
+- graph-connectivity
+input_description: 第一行 `n q`，随后操作为 `U a b` 或 `Q a b`。
+output_description: 每个询问输出 `YES` 或 `NO`。
+data_constraints: '`1 <= n,q <= 200000`，点编号 1 到 n。'
+sample_input: '5 6
+
+  Q 1 2
+
+  U 1 2
+
+  U 2 3
+
+  Q 1 3
+
+  Q 1 4
+
+  Q 2 2
+
+  '
+sample_output: 'NO
+
+  YES
+
+  NO
+
+  YES
+
+  '
+sample_explanation: 合并后 1,2,3 连通；4 仍独立；任意点与自身连通。
+time_limit_ms: 1800
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/union-find-queries/solution.py
+  cpp: reference-solutions/union-find-queries/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 动态连通查询 在该类输入下的正确性。
+    input_file: union-find-queries/01.in
+    output_file: union-find-queries/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 动态连通查询 在该类输入下的正确性。
+    input_file: union-find-queries/02.in
+    output_file: union-find-queries/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 动态连通查询 在该类输入下的正确性。
+    input_file: union-find-queries/03.in
+    output_file: union-find-queries/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 动态连通查询 在该类输入下的正确性。
+    input_file: union-find-queries/04.in
+    output_file: union-find-queries/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 动态连通查询 在该类输入下的正确性。
+    input_file: union-find-queries/05.in
+    output_file: union-find-queries/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 动态连通查询 在该类输入下的正确性。
+    input_file: union-find-queries/06.in
+    output_file: union-find-queries/06.out

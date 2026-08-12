@@ -1,0 +1,64 @@
+slug: reverse-line
+title: 整行逆序
+description: 读取一整行可打印 ASCII 字符，将字符顺序完全反转。行内空格也是数据的一部分。
+difficulty: easy
+tags:
+- basic-io
+- string
+input_description: 一行非空字符串 `s`，首尾均不是空格。
+output_description: 输出 `s` 的逐字符逆序结果。
+data_constraints: '`1 <= |s| <= 200000`，字符为 ASCII 32 到 126。'
+sample_input: 'code arena
+
+  '
+sample_output: 'anera edoc
+
+  '
+sample_explanation: 空格保留在字符串中，逆序后位于对应位置。
+time_limit_ms: 1000
+memory_limit_mb: 128
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/reverse-line/solution.py
+  cpp: reference-solutions/reverse-line/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 整行逆序 在该类输入下的正确性。
+    input_file: reverse-line/01.in
+    output_file: reverse-line/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 整行逆序 在该类输入下的正确性。
+    input_file: reverse-line/02.in
+    output_file: reverse-line/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 整行逆序 在该类输入下的正确性。
+    input_file: reverse-line/03.in
+    output_file: reverse-line/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 整行逆序 在该类输入下的正确性。
+    input_file: reverse-line/04.in
+    output_file: reverse-line/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 整行逆序 在该类输入下的正确性。
+    input_file: reverse-line/05.in
+    output_file: reverse-line/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 整行逆序 在该类输入下的正确性。
+    input_file: reverse-line/06.in
+    output_file: reverse-line/06.out

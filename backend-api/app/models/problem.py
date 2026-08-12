@@ -85,8 +85,14 @@ class Problem(Base):
     )
     input_description: Mapped[str] = mapped_column(Text, nullable=False)
     output_description: Mapped[str] = mapped_column(Text, nullable=False)
+    data_constraints: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", server_default=""
+    )
     sample_input: Mapped[str] = mapped_column(Text, nullable=False, default="")
     sample_output: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    sample_explanation: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", server_default=""
+    )
     time_limit_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=1000)
     memory_limit_mb: Mapped[int] = mapped_column(Integer, nullable=False, default=256)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

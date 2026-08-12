@@ -1,0 +1,74 @@
+slug: minimum-spanning-network
+title: 最省连接网络
+description: 选择若干无向边连接全部顶点，使总权值最小；若无法连通输出 -1。
+difficulty: medium
+tags:
+- minimum-spanning-tree
+- union-find
+input_description: 第一行 `n m`，随后 `m` 行 `u v w`。
+output_description: 输出最小生成树总权或 `-1`。
+data_constraints: '`1 <= n <= 100000`，`0 <= m <= 200000`，`0 <= w <= 10^9`。'
+sample_input: '4 5
+
+  1 2 3
+
+  1 3 1
+
+  2 3 2
+
+  2 4 4
+
+  3 4 5
+
+  '
+sample_output: '7
+
+  '
+sample_explanation: 选权值一、二、四的三条边，总权七。
+time_limit_ms: 2200
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/minimum-spanning-network/solution.py
+  cpp: reference-solutions/minimum-spanning-network/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 最省连接网络 在该类输入下的正确性。
+    input_file: minimum-spanning-network/01.in
+    output_file: minimum-spanning-network/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 最省连接网络 在该类输入下的正确性。
+    input_file: minimum-spanning-network/02.in
+    output_file: minimum-spanning-network/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 最省连接网络 在该类输入下的正确性。
+    input_file: minimum-spanning-network/03.in
+    output_file: minimum-spanning-network/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 最省连接网络 在该类输入下的正确性。
+    input_file: minimum-spanning-network/04.in
+    output_file: minimum-spanning-network/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 最省连接网络 在该类输入下的正确性。
+    input_file: minimum-spanning-network/05.in
+    output_file: minimum-spanning-network/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 最省连接网络 在该类输入下的正确性。
+    input_file: minimum-spanning-network/06.in
+    output_file: minimum-spanning-network/06.out

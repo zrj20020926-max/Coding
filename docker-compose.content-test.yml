@@ -41,7 +41,8 @@ services:
       - -c
       - >-
         mc alias set local http://minio-content-test:9000 contenttest content_test_password &&
-        mc mb --ignore-existing local/codearena-content-test-data
+        mc mb --ignore-existing local/codearena-content-test-data &&
+        mc mb --ignore-existing local/codearena-content-test-submissions
     depends_on:
       minio-content-test:
         condition: service_healthy
@@ -49,6 +50,8 @@ services:
   db-migrate-content-test:
     build:
       context: ./backend-api
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
     environment:
       DATABASE_URL: postgresql+asyncpg://content_test:content_test_password@postgres-content-test:5432/codearena_content_test
     command: ["python", "-m", "app.db.migration_bootstrap"]
@@ -59,6 +62,8 @@ services:
   content-bootstrap-test:
     build:
       context: ./backend-api
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
     environment:
       DATABASE_URL: postgresql+asyncpg://content_test:content_test_password@postgres-content-test:5432/codearena_content_test
       MINIO_ENDPOINT: minio-content-test:9000
@@ -81,3 +86,141 @@ services:
         condition: service_completed_successfully
       minio-content-test-init:
         condition: service_completed_successfully
+
+  catalog-validator-test:
+    build:
+      context: ./backend-api
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      DATABASE_URL: postgresql+asyncpg://content_test:content_test_password@postgres-content-test:5432/codearena_content_test
+      MINIO_ENDPOINT: minio-content-test:9000
+      MINIO_ACCESS_KEY: contenttest
+      MINIO_SECRET_KEY: content_test_password
+      MINIO_TEST_DATA_BUCKET: codearena-content-test-data
+      JUDGE_SUPPORTED_LANGUAGES: python,cpp
+      CONTENT_TIMEZONE: Asia/Shanghai
+    command:
+      - python
+      - -m
+      - app.bootstrap.validate_catalog
+      - --manifest
+      - /content/manifest.yaml
+      - --check-minio
+      - --skip-cpp
+    volumes:
+      - ./content:/content:ro
+    depends_on:
+      content-bootstrap-test:
+        condition: service_completed_successfully
+
+  catalog-cpp-validator-test:
+    image: gcc:14.2-bookworm
+    working_dir: /content
+    command: ["python3", "tools/validate_cpp20.py"]
+    volumes:
+      - ./content:/content:ro
+
+  redis-content-test:
+    image: redis:7-alpine
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  backend-api-content-test:
+    build:
+      context: ./backend-api
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      APP_ENV: local
+      DATABASE_URL: postgresql+asyncpg://content_test:content_test_password@postgres-content-test:5432/codearena_content_test
+      REDIS_URL: redis://redis-content-test:6379/0
+      MINIO_ENDPOINT: minio-content-test:9000
+      MINIO_ACCESS_KEY: contenttest
+      MINIO_SECRET_KEY: content_test_password
+      MINIO_BUCKET: codearena-content-test-submissions
+      MINIO_TEST_DATA_BUCKET: codearena-content-test-data
+      JUDGE_SUPPORTED_LANGUAGES: python,cpp
+      CONTENT_TIMEZONE: Asia/Shanghai
+      SUBMISSION_MIN_INTERVAL_SECONDS: "0"
+      JWT_SECRET_KEY: local-only-secret-key-change-before-deploy
+      REFRESH_COOKIE_SECURE: "false"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      content-bootstrap-test:
+        condition: service_completed_successfully
+      redis-content-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  outbox-publisher-content-test:
+    build:
+      context: ./backend-api
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      DATABASE_URL: postgresql+asyncpg://content_test:content_test_password@postgres-content-test:5432/codearena_content_test
+      REDIS_URL: redis://redis-content-test:6379/0
+      SUBMISSION_STREAM_NAME: codearena:judge:content-acceptance
+      JWT_SECRET_KEY: local-only-secret-key-change-before-deploy
+      REFRESH_COOKIE_SECURE: "false"
+      OUTBOX_POLL_INTERVAL_MS: "50"
+    command: ["python", "-m", "app.workers.outbox_publisher"]
+    depends_on:
+      backend-api-content-test:
+        condition: service_healthy
+
+  judge-service-content-test:
+    build:
+      context: ./judge-service
+      target: runtime
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      DATABASE_URL: postgresql+asyncpg://content_test:content_test_password@postgres-content-test:5432/codearena_content_test
+      REDIS_URL: redis://redis-content-test:6379/0
+      SUBMISSION_STREAM_NAME: codearena:judge:content-acceptance
+      JUDGE_CONSUMER_GROUP: codearena-content-acceptance
+      JUDGE_CONSUMER_NAME: catalog-worker
+      JUDGE_BLOCK_MS: "250"
+      JUDGE_CLAIM_IDLE_MS: "10000"
+      MINIO_ENDPOINT: minio-content-test:9000
+      MINIO_ACCESS_KEY: contenttest
+      MINIO_SECRET_KEY: content_test_password
+      MINIO_SOURCE_BUCKET: codearena-content-test-submissions
+      MINIO_TEST_DATA_BUCKET: codearena-content-test-data
+      SANDBOX_PYTHON_IMAGE: python:3.12-alpine
+      SANDBOX_CPP_IMAGE: gcc:14.2-bookworm
+      SANDBOX_PULL_IMAGES: "false"
+      SANDBOX_CPUS: "1"
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "0"
+    depends_on:
+      outbox-publisher-content-test:
+        condition: service_started
+
+  catalog-acceptance-test:
+    image: python:3.12-slim
+    working_dir: /content
+    environment:
+      CATALOG_API_URL: http://backend-api-content-test:8000/api/v1
+    command: ["python", "tools/acceptance_api.py"]
+    volumes:
+      - ./content:/content:ro
+    depends_on:
+      backend-api-content-test:
+        condition: service_healthy
+      judge-service-content-test:
+        condition: service_started

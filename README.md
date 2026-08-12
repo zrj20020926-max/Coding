@@ -134,13 +134,20 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 
 ## 完整内容初始化
 
-正式内容位于 `content/`。全新 PostgreSQL 与 MinIO 启动时，Compose 会按 migration、bucket、content-bootstrap、API/Judge/前端的顺序执行；导入失败会阻止 API 假启动。当前内容包含 3 道可正式判题题目、隐藏测试集、入门题单和按 `Asia/Shanghai` 计算的当天每日一题。
+正式内容位于 `content/`。全新 PostgreSQL 与 MinIO 启动时，Compose 会按 migration、bucket、content-bootstrap、API/Judge/前端的顺序执行；导入失败会阻止 API 假启动。当前内容包含 30 道原创 ACM 题、180 个隐藏用例、3 个渐进题单，以及按 `CONTENT_TIMEZONE` 从当天起连续 14 天的每日一题。每题提供 Python 3.12/C++20 引用实现，引用源码只用于离线验证，不进入数据库、MinIO 或公开响应。
 
 ```powershell
 cd backend-api
 .\.venv\Scripts\python -m app.bootstrap.content --manifest ../content/manifest.yaml --validate-only --force
 .\.venv\Scripts\python -m app.bootstrap.content --manifest ../content/manifest.yaml --dry-run --force
 .\.venv\Scripts\python -m app.bootstrap.content --manifest ../content/manifest.yaml --force
+```
+
+完整题库验证会真实运行全部 Python 3.12/C++20 引用实现，并确认 10 份错误实现得到 Wrong Answer：
+
+```powershell
+docker compose -f docker-compose.content-test.yml run --build --rm catalog-validator-test
+docker compose -f docker-compose.content-test.yml run --rm catalog-cpp-validator-test
 ```
 
 详细格式、单题/单题单导入、生产保护和恢复方式见[内容初始化系统](docs/content-bootstrap.md)。

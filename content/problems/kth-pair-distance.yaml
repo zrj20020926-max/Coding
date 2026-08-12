@@ -1,0 +1,67 @@
+slug: kth-pair-distance
+title: 第 K 小数对距离
+description: 所有下标对 i<j 的距离定义为绝对差，求这些距离从小到大排序后的第 k 个。
+difficulty: hard
+tags:
+- binary-search
+- two-pointers
+- sorting
+input_description: 第一行 `n k`，第二行 n 个整数。
+output_description: 输出第 k 小距离。
+data_constraints: '`2 <= n <= 200000`，`1 <= k <= n(n-1)/2`，元素绝对值不超过 `10^9`。'
+sample_input: '4 4
+
+  1 3 6 10
+
+  '
+sample_output: '5
+
+  '
+sample_explanation: 六个距离为 2,3,4,5,7,9，第四小为五。
+time_limit_ms: 2600
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/kth-pair-distance/solution.py
+  cpp: reference-solutions/kth-pair-distance/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 第 K 小数对距离 在该类输入下的正确性。
+    input_file: kth-pair-distance/01.in
+    output_file: kth-pair-distance/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 第 K 小数对距离 在该类输入下的正确性。
+    input_file: kth-pair-distance/02.in
+    output_file: kth-pair-distance/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 第 K 小数对距离 在该类输入下的正确性。
+    input_file: kth-pair-distance/03.in
+    output_file: kth-pair-distance/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 第 K 小数对距离 在该类输入下的正确性。
+    input_file: kth-pair-distance/04.in
+    output_file: kth-pair-distance/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 第 K 小数对距离 在该类输入下的正确性。
+    input_file: kth-pair-distance/05.in
+    output_file: kth-pair-distance/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 第 K 小数对距离 在该类输入下的正确性。
+    input_file: kth-pair-distance/06.in
+    output_file: kth-pair-distance/06.out

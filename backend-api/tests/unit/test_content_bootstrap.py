@@ -102,7 +102,7 @@ async def test_validate_only_and_dry_run_do_not_write(
         store=fake_object_store,
     )
     assert dry_run.status == "dry-run"
-    assert dry_run.problems.created == 3
+    assert dry_run.problems.created == 30
     assert await db_session.scalar(select(func.count(Problem.id))) == 0
     assert fake_object_store.test_objects == {}
 
@@ -119,27 +119,27 @@ async def test_empty_bootstrap_is_idempotent_and_populates_all_content(
     second = await run_content_bootstrap(
         CONTENT_ROOT / "manifest.yaml", db=db_session, store=fake_object_store
     )
-    assert first.problems.created == 3
-    assert first.test_sets.created == 3
-    assert second.problems.skipped == 3
-    assert second.test_sets.skipped == 3
-    assert second.collections.skipped == 1
-    assert second.daily_challenges.skipped == 1
-    assert await db_session.scalar(select(func.count(Problem.id))) == 3
-    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 3
-    assert await db_session.scalar(select(func.count(Collection.id))) == 1
-    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 3
-    assert await db_session.scalar(select(func.count(DailyChallenge.problem_id))) == 1
+    assert first.problems.created == 30
+    assert first.test_sets.created == 30
+    assert second.problems.skipped == 30
+    assert second.test_sets.skipped == 30
+    assert second.collections.skipped == 3
+    assert second.daily_challenges.skipped == 14
+    assert await db_session.scalar(select(func.count(Problem.id))) == 30
+    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 30
+    assert await db_session.scalar(select(func.count(Collection.id))) == 3
+    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) >= 24
+    assert await db_session.scalar(select(func.count(DailyChallenge.problem_id))) == 14
     challenge = await db_session.scalar(select(DailyChallenge))
     assert challenge is not None
     assert challenge.challenge_date == datetime.now(ZoneInfo("Asia/Shanghai")).date()
-    assert len(fake_object_store.test_objects) == 12
+    assert len(fake_object_store.test_objects) == 360
     public = (
         await db_session.scalars(
             select(Problem).where(Problem.visibility == ProblemVisibility.PUBLIC)
         )
     ).all()
-    assert len(public) == 3
+    assert len(public) == 30
     for problem in public:
         active_count = await db_session.scalar(
             select(func.count(ProblemTestSet.id)).where(
@@ -205,7 +205,7 @@ async def test_single_problem_statement_update_does_not_create_test_set(
     await run_content_bootstrap(manifest, db=db_session, store=fake_object_store)
     problem_path = manifest.parent / "problems" / "a-plus-b.yaml"
     problem_document = yaml.safe_load(problem_path.read_text(encoding="utf-8"))
-    problem_document["title"] = "A+B 问题（更新）"
+    problem_document["title"] = "边界求和（更新）"
     problem_path.write_text(
         yaml.safe_dump(problem_document, allow_unicode=True, sort_keys=False),
         encoding="utf-8",
@@ -218,7 +218,7 @@ async def test_single_problem_statement_update_does_not_create_test_set(
     )
     assert updated.problems.updated == 1
     assert updated.test_sets.skipped == 1
-    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 3
+    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 30
 
     problem_document["test_set"]["version"] = 99
     problem_path.write_text(
@@ -232,7 +232,7 @@ async def test_single_problem_statement_update_does_not_create_test_set(
         store=fake_object_store,
     )
     assert version_only.test_sets.skipped == 1
-    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 3
+    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 30
 
 
 class FailingStore(FakeSourceObjectStore):
@@ -294,7 +294,7 @@ async def test_single_collection_filter_has_no_duplicate_relations(
         store=fake_object_store,
     )
     assert report.collections.created == 1
-    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 3
+    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 10
     second = await run_content_bootstrap(
         CONTENT_ROOT / "manifest.yaml",
         collection_slug="acm-starter",
@@ -302,7 +302,7 @@ async def test_single_collection_filter_has_no_duplicate_relations(
         store=fake_object_store,
     )
     assert second.collections.skipped == 1
-    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 3
+    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 10
 
 
 @pytest.mark.unit

@@ -1,0 +1,67 @@
+slug: string-edit-distance
+title: 字符串编辑距离
+description: 每次可以插入、删除或替换一个字符，求把第一个字符串变为第二个字符串的最少操作次数。
+difficulty: hard
+tags:
+- edit-distance
+- dynamic-programming
+- string
+input_description: 两行分别为字符串 a 和 b；字符串可以为空行。
+output_description: 输出最少操作次数。
+data_constraints: '`0 <= |a|,|b| <= 3000`，字符为小写英文字母。'
+sample_input: 'kitten
+
+  sitting
+
+  '
+sample_output: '3
+
+  '
+sample_explanation: 替换 k、替换 e、末尾插入 g，共三次。
+time_limit_ms: 3000
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/string-edit-distance/solution.py
+  cpp: reference-solutions/string-edit-distance/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 字符串编辑距离 在该类输入下的正确性。
+    input_file: string-edit-distance/01.in
+    output_file: string-edit-distance/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 字符串编辑距离 在该类输入下的正确性。
+    input_file: string-edit-distance/02.in
+    output_file: string-edit-distance/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 字符串编辑距离 在该类输入下的正确性。
+    input_file: string-edit-distance/03.in
+    output_file: string-edit-distance/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 字符串编辑距离 在该类输入下的正确性。
+    input_file: string-edit-distance/04.in
+    output_file: string-edit-distance/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 字符串编辑距离 在该类输入下的正确性。
+    input_file: string-edit-distance/05.in
+    output_file: string-edit-distance/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 字符串编辑距离 在该类输入下的正确性。
+    input_file: string-edit-distance/06.in
+    output_file: string-edit-distance/06.out

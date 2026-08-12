@@ -1,0 +1,76 @@
+slug: range-sum-queries
+title: 静态区间求和
+description: 对一个不再修改的数组回答多个闭区间元素和查询。
+difficulty: medium
+tags:
+- prefix-sum
+- array
+input_description: 第一行 `n q`，第二行数组；随后 `q` 行给出一基下标 `l r`。
+output_description: 每个查询输出一行区间和。
+data_constraints: '`1 <= n,q <= 100000`，`1 <= l <= r <= n`，`|a_i| <= 10^9`。'
+sample_input: '5 3
+
+  2 -1 4 3 5
+
+  1 3
+
+  2 5
+
+  4 4
+
+  '
+sample_output: '5
+
+  11
+
+  3
+
+  '
+sample_explanation: 三个区间的和分别为五、十一、三。
+time_limit_ms: 1200
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/range-sum-queries/solution.py
+  cpp: reference-solutions/range-sum-queries/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 静态区间求和 在该类输入下的正确性。
+    input_file: range-sum-queries/01.in
+    output_file: range-sum-queries/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 静态区间求和 在该类输入下的正确性。
+    input_file: range-sum-queries/02.in
+    output_file: range-sum-queries/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 静态区间求和 在该类输入下的正确性。
+    input_file: range-sum-queries/03.in
+    output_file: range-sum-queries/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 静态区间求和 在该类输入下的正确性。
+    input_file: range-sum-queries/04.in
+    output_file: range-sum-queries/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 静态区间求和 在该类输入下的正确性。
+    input_file: range-sum-queries/05.in
+    output_file: range-sum-queries/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 静态区间求和 在该类输入下的正确性。
+    input_file: range-sum-queries/06.in
+    output_file: range-sum-queries/06.out

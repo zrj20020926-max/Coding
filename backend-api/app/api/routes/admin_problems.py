@@ -129,8 +129,10 @@ async def update_problem(
         "difficulty",
         "input_description",
         "output_description",
+        "data_constraints",
         "sample_input",
         "sample_output",
+        "sample_explanation",
         "time_limit_ms",
         "memory_limit_mb",
     }

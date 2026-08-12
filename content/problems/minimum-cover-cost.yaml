@@ -1,0 +1,72 @@
+slug: minimum-cover-cost
+title: 覆盖线段最低成本
+description: 要覆盖整数线段 `[0,L]`。购买区间 `[l,r]` 可使当前已连续覆盖到 x 时扩展到 r，前提是 l<=x<r。每个区间可买一次，求最低成本；无法覆盖输出 -1。
+difficulty: medium
+tags:
+- dynamic-programming
+- interval
+input_description: 第一行 `L m`，随后 m 行 `l r cost`。
+output_description: 输出最低成本或 `-1`。
+data_constraints: '`1 <= L <= 5000`，`1 <= m <= 20000`，`0 <= l < r <= L`，`1 <= cost <= 10^9`。'
+sample_input: '10 4
+
+  0 4 5
+
+  3 7 4
+
+  6 10 6
+
+  0 10 20
+
+  '
+sample_output: '15
+
+  '
+sample_explanation: 依次购买前三个区间花费十五，比直接覆盖的二十更低。
+time_limit_ms: 3000
+memory_limit_mb: 512
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/minimum-cover-cost/solution.py
+  cpp: reference-solutions/minimum-cover-cost/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 覆盖线段最低成本 在该类输入下的正确性。
+    input_file: minimum-cover-cost/01.in
+    output_file: minimum-cover-cost/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 覆盖线段最低成本 在该类输入下的正确性。
+    input_file: minimum-cover-cost/02.in
+    output_file: minimum-cover-cost/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 覆盖线段最低成本 在该类输入下的正确性。
+    input_file: minimum-cover-cost/03.in
+    output_file: minimum-cover-cost/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 覆盖线段最低成本 在该类输入下的正确性。
+    input_file: minimum-cover-cost/04.in
+    output_file: minimum-cover-cost/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 覆盖线段最低成本 在该类输入下的正确性。
+    input_file: minimum-cover-cost/05.in
+    output_file: minimum-cover-cost/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 覆盖线段最低成本 在该类输入下的正确性。
+    input_file: minimum-cover-cost/06.in
+    output_file: minimum-cover-cost/06.out

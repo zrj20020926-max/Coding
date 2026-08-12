@@ -1,0 +1,7 @@
+6
+push 8
+push 8
+front
+pop
+front
+size

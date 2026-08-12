@@ -1,10 +1,52 @@
 collections:
-  - slug: acm-starter
-    title: ACM 输入输出入门
-    description: 掌握标准输入、标准输出和基础数据处理。
-    company: CodeArena
-    is_public: true
-    problems:
-      - a-plus-b
-      - reverse-string
-      - maximum-value
+- slug: acm-starter
+  title: ACM 入门
+  description: 从标准输入输出、线性结构到基础查找，建立 ACM 编程习惯。
+  company: CodeArena
+  is_public: true
+  problems:
+  - a-plus-b
+  - array-total
+  - reverse-line
+  - frequency-queries
+  - sorted-pair-exists
+  - balanced-brackets
+  - queue-commands
+  - first-occurrence
+  - stable-score-sort
+  - matrix-diagonal-sum
+- slug: core-data-structures
+  title: 核心数据结构
+  description: 覆盖数组、哈希、栈、队列、窗口、区间、图与并查集。
+  company: CodeArena
+  is_public: true
+  problems:
+  - array-total
+  - frequency-queries
+  - balanced-brackets
+  - queue-commands
+  - longest-unique-segment
+  - range-sum-queries
+  - merge-intervals
+  - graph-component-count
+  - union-find-queries
+  - offline-edge-deletions
+- slug: algorithm-advanced
+  title: 算法进阶
+  description: 循序训练二分、图算法、贪心与动态规划。
+  company: CodeArena
+  is_public: true
+  problems:
+  - rotated-array-search
+  - maze-shortest-steps
+  - directed-shortest-paths
+  - minimum-spanning-network
+  - maximum-compatible-events
+  - zero-one-knapsack
+  - minimum-coin-count
+  - longest-increasing-subsequence
+  - string-edit-distance
+  - weighted-grid-route
+  - exact-k-nonadjacent
+  - kth-pair-distance
+  - minimum-cover-cost

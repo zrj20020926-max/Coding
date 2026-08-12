@@ -1,0 +1,77 @@
+slug: stable-score-sort
+title: 稳定成绩排序
+description: 按分数从高到低输出参赛者；分数相同时必须保持输入先后顺序。名字互不相同。
+difficulty: easy
+tags:
+- sorting
+input_description: 第一行 `n`，随后每行一个不含空格的名字和分数。
+output_description: 输出排序后的名字与分数。
+data_constraints: '`1 <= n <= 100000`，名字长度不超过 20，`0 <= score <= 100`。'
+sample_input: '4
+
+  lin 80
+
+  mei 95
+
+  yu 80
+
+  an 60
+
+  '
+sample_output: 'mei 95
+
+  lin 80
+
+  yu 80
+
+  an 60
+
+  '
+sample_explanation: 九十五分最先；同为八十分的 lin 仍在 yu 前。
+time_limit_ms: 1500
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/stable-score-sort/solution.py
+  cpp: reference-solutions/stable-score-sort/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 稳定成绩排序 在该类输入下的正确性。
+    input_file: stable-score-sort/01.in
+    output_file: stable-score-sort/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 稳定成绩排序 在该类输入下的正确性。
+    input_file: stable-score-sort/02.in
+    output_file: stable-score-sort/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 稳定成绩排序 在该类输入下的正确性。
+    input_file: stable-score-sort/03.in
+    output_file: stable-score-sort/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 稳定成绩排序 在该类输入下的正确性。
+    input_file: stable-score-sort/04.in
+    output_file: stable-score-sort/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 稳定成绩排序 在该类输入下的正确性。
+    input_file: stable-score-sort/05.in
+    output_file: stable-score-sort/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 稳定成绩排序 在该类输入下的正确性。
+    input_file: stable-score-sort/06.in
+    output_file: stable-score-sort/06.out

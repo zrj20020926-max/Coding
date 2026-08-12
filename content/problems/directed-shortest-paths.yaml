@@ -1,0 +1,76 @@
+slug: directed-shortest-paths
+title: 单源有向最短路
+description: 给定非负权有向图，计算源点到所有顶点的最短距离；不可达点输出 -1。
+difficulty: medium
+tags:
+- shortest-path
+- graph
+input_description: 第一行 `n m s`，随后 `m` 行为 `u v w`。
+output_description: 输出 n 个整数。
+data_constraints: '`1 <= n <= 100000`，`0 <= m <= 200000`，`0 <= w <= 10^9`。'
+sample_input: '5 6 1
+
+  1 2 4
+
+  1 3 2
+
+  3 2 1
+
+  2 4 5
+
+  3 4 8
+
+  4 5 3
+
+  '
+sample_output: '0 3 2 8 11
+
+  '
+sample_explanation: 到 2 的最短路经过 3，最终距离为 3。
+time_limit_ms: 2200
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/directed-shortest-paths/solution.py
+  cpp: reference-solutions/directed-shortest-paths/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 单源有向最短路 在该类输入下的正确性。
+    input_file: directed-shortest-paths/01.in
+    output_file: directed-shortest-paths/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 单源有向最短路 在该类输入下的正确性。
+    input_file: directed-shortest-paths/02.in
+    output_file: directed-shortest-paths/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 单源有向最短路 在该类输入下的正确性。
+    input_file: directed-shortest-paths/03.in
+    output_file: directed-shortest-paths/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 单源有向最短路 在该类输入下的正确性。
+    input_file: directed-shortest-paths/04.in
+    output_file: directed-shortest-paths/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 单源有向最短路 在该类输入下的正确性。
+    input_file: directed-shortest-paths/05.in
+    output_file: directed-shortest-paths/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 单源有向最短路 在该类输入下的正确性。
+    input_file: directed-shortest-paths/06.in
+    output_file: directed-shortest-paths/06.out

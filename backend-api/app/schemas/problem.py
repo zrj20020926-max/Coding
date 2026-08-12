@@ -68,8 +68,10 @@ class ProblemDetail(ProblemSummary):
     description: str
     input_description: str
     output_description: str
+    data_constraints: str
     sample_input: str
     sample_output: str
+    sample_explanation: str
     time_limit_ms: int
     memory_limit_mb: int
     created_at: datetime
@@ -91,8 +93,10 @@ class ProblemWriteBase(BaseModel):
     difficulty: ProblemDifficulty
     input_description: str = Field(min_length=1)
     output_description: str = Field(min_length=1)
+    data_constraints: str = ""
     sample_input: str = ""
     sample_output: str = ""
+    sample_explanation: str = ""
     time_limit_ms: int = Field(default=1000, ge=100, le=30000)
     memory_limit_mb: int = Field(default=256, ge=16, le=2048)
     source: Optional[str] = Field(default=None, max_length=200)
@@ -122,8 +126,10 @@ class ProblemUpdate(BaseModel):
     difficulty: Optional[ProblemDifficulty] = None
     input_description: Optional[str] = Field(default=None, min_length=1)
     output_description: Optional[str] = Field(default=None, min_length=1)
+    data_constraints: Optional[str] = Field(default=None, min_length=1)
     sample_input: Optional[str] = None
     sample_output: Optional[str] = None
+    sample_explanation: Optional[str] = Field(default=None, min_length=1)
     time_limit_ms: Optional[int] = Field(default=None, ge=100, le=30000)
     memory_limit_mb: Optional[int] = Field(default=None, ge=16, le=2048)
     source: Optional[str] = Field(default=None, max_length=200)

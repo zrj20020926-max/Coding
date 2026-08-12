@@ -1,0 +1,70 @@
+slug: maze-shortest-steps
+title: 迷宫最短步数
+description: 在带障碍的网格中，从 S 出发每步上下左右移动一格，求到 T 的最少步数；不可达输出 -1。
+difficulty: medium
+tags:
+- bfs
+- shortest-path
+input_description: '第一行 `n m`，随后为只含 `. # S T` 的网格，S 与 T 各一次。'
+output_description: 输出最少步数或 `-1`。
+data_constraints: '`1 <= n,m <= 500`，`n*m <= 250000`。'
+sample_input: '3 4
+
+  S..#
+
+  .#..
+
+  ...T
+
+  '
+sample_output: '5
+
+  '
+sample_explanation: 沿可通行格移动，最短路线需要五步。
+time_limit_ms: 1800
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/maze-shortest-steps/solution.py
+  cpp: reference-solutions/maze-shortest-steps/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 迷宫最短步数 在该类输入下的正确性。
+    input_file: maze-shortest-steps/01.in
+    output_file: maze-shortest-steps/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 迷宫最短步数 在该类输入下的正确性。
+    input_file: maze-shortest-steps/02.in
+    output_file: maze-shortest-steps/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 迷宫最短步数 在该类输入下的正确性。
+    input_file: maze-shortest-steps/03.in
+    output_file: maze-shortest-steps/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 迷宫最短步数 在该类输入下的正确性。
+    input_file: maze-shortest-steps/04.in
+    output_file: maze-shortest-steps/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 迷宫最短步数 在该类输入下的正确性。
+    input_file: maze-shortest-steps/05.in
+    output_file: maze-shortest-steps/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 迷宫最短步数 在该类输入下的正确性。
+    input_file: maze-shortest-steps/06.in
+    output_file: maze-shortest-steps/06.out

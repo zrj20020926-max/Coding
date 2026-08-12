@@ -1,0 +1,70 @@
+slug: graph-component-count
+title: 无向图连通块
+description: 统计无向图中的连通分量数量，孤立顶点也构成一个分量。
+difficulty: medium
+tags:
+- dfs
+- graph-connectivity
+input_description: 第一行 `n m`，随后 `m` 行无向边 `u v`。
+output_description: 输出连通分量数量。
+data_constraints: '`1 <= n <= 200000`，`0 <= m <= 300000`，无自环，允许重边。'
+sample_input: '6 3
+
+  1 2
+
+  2 3
+
+  5 6
+
+  '
+sample_output: '3
+
+  '
+sample_explanation: 顶点 1,2,3；顶点 4；顶点 5,6 共三个分量。
+time_limit_ms: 1800
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/graph-component-count/solution.py
+  cpp: reference-solutions/graph-component-count/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 无向图连通块 在该类输入下的正确性。
+    input_file: graph-component-count/01.in
+    output_file: graph-component-count/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 无向图连通块 在该类输入下的正确性。
+    input_file: graph-component-count/02.in
+    output_file: graph-component-count/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 无向图连通块 在该类输入下的正确性。
+    input_file: graph-component-count/03.in
+    output_file: graph-component-count/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 无向图连通块 在该类输入下的正确性。
+    input_file: graph-component-count/04.in
+    output_file: graph-component-count/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 无向图连通块 在该类输入下的正确性。
+    input_file: graph-component-count/05.in
+    output_file: graph-component-count/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 无向图连通块 在该类输入下的正确性。
+    input_file: graph-component-count/06.in
+    output_file: graph-component-count/06.out

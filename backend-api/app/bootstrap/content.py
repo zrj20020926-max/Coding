@@ -9,7 +9,7 @@ import os
 import sys
 from dataclasses import dataclass
 from datetime import date as Date
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal, Optional, Union
@@ -106,6 +106,15 @@ class HiddenCaseContent(StrictModel):
     input_file: str
     output_file: str
     checksum: Optional[str] = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    scenario: Literal[
+        "minimum_boundary",
+        "normal",
+        "duplicates",
+        "special_structure",
+        "performance",
+        "counterexample",
+    ]
+    scenario_description: str = Field(min_length=1, max_length=500)
 
     @field_validator("input_file", "output_file")
     @classmethod
@@ -127,6 +136,16 @@ class TestSetContent(StrictModel):
             raise ValueError("test case sequences must be unique")
         if sum((item.score for item in self.cases), Decimal("0")) != Decimal("100"):
             raise ValueError("test case scores must total 100")
+        required_scenarios = {
+            "minimum_boundary",
+            "normal",
+            "duplicates",
+            "special_structure",
+            "performance",
+            "counterexample",
+        }
+        if not required_scenarios <= {item.scenario for item in self.cases}:
+            raise ValueError("test cases must cover all six required scenario categories")
         if self.checker_type is CheckerType.FLOAT:
             if self.absolute_tolerance is None or self.relative_tolerance is None:
                 raise ValueError("float checker requires both tolerances")
@@ -137,6 +156,16 @@ class TestSetContent(StrictModel):
         return self
 
 
+class ReferenceSolutions(StrictModel):
+    python: str
+    cpp: str
+
+    @field_validator("python", "cpp")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return _safe_relative_path(value)
+
+
 class ProblemContent(StrictModel):
     slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=100)
     title: str = Field(min_length=1, max_length=200)
@@ -145,12 +174,15 @@ class ProblemContent(StrictModel):
     tags: list[str] = Field(min_length=1, max_length=30)
     input_description: str = Field(min_length=1, max_length=20_000)
     output_description: str = Field(min_length=1, max_length=20_000)
+    data_constraints: str = Field(min_length=1, max_length=20_000)
     sample_input: str = Field(max_length=100_000)
     sample_output: str = Field(max_length=100_000)
+    sample_explanation: str = Field(min_length=1, max_length=20_000)
     time_limit_ms: int = Field(default=1000, ge=100, le=30_000)
     memory_limit_mb: int = Field(default=256, ge=16, le=2048)
     source: Optional[str] = Field(default=None, max_length=200)
     publish: bool = True
+    reference_solutions: ReferenceSolutions
     test_set: TestSetContent
 
     @field_validator("tags")
@@ -190,8 +222,19 @@ class CollectionsDocument(StrictModel):
 
 
 class DailyChallengeContent(StrictModel):
-    date: Union[Date, Literal["today"]]
+    date: Union[Date, str]
     problem: str
+
+    @field_validator("date")
+    @classmethod
+    def validate_relative_date(cls, value: Date | str) -> Date | str:
+        if isinstance(value, Date):
+            return value
+        if value == "today":
+            return value
+        if value.startswith("today+") and value[6:].isdigit() and 1 <= int(value[6:]) <= 365:
+            return value
+        raise ValueError("date must be an ISO date, today, or today+N (1-365)")
 
 
 class DailyChallengesDocument(StrictModel):
@@ -292,8 +335,23 @@ def _read_hidden_file(path: Path, label: str) -> bytes:
 
 
 def _materialize_problem(
-    document: ProblemContent, test_data_root: Path
+    document: ProblemContent, test_data_root: Path, content_root: Path
 ) -> MaterializedProblem:
+    for language, relative in (
+        ("Python", document.reference_solutions.python),
+        ("C++", document.reference_solutions.cpp),
+    ):
+        reference_path = _resolve_inside(content_root, relative, f"{language} 引用实现")
+        try:
+            reference_source = reference_path.read_bytes()
+        except OSError as exc:
+            raise ContentBootstrapError(
+                "CONTENT_INVALID", f"题目 {document.slug} 的 {language} 引用实现不可读取"
+            ) from exc
+        if not reference_source or len(reference_source) > MAX_CONTENT_FILE_BYTES:
+            raise ContentBootstrapError(
+                "CONTENT_INVALID", f"题目 {document.slug} 的 {language} 引用实现大小无效"
+            )
     cases: list[MaterializedCase] = []
     digest_parts: list[str] = [
         document.test_set.checker_type.value,
@@ -390,7 +448,7 @@ def load_content_bundle(
             raise ContentBootstrapError("CONTENT_INVALID", "题目 slug 重复")
         all_problem_slugs.add(document.slug)
         if required_problem_slugs is None or document.slug in required_problem_slugs:
-            problems[document.slug] = _materialize_problem(document, test_data_root)
+            problems[document.slug] = _materialize_problem(document, test_data_root, root)
     if required_problem_slugs is not None and set(problems) != required_problem_slugs:
         raise ContentBootstrapError("CONTENT_NOT_FOUND", "指定内容引用了不存在的题目")
 
@@ -410,12 +468,7 @@ def load_content_bundle(
     )
     if not {item.problem for item in daily} <= all_problem_slugs:
         raise ContentBootstrapError("CONTENT_INVALID", "每日一题引用了不存在的题目")
-    effective_dates = [
-        datetime.now(ZoneInfo(manifest.timezone)).date()
-        if item.date == "today"
-        else item.date
-        for item in daily
-    ]
+    effective_dates = [_challenge_date(item, manifest.timezone) for item in daily]
     if len(effective_dates) != len(set(effective_dates)):
         raise ContentBootstrapError("CONTENT_INVALID", "每日一题日期重复")
     if manifest.timezone != settings.content_timezone:
@@ -436,12 +489,23 @@ def _problem_values(document: ProblemContent) -> dict[str, object]:
         "difficulty": document.difficulty,
         "input_description": document.input_description,
         "output_description": document.output_description,
+        "data_constraints": document.data_constraints,
         "sample_input": document.sample_input,
         "sample_output": document.sample_output,
+        "sample_explanation": document.sample_explanation,
         "time_limit_ms": document.time_limit_ms,
         "memory_limit_mb": document.memory_limit_mb,
         "source": document.source,
     }
+
+
+def _challenge_date(item: DailyChallengeContent, timezone: str) -> Date:
+    if isinstance(item.date, Date):
+        return item.date
+    today = datetime.now(ZoneInfo(timezone)).date()
+    if item.date == "today":
+        return today
+    return today + timedelta(days=int(item.date[6:]))
 
 
 def _test_set_matches(test_set: TestSet, desired: MaterializedProblem) -> bool:
@@ -874,11 +938,7 @@ async def import_content_bundle(
                 ]
 
         for desired in bundle.daily_challenges:
-            challenge_date = (
-                datetime.now(ZoneInfo(bundle.manifest.timezone)).date()
-                if desired.date == "today"
-                else desired.date
-            )
+            challenge_date = _challenge_date(desired, bundle.manifest.timezone)
             problem = resolved.get(desired.problem) or problems.get(desired.problem)
             if problem is None or problem.visibility is not ProblemVisibility.PUBLIC:
                 raise ContentBootstrapError(

@@ -1,0 +1,66 @@
+slug: exact-k-nonadjacent
+title: 恰选非相邻元素
+description: 从数组中恰好选择 k 个互不相邻的位置，使元素和最大。题目保证存在合法选择，元素可以为负。
+difficulty: hard
+tags:
+- dynamic-programming
+- array
+input_description: 第一行 `n k`，第二行 n 个整数。
+output_description: 输出最大元素和。
+data_constraints: '`1 <= n <= 2000`，`1 <= k <= (n+1)/2`，`|a_i| <= 10^9`。'
+sample_input: '6 2
+
+  5 1 4 9 2 8
+
+  '
+sample_output: '17
+
+  '
+sample_explanation: 选择九和八，位置不相邻，和为十七。
+time_limit_ms: 2600
+memory_limit_mb: 256
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/exact-k-nonadjacent/solution.py
+  cpp: reference-solutions/exact-k-nonadjacent/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 恰选非相邻元素 在该类输入下的正确性。
+    input_file: exact-k-nonadjacent/01.in
+    output_file: exact-k-nonadjacent/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 恰选非相邻元素 在该类输入下的正确性。
+    input_file: exact-k-nonadjacent/02.in
+    output_file: exact-k-nonadjacent/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 恰选非相邻元素 在该类输入下的正确性。
+    input_file: exact-k-nonadjacent/03.in
+    output_file: exact-k-nonadjacent/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 恰选非相邻元素 在该类输入下的正确性。
+    input_file: exact-k-nonadjacent/04.in
+    output_file: exact-k-nonadjacent/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 恰选非相邻元素 在该类输入下的正确性。
+    input_file: exact-k-nonadjacent/05.in
+    output_file: exact-k-nonadjacent/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 恰选非相邻元素 在该类输入下的正确性。
+    input_file: exact-k-nonadjacent/06.in
+    output_file: exact-k-nonadjacent/06.out

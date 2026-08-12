@@ -30,8 +30,10 @@ export interface ProblemDetail extends ProblemSummary {
   description: string
   input_description: string
   output_description: string
+  data_constraints: string
   sample_input: string
   sample_output: string
+  sample_explanation: string
   time_limit_ms: number
   memory_limit_mb: number
   created_at: string

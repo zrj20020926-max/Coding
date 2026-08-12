@@ -2,9 +2,36 @@ schema_version: 1
 timezone: Asia/Shanghai
 tags: tags.yaml
 problems:
-  - problems/a-plus-b.yaml
-  - problems/reverse-string.yaml
-  - problems/maximum-value.yaml
+- problems/a-plus-b.yaml
+- problems/array-total.yaml
+- problems/reverse-line.yaml
+- problems/frequency-queries.yaml
+- problems/sorted-pair-exists.yaml
+- problems/balanced-brackets.yaml
+- problems/queue-commands.yaml
+- problems/first-occurrence.yaml
+- problems/stable-score-sort.yaml
+- problems/matrix-diagonal-sum.yaml
+- problems/longest-unique-segment.yaml
+- problems/range-sum-queries.yaml
+- problems/merge-intervals.yaml
+- problems/rotated-array-search.yaml
+- problems/island-count.yaml
+- problems/maze-shortest-steps.yaml
+- problems/graph-component-count.yaml
+- problems/union-find-queries.yaml
+- problems/directed-shortest-paths.yaml
+- problems/minimum-spanning-network.yaml
+- problems/maximum-compatible-events.yaml
+- problems/zero-one-knapsack.yaml
+- problems/minimum-coin-count.yaml
+- problems/longest-increasing-subsequence.yaml
+- problems/string-edit-distance.yaml
+- problems/weighted-grid-route.yaml
+- problems/exact-k-nonadjacent.yaml
+- problems/offline-edge-deletions.yaml
+- problems/kth-pair-distance.yaml
+- problems/minimum-cover-cost.yaml
 collections: collections.yaml
 daily_challenges: daily-challenges.yaml
 test_data_directory: test-data

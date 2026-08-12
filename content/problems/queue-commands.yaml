@@ -1,0 +1,86 @@
+slug: queue-commands
+title: 窗口服务队列
+description: 维护一个先进先出的整数队列，按顺序执行入队、出队、查看队首和查询长度操作。
+difficulty: easy
+tags:
+- queue
+- simulation
+input_description: 第一行操作数 `q`。随后每行是 `push x`、`pop`、`front` 或 `size`。
+output_description: 对后三类操作输出结果；空队列的 `pop/front` 输出 `EMPTY`。
+data_constraints: '`1 <= q <= 100000`，`|x| <= 10^9`。'
+sample_input: '7
+
+  push 3
+
+  push 5
+
+  front
+
+  pop
+
+  size
+
+  pop
+
+  pop
+
+  '
+sample_output: '3
+
+  3
+
+  1
+
+  5
+
+  EMPTY
+
+  '
+sample_explanation: 队首先为三；弹出三后剩一个元素，最后一次弹出时队列为空。
+time_limit_ms: 1200
+memory_limit_mb: 128
+source: CodeArena 原创题库
+publish: true
+reference_solutions:
+  python: reference-solutions/queue-commands/solution.py
+  cpp: reference-solutions/queue-commands/solution.cpp
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证 窗口服务队列 在该类输入下的正确性。
+    input_file: queue-commands/01.in
+    output_file: queue-commands/01.out
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通情况：验证 窗口服务队列 在该类输入下的正确性。
+    input_file: queue-commands/02.in
+    output_file: queue-commands/02.out
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复元素：验证 窗口服务队列 在该类输入下的正确性。
+    input_file: queue-commands/03.in
+    output_file: queue-commands/03.out
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊结构：验证 窗口服务队列 在该类输入下的正确性。
+    input_file: queue-commands/04.in
+    output_file: queue-commands/04.out
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 极值或性能压力：验证 窗口服务队列 在该类输入下的正确性。
+    input_file: queue-commands/05.in
+    output_file: queue-commands/05.out
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误实现的反例：验证 窗口服务队列 在该类输入下的正确性。
+    input_file: queue-commands/06.in
+    output_file: queue-commands/06.out
