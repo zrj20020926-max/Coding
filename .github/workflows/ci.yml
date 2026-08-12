@@ -68,11 +68,28 @@ jobs:
           --health-retries 20
     env:
       TEST_DATABASE_URL: postgresql+asyncpg://acm_test:acm_test_password@localhost:5432/acm_platform_test
+      TEST_CONTENT_MINIO_ENDPOINT: localhost:9000
+      TEST_CONTENT_MINIO_ACCESS_KEY: contenttest
+      TEST_CONTENT_MINIO_SECRET_KEY: content_test_password
+      TEST_CONTENT_MINIO_BUCKET: codearena-content-test-data
     defaults:
       run:
         working-directory: backend-api
     steps:
       - uses: actions/checkout@v4
+      - name: Start isolated MinIO
+        run: |
+          docker run -d --name codearena-content-minio \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=contenttest \
+            -e MINIO_ROOT_PASSWORD=content_test_password \
+            minio/minio:latest server /data
+          for attempt in {1..30}; do
+            curl -fsS http://localhost:9000/minio/health/ready && exit 0
+            sleep 2
+          done
+          docker logs codearena-content-minio
+          exit 1
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

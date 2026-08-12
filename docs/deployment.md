@@ -77,9 +77,9 @@ alembic upgrade head
 1. 备份并验证恢复点。
 2. 在单独的 migration job 中运行 `python -m app.db.migration_bootstrap`。
 3. 确认 `alembic current` 等于代码仓库的 head。
-4. 如需发布题目，在迁移完成后由单实例任务运行 `python -m app.seed.problems <reviewed-seed.yaml>`。
-5. 再滚动发布 API 实例。
-6. 检查 `/health/ready`、`/openapi.json`、题库分页接口、错误率和数据库连接指标。
+4. 生产设置 `CONTENT_AUTO_IMPORT=false`，由受控单实例 Job 执行 `python -m app.bootstrap.content --manifest /content/manifest.yaml --force`；修改已发布内容还必须显式审核并添加 `--allow-published-updates`。
+5. 仅当内容 Job 成功后滚动发布 API/Judge 实例。
+6. 检查 `/health/ready`、`/openapi.json`、题库、题单、每日一题、错误率和数据库连接指标。
 
 当前迁移 head 为 `20260812_0009`。该版本在 AI 分析结构之后增加测试集版本、Submission 判题快照、部分唯一索引和不可变触发器。迁移会重写 `test_cases` 关联并回填 Submission，发布前必须在接近生产规模的数据副本上评估表锁和扫描耗时并安排维护窗口。旧数据库接管脚本只把已验证的旧结构 stamp 到 `20260808_0001`，随后依次执行全部增量迁移。
 

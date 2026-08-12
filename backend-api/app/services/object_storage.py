@@ -20,6 +20,12 @@ class SourceObjectStore(Protocol):
 
     async def get_test_data(self, object_key: str) -> bytes: ...
 
+    async def test_data_exists(self, object_key: str) -> bool: ...
+
+    async def put_test_data(self, object_key: str, content: bytes) -> None: ...
+
+    async def delete_test_data(self, object_key: str) -> None: ...
+
 
 class MinioSourceObjectStore:
     def __init__(self) -> None:
@@ -80,6 +86,35 @@ class MinioSourceObjectStore:
 
     async def get_test_data(self, object_key: str) -> bytes:
         return await run_in_threadpool(self._get_test_data, object_key)
+
+    def _test_data_exists(self, object_key: str) -> bool:
+        try:
+            self.client.stat_object(self.test_data_bucket, object_key)
+        except S3Error as exc:
+            if exc.code in {"NoSuchKey", "NoSuchObject", "NoSuchBucket", "XMinioInvalidObjectName"}:
+                return False
+            raise
+        return True
+
+    async def test_data_exists(self, object_key: str) -> bool:
+        return await run_in_threadpool(self._test_data_exists, object_key)
+
+    def _put_test_data(self, object_key: str, content: bytes) -> None:
+        self.client.put_object(
+            self.test_data_bucket,
+            object_key,
+            BytesIO(content),
+            length=len(content),
+            content_type="application/octet-stream",
+        )
+
+    async def put_test_data(self, object_key: str, content: bytes) -> None:
+        await run_in_threadpool(self._put_test_data, object_key, content)
+
+    async def delete_test_data(self, object_key: str) -> None:
+        await run_in_threadpool(
+            self.client.remove_object, self.test_data_bucket, object_key
+        )
 
 
 @lru_cache

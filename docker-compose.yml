@@ -75,6 +75,56 @@ services:
       minio:
         condition: service_healthy
 
+  db-migrate:
+    build:
+      context: ./backend-api
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-acm}:${POSTGRES_PASSWORD:-acm_local_password}@postgres:5432/${POSTGRES_DB:-acm_platform}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-only-secret-key-change-before-deploy}
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+      REFRESH_COOKIE_SAMESITE: ${REFRESH_COOKIE_SAMESITE:-lax}
+    command: ["python", "-m", "app.db.migration_bootstrap"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  content-bootstrap:
+    build:
+      context: ./backend-api
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-acm}:${POSTGRES_PASSWORD:-acm_local_password}@postgres:5432/${POSTGRES_DB:-acm_platform}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio_local_password}
+      MINIO_TEST_DATA_BUCKET: ${MINIO_TEST_DATA_BUCKET:-codearena-test-data}
+      MINIO_SECURE: ${MINIO_SECURE:-false}
+      TEST_DATA_OBJECT_MAX_BYTES: ${SANDBOX_OBJECT_LIMIT_BYTES:-16777216}
+      JUDGE_SUPPORTED_LANGUAGES: ${JUDGE_SUPPORTED_LANGUAGES:-python,cpp}
+      CONTENT_TIMEZONE: ${CONTENT_TIMEZONE:-Asia/Shanghai}
+      CONTENT_AUTO_IMPORT: ${CONTENT_AUTO_IMPORT:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-only-secret-key-change-before-deploy}
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+      REFRESH_COOKIE_SAMESITE: ${REFRESH_COOKIE_SAMESITE:-lax}
+    command:
+      - python
+      - -m
+      - app.bootstrap.content
+      - --manifest
+      - /content/manifest.yaml
+    volumes:
+      - ./content:/content:ro
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+
   backend-api:
     build:
       context: ./backend-api
@@ -113,10 +163,7 @@ services:
       DISCUSSION_MAX_REPLY_DEPTH: ${DISCUSSION_MAX_REPLY_DEPTH:-3}
     ports:
       - "8000:8000"
-    command:
-      - sh
-      - -c
-      - python -m app.db.migration_bootstrap && exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -125,6 +172,8 @@ services:
       minio:
         condition: service_healthy
       minio-init:
+        condition: service_completed_successfully
+      content-bootstrap:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]

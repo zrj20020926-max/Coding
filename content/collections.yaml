@@ -1,0 +1,10 @@
+collections:
+  - slug: acm-starter
+    title: ACM 输入输出入门
+    description: 掌握标准输入、标准输出和基础数据处理。
+    company: CodeArena
+    is_public: true
+    problems:
+      - a-plus-b
+      - reverse-string
+      - maximum-value

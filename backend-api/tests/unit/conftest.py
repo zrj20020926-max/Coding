@@ -34,6 +34,15 @@ class FakeSourceObjectStore:
     async def get_test_data(self, object_key: str) -> bytes:
         return self.test_objects[object_key]
 
+    async def test_data_exists(self, object_key: str) -> bool:
+        return object_key in self.test_objects
+
+    async def put_test_data(self, object_key: str, content: bytes) -> None:
+        self.test_objects[object_key] = content
+
+    async def delete_test_data(self, object_key: str) -> None:
+        self.test_objects.pop(object_key, None)
+
 
 def active_test_set(problem: Problem, version: int = 1) -> TestSet:
     return TestSet(

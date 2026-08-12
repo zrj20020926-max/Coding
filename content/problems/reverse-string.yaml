@@ -1,0 +1,28 @@
+slug: reverse-string
+title: 反转字符串
+description: |
+  输入一个不含空格的字符串，输出它的逆序形式。
+difficulty: easy
+tags: [string]
+input_description: 一行包含一个长度不超过 1000 的非空字符串。
+output_description: 输出反转后的字符串。
+sample_input: |
+  code
+sample_output: |
+  edoc
+time_limit_ms: 1000
+memory_limit_mb: 128
+source: CodeArena 基础训练
+publish: true
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+    - sequence: 1
+      score: 50
+      input_file: reverse-string/01.in
+      output_file: reverse-string/01.out
+    - sequence: 2
+      score: 50
+      input_file: reverse-string/02.in
+      output_file: reverse-string/02.out

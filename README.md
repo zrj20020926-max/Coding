@@ -132,6 +132,19 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 
 管理员题单、每日一题与审核接口、状态语义和安全边界见[内容运营 API](docs/content-operations.md)。本期未提供点赞入口；数据库遗留的 `like_count` 不作为可写事实源，后续若启用点赞必须先建立用户点赞关系表。
 
+## 完整内容初始化
+
+正式内容位于 `content/`。全新 PostgreSQL 与 MinIO 启动时，Compose 会按 migration、bucket、content-bootstrap、API/Judge/前端的顺序执行；导入失败会阻止 API 假启动。当前内容包含 3 道可正式判题题目、隐藏测试集、入门题单和按 `Asia/Shanghai` 计算的当天每日一题。
+
+```powershell
+cd backend-api
+.\.venv\Scripts\python -m app.bootstrap.content --manifest ../content/manifest.yaml --validate-only --force
+.\.venv\Scripts\python -m app.bootstrap.content --manifest ../content/manifest.yaml --dry-run --force
+.\.venv\Scripts\python -m app.bootstrap.content --manifest ../content/manifest.yaml --force
+```
+
+详细格式、单题/单题单导入、生产保护和恢复方式见[内容初始化系统](docs/content-bootstrap.md)。
+
 ## 数据库迁移
 
 以下命令均在 `backend-api/` 目录执行。
@@ -225,6 +238,7 @@ npm run test:e2e
 - [提交控制平面 API](docs/submissions-api.md)
 - [训练进度与收藏 API](docs/training-api.md)
 - [内容运营 API](docs/content-operations.md)
+- [内容初始化系统](docs/content-bootstrap.md)
 - [Judge 安全与故障模型](docs/judge-security.md)
 
 ## 提交控制平面
