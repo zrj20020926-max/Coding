@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     submission_min_interval_seconds: int = Field(default=2, ge=0, le=300)
     judge_supported_languages: str = "python,cpp"
     submission_stream_name: str = "codearena:judge:submissions"
+    ai_analysis_stream_name: str = "codearena:ai:analyses"
+    ai_analysis_daily_quota: int = Field(default=5, ge=1, le=100)
+    ai_analysis_quota_window_seconds: int = Field(default=86_400, ge=60, le=604_800)
     outbox_batch_size: int = Field(default=50, ge=1, le=500)
     outbox_poll_interval_ms: int = Field(default=500, ge=50, le=60_000)
     outbox_retry_max_seconds: int = Field(default=60, ge=1, le=3600)

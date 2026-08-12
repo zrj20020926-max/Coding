@@ -30,7 +30,7 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260810_0007"
+            assert revision == "20260811_0008"
 
             submission_columns = set(
                 (
@@ -68,6 +68,8 @@ async def test_migrations_preserve_postgresql_features(
             assert "submission_stat_events" in tables
             assert "content_reports" in tables
             assert "content_moderation_actions" in tables
+            assert "ai_usage_records" in tables
+            assert "audit_logs" in tables
 
             citext_columns = set(
                 (
@@ -118,6 +120,8 @@ async def test_migrations_preserve_postgresql_features(
             assert "idx_collections_public_created" in indexes
             assert "idx_discussions_public_order" in indexes
             assert "uq_reports_user_discussion" in indexes
+            assert "idx_ai_analyses_completed_fingerprint" in indexes
+            assert "idx_ai_usage_user_created" in indexes
 
             triggers = set(
                 (

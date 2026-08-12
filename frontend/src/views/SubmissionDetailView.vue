@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
+import AIAnalysisPanel from '@/components/submissions/AIAnalysisPanel.vue'
 import SubmissionStatusBadge from '@/components/submissions/SubmissionStatusBadge.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
@@ -15,6 +16,13 @@ const editorStore = useEditorStore()
 const store = useSubmissionStore()
 const { detail, detailLoading, detailError } = storeToRefs(store)
 const submissionId = computed(() => String(route.params['id'] ?? ''))
+const analyzableStatuses = new Set([
+  'Wrong Answer',
+  'Compile Error',
+  'Runtime Error',
+  'Time Limit Exceeded',
+  'Memory Limit Exceeded',
+])
 
 function load(): void {
   if (submissionId.value) void store.loadDetail(submissionId.value)
@@ -72,6 +80,10 @@ watch(submissionId, load, { immediate: true })
       <section v-if="detail.mode === 'sample' && detail.sample_output !== null" class="submission-code-block">
         <h2>程序输出</h2><pre><code>{{ detail.sample_output || '（无输出）' }}</code></pre>
       </section>
+      <AIAnalysisPanel
+        v-if="analyzableStatuses.has(detail.status)"
+        :submission-id="detail.id"
+      />
       <section class="submission-code-block">
         <div class="submission-code-heading"><h2>提交代码</h2><el-button @click="useCodeAgain">载入编辑器</el-button></div>
         <pre><code>{{ detail.source_code }}</code></pre>

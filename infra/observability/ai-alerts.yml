@@ -1,0 +1,31 @@
+groups:
+  - name: codearena-ai
+    rules:
+      - alert: CodeArenaAIHighFailureRate
+        expr: >-
+          sum(rate(codearena_ai_analyses_total{outcome=~"failed_.*"}[10m]))
+          / clamp_min(sum(rate(codearena_ai_analyses_total[10m])), 0.001) > 0.10
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "CodeArena AI analysis failure rate exceeds 10%"
+      - alert: CodeArenaAIProviderHighLatency
+        expr: >-
+          histogram_quantile(0.95,
+          sum by (le) (rate(codearena_ai_provider_latency_seconds_bucket[10m]))) > 25
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "CodeArena AI provider P95 latency exceeds 25 seconds"
+      - alert: CodeArenaAIQueueBacklog
+        expr: codearena_ai_queue_pending > 100 or codearena_ai_queue_lag > 100
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "CodeArena AI Redis Stream consumer backlog exceeds 100"
+      - alert: CodeArenaAIHourlyBudgetHigh
+        expr: increase(codearena_ai_cost_microusd_total[1h]) > 8000000
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "CodeArena AI hourly cost exceeds the configured example threshold"

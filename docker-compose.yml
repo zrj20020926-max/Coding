@@ -58,12 +58,19 @@ services:
       - >-
         mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
         mc mb --ignore-existing "local/$${MINIO_SOURCE_BUCKET}" &&
-        mc mb --ignore-existing "local/$${MINIO_TEST_DATA_BUCKET}"
+        mc mb --ignore-existing "local/$${MINIO_TEST_DATA_BUCKET}" &&
+        (mc admin user info local "$${AI_MINIO_ACCESS_KEY}" >/dev/null 2>&1 || mc admin user add local "$${AI_MINIO_ACCESS_KEY}" "$${AI_MINIO_SECRET_KEY}") &&
+        (mc admin policy info local codearena-ai-source-readonly >/dev/null 2>&1 || mc admin policy create local codearena-ai-source-readonly /policies/ai-source-readonly-policy.json) &&
+        mc admin policy attach local codearena-ai-source-readonly --user "$${AI_MINIO_ACCESS_KEY}"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_local_password}
       MINIO_SOURCE_BUCKET: ${MINIO_BUCKET:-codearena-submissions}
       MINIO_TEST_DATA_BUCKET: ${MINIO_TEST_DATA_BUCKET:-codearena-test-data}
+      AI_MINIO_ACCESS_KEY: ${AI_MINIO_ACCESS_KEY:-codearena-ai}
+      AI_MINIO_SECRET_KEY: ${AI_MINIO_SECRET_KEY:-ai_local_password_change_me}
+    volumes:
+      - ./infra/minio/ai-source-readonly-policy.json:/policies/ai-source-readonly-policy.json:ro
     depends_on:
       minio:
         condition: service_healthy
@@ -84,6 +91,8 @@ services:
       MINIO_SECURE: ${MINIO_SECURE:-false}
       SUBMISSION_SOURCE_MAX_BYTES: ${SUBMISSION_SOURCE_MAX_BYTES:-262144}
       SUBMISSION_MIN_INTERVAL_SECONDS: ${SUBMISSION_MIN_INTERVAL_SECONDS:-2}
+      AI_ANALYSIS_DAILY_QUOTA: ${AI_ANALYSIS_DAILY_QUOTA:-5}
+      AI_ANALYSIS_QUOTA_WINDOW_SECONDS: ${AI_ANALYSIS_QUOTA_WINDOW_SECONDS:-86400}
       JUDGE_SUPPORTED_LANGUAGES: ${JUDGE_SUPPORTED_LANGUAGES:-python,cpp}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-only-secret-key-change-before-deploy}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
@@ -135,6 +144,7 @@ services:
       REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
       REFRESH_COOKIE_SAMESITE: ${REFRESH_COOKIE_SAMESITE:-lax}
       SUBMISSION_STREAM_NAME: ${SUBMISSION_STREAM_NAME:-codearena:judge:submissions}
+      AI_ANALYSIS_STREAM_NAME: ${AI_ANALYSIS_STREAM_NAME:-codearena:ai:analyses}
       OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-50}
       OUTBOX_POLL_INTERVAL_MS: ${OUTBOX_POLL_INTERVAL_MS:-500}
       OUTBOX_RETRY_MAX_SECONDS: ${OUTBOX_RETRY_MAX_SECONDS:-60}
@@ -203,6 +213,59 @@ services:
       outbox-publisher:
         condition: service_started
     stop_grace_period: 20s
+    restart: unless-stopped
+
+  ai-service:
+    build:
+      context: ./ai-service
+      target: runtime
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-acm}:${POSTGRES_PASSWORD:-acm_local_password}@postgres:5432/${POSTGRES_DB:-acm_platform}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_local_password}@redis:6379/0
+      AI_ANALYSIS_STREAM_NAME: ${AI_ANALYSIS_STREAM_NAME:-codearena:ai:analyses}
+      AI_CONSUMER_GROUP: ${AI_CONSUMER_GROUP:-codearena-ai}
+      AI_CONSUMER_NAME: ${AI_CONSUMER_NAME:-ai-compose-1}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${AI_MINIO_ACCESS_KEY:-codearena-ai}
+      MINIO_SECRET_KEY: ${AI_MINIO_SECRET_KEY:-ai_local_password_change_me}
+      MINIO_SOURCE_BUCKET: ${MINIO_BUCKET:-codearena-submissions}
+      MINIO_SECURE: ${MINIO_SECURE:-false}
+      AI_PROVIDER_BASE_URL: ${AI_PROVIDER_BASE_URL:-https://api.openai.com/v1}
+      AI_PROVIDER_API_KEY: ${AI_PROVIDER_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-5-mini}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
+      AI_MAX_RETRIES: ${AI_MAX_RETRIES:-3}
+      AI_INPUT_PRICE_USD_PER_MILLION: ${AI_INPUT_PRICE_USD_PER_MILLION:-0}
+      AI_OUTPUT_PRICE_USD_PER_MILLION: ${AI_OUTPUT_PRICE_USD_PER_MILLION:-0}
+      METRICS_PORT: 9102
+    ports:
+      - "9102:9102"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9102/metrics')"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      outbox-publisher:
+        condition: service_started
     restart: unless-stopped
 
   frontend:

@@ -30,6 +30,12 @@ def _retry_delay(attempts: int) -> int:
     return min(settings.outbox_retry_max_seconds, 2 ** min(attempts, 10))
 
 
+def _stream_for(event_type: str) -> str:
+    if event_type == "ai.analysis.requested":
+        return settings.ai_analysis_stream_name
+    return settings.submission_stream_name
+
+
 async def publish_outbox_batch(db: AsyncSession, cache: Redis) -> int:
     now = datetime.now(timezone.utc)
     events = (
@@ -48,7 +54,7 @@ async def publish_outbox_batch(db: AsyncSession, cache: Redis) -> int:
                 PUBLISH_EVENT_SCRIPT,
                 2,
                 f"outbox:published:{event.id}",
-                settings.submission_stream_name,
+                _stream_for(event.event_type),
                 str(settings.outbox_dedup_ttl_seconds),
                 str(event.id),
                 event.event_type,
@@ -61,7 +67,11 @@ async def publish_outbox_batch(db: AsyncSession, cache: Redis) -> int:
                 message_id.decode() if isinstance(message_id, bytes) else str(message_id)
             )
             event.last_error = None
-            submission = await db.get(Submission, event.aggregate_id)
+            submission = (
+                await db.get(Submission, event.aggregate_id)
+                if event.aggregate_type == "submission"
+                else None
+            )
             if submission is not None:
                 submission.queue_message_id = event.stream_message_id
             published += 1

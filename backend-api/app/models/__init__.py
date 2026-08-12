@@ -1,3 +1,4 @@
+from app.models.ai import AIAnalysis, AIAnalysisStatus, AIUsageRecord, AuditLog
 from app.models.content import (
     Collection,
     CollectionProblem,
@@ -29,6 +30,10 @@ from app.models.submission import (
 from app.models.user import User
 
 __all__ = [
+    "AIAnalysis",
+    "AIAnalysisStatus",
+    "AIUsageRecord",
+    "AuditLog",
     "Collection",
     "CollectionProblem",
     "ContentModerationAction",

@@ -108,3 +108,9 @@ export function getApiErrorMessage(error: unknown, fallback = '请求失败，�
   const body = error.response?.data as { detail?: { message?: string } } | undefined
   return body?.detail?.message ?? fallback
 }
+
+export function getApiErrorCode(error: unknown): string | undefined {
+  if (!axios.isAxiosError(error)) return undefined
+  const body = error.response?.data as { detail?: { code?: string } } | undefined
+  return body?.detail?.code
+}

@@ -25,7 +25,7 @@
 - 分页讨论与最多三级回复，支持编辑、软删除、锁帖、置顶、举报、敏感词待审和管理员审计
 - Playwright 关键浏览器流程测试
 
-隐藏测试数据管理后台和 AI 分析仍不属于当前范围；浏览器和 `backend-api` 都不会执行用户代码。
+独立 `ai-service` 已提供用户主动触发的失败提交建议分析；浏览器和 `backend-api` 都不会执行用户代码，AI 也不参与正式判题决策。
 
 ## 目录
 
@@ -42,6 +42,7 @@
 │  └─ tests/
 │     ├─ unit/                          # SQLite + FakeRedis 快速测试
 │     └─ integration/                   # 真实 PostgreSQL 测试
+├─ ai-service/                         # 隔离的建议型 AI 分析 Worker
 ├─ frontend/
 │  ├─ src/components/editor/            # 懒加载 Monaco 编辑器
 │  ├─ src/stores/submissions.ts         # 提交、防重、轮询与恢复
@@ -65,12 +66,20 @@ docker compose ps
 - Web：http://localhost:8080
 - OpenAPI：http://localhost:8000/docs
 - MinIO Console：http://localhost:9001
+- AI metrics：http://localhost:9102/metrics（仅本地 Compose 暴露时）
 
 Docker Compose 会在 API 启动前执行安全迁移入口。全新数据库执行 `upgrade head`；旧版 SQL 创建的数据库只有在结构、扩展、ENUM、索引、触发器和种子数据全部通过校验后才会 stamp。
 
 认证接口还包括 `POST /api/v1/auth/refresh`、`POST /api/v1/auth/change-password` 和
 `POST /api/v1/auth/logout-all`。Refresh Token 仅通过 HttpOnly Cookie 传输，不进入响应 JSON；
 登录和注册同时按客户端 IP 与规范化账号执行 Redis 限流。
+
+## AI 分析 API
+
+- `POST /api/v1/submissions/{id}/ai-analysis`：当前用户主动分析本人已结束的失败提交。
+- `GET /api/v1/submissions/{id}/ai-analysis`：查询结构化分析结果。
+
+AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、改进建议和引导问题，不修改判题状态。模型输入不含隐藏用例、标准答案、对象键、凭证或其他用户数据，前端固定提示建议可能不准确。配额、缓存、成本、脱敏与部署边界见 [AI 分析文档](docs/ai-analysis.md)，生产观测、告警、备份、Secret Manager 和 digest 规范见 [生产运维文档](docs/production-operations.md)。
 
 ## 题库 API
 
@@ -231,7 +240,7 @@ npm run test:e2e
 
 ```powershell
 cd backend-api
-alembic upgrade 20260810_0007
+alembic upgrade 20260811_0008
 alembic current
 ```
 

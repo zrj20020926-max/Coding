@@ -312,6 +312,26 @@ a { color: inherit; text-decoration: none; }
 .submission-code-block h2 { margin: 0; font-size: 16px; }
 .submission-code-block pre { max-height: 540px; margin-top: 10px; }
 .submission-code-heading { display: flex; justify-content: space-between; align-items: center; }
+.ai-analysis-panel { margin-top: 28px; padding: 22px; border: 1px solid #d4b45f; border-radius: 12px; background: var(--surface); }
+.ai-analysis-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.ai-analysis-panel > header p { margin: 0 0 4px; color: var(--accent-deep); font: 10px 'DM Mono', monospace; letter-spacing: .12em; }
+.ai-analysis-button { border: 0; border-radius: 8px; cursor: pointer; }
+.ai-analysis-button:disabled { cursor: wait; opacity: .65; }
+.ai-analysis-warning, .ai-analysis-error { margin-top: 12px; padding: 12px 14px; border-radius: 8px; font-size: 12px; line-height: 1.6; }
+.ai-analysis-warning { border: 1px solid #d4b45f; background: #fff8dc; color: #745c13; }
+.ai-analysis-error { border: 1px solid #da8d8d; background: #fff0f0; color: #9a2d2d; }
+.ai-analysis-panel h2, .ai-analysis-panel h3 { margin: 0; }
+.ai-analysis-panel h2 { font-size: 19px; }
+.ai-analysis-panel h3 { margin-top: 18px; font-size: 14px; }
+.ai-analysis-panel ol, .ai-analysis-panel ul { margin: 8px 0 0; padding-left: 22px; line-height: 1.8; }
+.ai-analysis-panel section > p { line-height: 1.75; }
+.ai-analysis-loading, .ai-analysis-empty { padding: 18px 0 4px; color: var(--muted); }
+.ai-quota, .ai-cache-note { color: var(--muted); font-size: 11px; }
+.ai-complexity-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+.ai-complexity-grid > div { padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.ai-complexity-grid span, .ai-complexity-grid strong { display: block; }
+.ai-complexity-grid span { color: var(--muted); font-size: 10px; }
+.ai-complexity-grid strong { margin-top: 6px; font: 13px 'DM Mono', monospace; }
 .detail-skeleton { display: grid; gap: 18px; margin-top: 28px; padding: 42px; min-height: 560px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); }
 .detail-title-skeleton { width: 55%; height: 48px; }
 .detail-meta-skeleton { width: 32%; }
