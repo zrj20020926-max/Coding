@@ -43,13 +43,13 @@ async function toggleFavorite(problem: ProblemSummary): Promise<void> {
 <template>
   <section class="collection-detail-page page-container">
     <div v-if="collectionLoading" class="detail-skeleton"><span class="skeleton-block detail-title-skeleton"></span></div>
-    <el-result v-else-if="collectionError" icon="error" title="题单加载失败" :sub-title="collectionError" />
+    <el-result v-else-if="collectionError" icon="error" title="训练路径加载失败" :sub-title="collectionError" />
     <template v-else-if="collection">
       <header class="collection-detail-header">
         <div>
           <p class="eyebrow">{{ collection.company ?? 'CODEARENA TRACK' }}</p>
           <h1>{{ collection.title }}</h1>
-          <MarkdownContent :content="collection.description || '按顺序完成题单，建立稳定的知识结构。'" />
+          <MarkdownContent :content="collection.description || '按顺序完成练习，建立稳定的 JavaScript 输入输出习惯。'" />
         </div>
         <aside>
           <strong>{{ collection.solved_count ?? 0 }} / {{ collection.problem_count }}</strong>

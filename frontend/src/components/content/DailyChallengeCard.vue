@@ -12,9 +12,9 @@ onMounted(() => void content.loadDaily())
 </script>
 
 <template>
-  <section class="daily-card page-container" aria-label="每日一题">
+  <section class="daily-card page-container" aria-label="每日输入输出练习">
     <div>
-      <p class="section-kicker">DAILY CHALLENGE</p>
+      <p class="section-kicker">DAILY I/O PRACTICE</p>
       <template v-if="dailyLoading">
         <span class="skeleton-block daily-title-skeleton"></span>
       </template>
@@ -24,12 +24,12 @@ onMounted(() => void content.loadDaily())
         <div class="daily-meta">
           <DifficultyBadge :difficulty="daily.problem.difficulty" />
           <span>{{ daily.problem.acceptance_rate.toFixed(1) }}% 通过率</span>
-          <span v-if="daily.problem.solved">✓ 已解决</span>
+          <span v-if="daily.problem.solved">✓ 已完成</span>
         </div>
       </template>
       <template v-else>
         <span class="daily-date">按服务端日期更新</span>
-        <h2>今日挑战即将发布</h2>
+        <h2>今日输入输出练习即将发布</h2>
       </template>
     </div>
     <RouterLink
@@ -37,8 +37,8 @@ onMounted(() => void content.loadDaily())
       class="hero-primary"
       :to="{ name: 'problem-detail', params: { slug: daily.problem.slug } }"
     >
-      开始挑战
+      开始练习
     </RouterLink>
-    <RouterLink v-else class="hero-secondary" to="/problems">浏览题库</RouterLink>
+    <RouterLink v-else class="hero-secondary" to="/problems">浏览训练课程</RouterLink>
   </section>
 </template>

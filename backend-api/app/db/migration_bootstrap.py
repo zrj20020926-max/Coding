@@ -63,6 +63,8 @@ EXPECTED_TRIGGERS = {
     "trg_submissions_updated_at",
     "trg_users_updated_at",
 }
+# Legacy SQL installations are stamped at the initial revision before later migrations
+# rename `javascript` to `nodejs` and add the V8 compatibility mode.
 EXPECTED_LANGUAGES = {"cpp", "go", "java", "javascript", "python"}
 EXPECTED_TAGS = {
     "array",

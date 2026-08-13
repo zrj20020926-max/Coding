@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import { DEFAULT_PROBLEM_FILTERS } from '@/types/problem'
+import { DEFAULT_PROBLEM_FILTERS, TRAINING_CATEGORY_LABELS } from '@/types/problem'
 import type {
   ProblemDifficulty,
   ProblemFilters,
   ProblemProgressStatus,
   ProblemSort,
   ProblemTag,
+  TrainingCategory,
 } from '@/types/problem'
 
 const props = defineProps<{
@@ -40,6 +41,10 @@ const tag = computed({
   get: () => props.filters.tag,
   set: (value: string) => patchFilters({ tag: value }),
 })
+const category = computed<TrainingCategory | ''>({
+  get: () => props.filters.category,
+  set: (value) => patchFilters({ category: value }),
+})
 const progressStatus = computed<ProblemProgressStatus | ''>({
   get: () => props.filters.status,
   set: (value) => patchFilters({ status: value }),
@@ -60,24 +65,28 @@ function reset(): void {
 </script>
 
 <template>
-  <section class="problem-filters" aria-label="题库筛选">
+  <section class="problem-filters" aria-label="训练课程筛选">
     <div class="filter-search">
       <el-input
         v-model="keyword"
         clearable
         maxlength="200"
-        placeholder="搜索标题或 slug"
-        aria-label="题目关键词"
+        placeholder="搜索练习标题或 slug"
+        aria-label="练习关键词"
         @clear="search"
         @keyup.enter="search"
       />
       <el-button type="primary" @click="search">搜索</el-button>
     </div>
-    <el-select v-model="difficulty" aria-label="难度筛选" placeholder="全部难度">
-      <el-option label="全部难度" value="" />
-      <el-option label="简单" value="easy" />
-      <el-option label="中等" value="medium" />
-      <el-option label="困难" value="hard" />
+    <el-select v-model="category" aria-label="输入输出分类筛选" placeholder="全部输入输出分类">
+      <el-option label="全部输入输出分类" value="" />
+      <el-option v-for="(label, value) in TRAINING_CATEGORY_LABELS" :key="value" :label="label" :value="value" />
+    </el-select>
+    <el-select v-model="difficulty" aria-label="结构层级筛选" placeholder="全部结构层级">
+      <el-option label="全部结构层级" value="" />
+      <el-option label="基础" value="easy" />
+      <el-option label="组合" value="medium" />
+      <el-option label="综合" value="hard" />
     </el-select>
     <el-select
       v-model="tag"
@@ -107,7 +116,7 @@ function reset(): void {
       <el-option label="最新发布" value="newest" />
       <el-option label="最早发布" value="oldest" />
       <el-option label="标题排序" value="title" />
-      <el-option label="难度排序" value="difficulty" />
+      <el-option label="结构层级排序" value="difficulty" />
       <el-option label="通过率最高" value="acceptance" />
     </el-select>
     <el-button class="filter-reset" text @click="reset">重置</el-button>

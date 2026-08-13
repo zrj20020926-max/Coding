@@ -42,6 +42,9 @@ const monacoLanguage = computed(() => language.value?.monaco_language ?? selecte
 const modelId = computed(
   () => `${draftUserId.value}/${props.problem.id}/${selectedLanguage.value}`,
 )
+const modeHint = computed(() => selectedLanguage.value === 'javascript-v8'
+  ? 'V8 模式：只可使用 readline() 与 print()，fs/process/Buffer 不可用。'
+  : 'Node.js 模式：使用 fs.readFileSync(0, \'utf8\') 读取 stdin；没有浏览器 DOM。')
 
 function restoreDraft(): void {
   sourceCode.value = editorStore.loadDraft(
@@ -175,6 +178,7 @@ onBeforeUnmount(() => {
     </header>
 
     <p v-if="languagesError" class="workbench-error">{{ languagesError }}</p>
+    <el-alert class="editor-mode-hint" type="info" :closable="false" :title="modeHint" show-icon />
     <div class="editor-frame">
       <Suspense>
         <LazyCodeEditor

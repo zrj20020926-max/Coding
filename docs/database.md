@@ -64,7 +64,7 @@ erDiagram
 
 | ORM | 表 | 关键关系/约束 |
 | --- | --- | --- |
-| `Problem` | `problems` | `slug` 唯一；难度和可见性使用命名 ENUM；一对多关联 `ProblemTag`、`UserProblemProgress` |
+| `Problem` | `problems` | `slug` 唯一；结构层级、训练分类和可见性使用命名 ENUM；一对多关联 `ProblemTag`、`UserProblemProgress` |
 | `Tag` | `tags` | `slug`、`name` 分别唯一 |
 | `ProblemTag` | `problem_tags` | `(problem_id, tag_id)` 联合主键，级联删除 |
 | `Language` | `languages` | `slug` 唯一；内部保存运行配置，公开 DTO 只输出编辑器元数据 |
@@ -80,6 +80,7 @@ erDiagram
 - 登录用户按 `(user_id, problem_id)` 左连接个人进度；`attempted` 筛选定义为尝试次数大于 0 且尚未通过。
 - 总数与当前页分别查询，排序始终追加稳定的 `id` 次序。
 - `20260808_0003` 增加部分索引 `idx_problems_public_created (created_at DESC, id DESC) WHERE visibility = 'public'`，服务默认最新排序。
+- `20260813_0013` 增加 `training_category` ENUM 和公开分类索引。`difficulty` 保留兼容值 `easy/medium/hard`，用户语义改为输入输出结构的“基础/组合/综合”。同一迁移保留原 JavaScript 语言外键并将其升级为 `nodejs`，新增 `javascript-v8`，停用其他用户提交语言。
 
 ## 数据边界
 

@@ -12,6 +12,7 @@ import DiscussionSection from '@/components/content/DiscussionSection.vue'
 import { getApiErrorMessage } from '@/services/http'
 import { useAuthStore } from '@/stores/auth'
 import { useProblemStore } from '@/stores/problems'
+import { TRAINING_CATEGORY_LABELS } from '@/types/problem'
 
 const route = useRoute()
 const router = useRouter()
@@ -45,7 +46,7 @@ onBeforeUnmount(() => problemStore.clearDetail())
 <template>
   <div class="problem-detail-page page-container">
     <nav class="problem-breadcrumb" aria-label="面包屑">
-      <RouterLink to="/problems">题库</RouterLink><span>/</span><span>{{ slug }}</span>
+      <RouterLink to="/problems">训练课程</RouterLink><span>/</span><span>{{ slug }}</span>
     </nav>
 
     <div v-if="detailLoading" class="detail-skeleton" aria-label="题目加载中" aria-busy="true">
@@ -61,7 +62,7 @@ onBeforeUnmount(() => problemStore.clearDetail())
         :sub-title="detailError"
       >
         <template #extra>
-          <RouterLink v-if="detailNotFound" class="primary-link" to="/problems">返回题库</RouterLink>
+          <RouterLink v-if="detailNotFound" class="primary-link" to="/problems">返回训练课程</RouterLink>
           <el-button v-else type="primary" @click="fetchDetail">重试</el-button>
         </template>
       </el-result>
@@ -73,6 +74,7 @@ onBeforeUnmount(() => problemStore.clearDetail())
           <div class="statement-kicker">
             <span>#{{ String(detail.id).padStart(4, '0') }}</span>
             <DifficultyBadge :difficulty="detail.difficulty" />
+            <span>{{ TRAINING_CATEGORY_LABELS[detail.training_category] }}</span>
           </div>
           <h1>{{ detail.title }}</h1>
           <div class="statement-tags">
@@ -84,7 +86,7 @@ onBeforeUnmount(() => problemStore.clearDetail())
             :disabled="favoritePendingIds.includes(detail.id)"
             @click="toggleFavorite"
           >
-            {{ detail.favorited ? '★ 已收藏' : '☆ 收藏题目' }}
+            {{ detail.favorited ? '★ 已收藏' : '☆ 收藏练习' }}
           </button>
         </div>
         <dl class="statement-limits">
@@ -113,8 +115,8 @@ onBeforeUnmount(() => problemStore.clearDetail())
         <div><h2>样例解释</h2><MarkdownContent :content="detail.sample_explanation" /></div>
       </section>
       <aside class="editor-notice">
-        <strong>ACM 模式说明</strong>
-        <p>请按题面从 stdin 读取输入并向 stdout 输出答案。公开样例运行与正式提交都会进入独立 Judge 沙箱。</p>
+        <strong>JavaScript ACM 输入输出说明</strong>
+        <p>V8 模式只使用 readline()/print()；Node.js 模式使用 fs 读取 stdin。两种模式都在独立 Judge 沙箱运行，浏览器与 API 不执行代码。</p>
       </aside>
       <ProblemWorkbench :problem="detail" />
       <DiscussionSection :problem-id="detail.id" />

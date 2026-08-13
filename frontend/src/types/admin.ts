@@ -1,5 +1,5 @@
 import type { Discussion, DiscussionComment, ReviewStatus } from '@/types/content'
-import type { ProblemDifficulty, ProblemSummary, ProblemTag } from '@/types/problem'
+import type { ProblemDifficulty, ProblemSummary, ProblemTag, TrainingCategory } from '@/types/problem'
 
 export type ProblemVisibility = 'draft' | 'public' | 'private'
 export type AdminProblemSort = 'created_desc' | 'created_asc' | 'updated_desc' | 'updated_asc'
@@ -45,6 +45,7 @@ export interface ProblemWritePayload {
   title: string
   description: string
   difficulty: ProblemDifficulty
+  training_category: TrainingCategory
   input_description: string
   output_description: string
   data_constraints: string

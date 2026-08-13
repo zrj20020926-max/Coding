@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import DifficultyBadge from '@/components/problems/DifficultyBadge.vue'
 import type { ProblemSummary } from '@/types/problem'
+import { TRAINING_CATEGORY_LABELS } from '@/types/problem'
 
 defineProps<{
   problems: ProblemSummary[]
@@ -26,11 +27,11 @@ function progressClass(problem: ProblemSummary): string {
 </script>
 
 <template>
-  <div class="problem-table" role="table" aria-label="题目列表">
+  <div class="problem-table" role="table" aria-label="训练练习列表">
     <div class="problem-table-head" role="row">
-      <span role="columnheader">题号</span>
-      <span role="columnheader">题目</span>
-      <span role="columnheader">难度</span>
+      <span role="columnheader">编号</span>
+      <span role="columnheader">练习</span>
+      <span role="columnheader">结构层级</span>
       <span role="columnheader">标签</span>
       <span role="columnheader">通过率</span>
       <span role="columnheader">进度</span>
@@ -41,7 +42,7 @@ function progressClass(problem: ProblemSummary): string {
       <span class="problem-title-cell" role="cell">
         <RouterLink :to="{ name: 'problem-detail', params: { slug: problem.slug } }">
           <strong>{{ problem.title }}</strong>
-          <small>{{ problem.slug }}</small>
+          <small>{{ TRAINING_CATEGORY_LABELS[problem.training_category] }} · {{ problem.slug }}</small>
         </RouterLink>
       </span>
       <span role="cell"><DifficultyBadge :difficulty="problem.difficulty" /></span>

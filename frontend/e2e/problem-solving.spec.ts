@@ -19,6 +19,7 @@ const problemSummary = {
   slug: 'a-plus-b',
   title: 'A+B 问题',
   difficulty: 'easy',
+  training_category: 'single-line-multiple-values',
   source: 'CodeArena',
   accepted_count: 80,
   submission_count: 100,
@@ -35,8 +36,10 @@ const problemDetail = {
   description: '读取两个整数并输出它们的和。',
   input_description: '一行两个整数。',
   output_description: '输出两数之和。',
+  data_constraints: '-10^9 ≤ a, b ≤ 10^9',
   sample_input: '1 2\n',
   sample_output: '3\n',
+  sample_explanation: '读取同一行的两个整数并输出它们的和。',
   time_limit_ms: 1000,
   memory_limit_mb: 128,
   created_at: '2026-08-09T00:00:00Z',
@@ -45,11 +48,11 @@ const problemDetail = {
 
 const language = {
   id: 1,
-  slug: 'python',
-  display_name: 'Python',
-  version: '3.12',
-  monaco_language: 'python',
-  source_filename: 'main.py',
+  slug: 'javascript-v8',
+  display_name: 'JavaScript V8',
+  version: 'ES2023',
+  monaco_language: 'javascript',
+  source_filename: 'main.js',
   sort_order: 1,
 }
 
@@ -57,7 +60,7 @@ function submission(id: string, mode: 'sample' | 'judge') {
   return {
     id,
     problem: { id: 7, slug: 'a-plus-b', title: 'A+B 问题' },
-    language: { id: 1, slug: 'python', display_name: 'Python', version: '3.12' },
+    language: { id: 1, slug: 'javascript-v8', display_name: 'JavaScript V8', version: 'ES2023' },
     status: 'Accepted',
     mode,
     time_used_ms: 9,
@@ -245,7 +248,7 @@ async function mockApi(page: Page, submittedModes: string[]): Promise<void> {
       const result = submission(`${mode}-submission`, mode)
       return fulfillJson(route, match[2] ? result : {
         ...result,
-        source_code: 'print(sum(map(int, input().split())))',
+        source_code: 'const [a, b] = readline().split(/\\s+/).map(Number); print(a + b);',
         compiler_output: null,
         error_message: null,
         sample_output: mode === 'sample' ? '3\n' : null,
@@ -269,7 +272,7 @@ test('home does not load Monaco and the problem page completes sample and judge 
   await mockApi(page, submittedModes)
 
   await page.goto('/')
-  await expect(page.getByRole('link', { name: '题库', exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: '输入训练', exact: true }).first()).toBeVisible()
   expect(await page.evaluate(() => performance.getEntriesByType('resource')
     .some((entry) => entry.name.toLowerCase().includes('monaco')))).toBe(false)
 
@@ -294,7 +297,7 @@ test('personal history opens a safe submission detail', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '提交记录' })).toBeVisible()
   await page.getByRole('link', { name: /A\+B 问题/ }).click()
   await expect(page.getByRole('heading', { name: '提交代码' })).toBeVisible()
-  await expect(page.getByText('print(sum(map(int, input().split())))')).toBeVisible()
+  await expect(page.getByText(/const \[a, b\] = readline/)).toBeVisible()
   await expect(page.locator('body')).not.toContainText('object_key')
 })
 
@@ -309,13 +312,13 @@ test('favorite catalog flow and training profile stay user scoped', async ({ pag
   await expect(page.getByRole('heading', { name: '我的收藏' })).toBeVisible()
   await expect(page.getByRole('link', { name: /A\+B 问题/ })).toBeVisible()
   await page.getByRole('button', { name: '取消收藏 A+B 问题' }).click()
-  await expect(page.getByText('还没有收藏题目')).toBeVisible()
+  await expect(page.getByText('还没有收藏练习')).toBeVisible()
 
   await page.goto('/profile')
-  await expect(page.getByRole('heading', { name: '难度进度' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: '标签统计' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '输入结构层级' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '输入输出分类统计' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '最近提交' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: '已解决题目' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '已完成练习' })).toBeVisible()
   await expect(page.getByText('数学')).toBeVisible()
 })
 

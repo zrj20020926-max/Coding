@@ -18,7 +18,9 @@ judge-service --docker socket--> one isolated compile/case container
 
 沙箱使用 `network none`、只读 rootfs、非 root、`cap-drop ALL`、`no-new-privileges` 和 Docker 默认 seccomp。唯一可写空间是限额 tmpfs；`memory-swap` 等于 `memory`，不允许额外 swap；PID 限制约束 fork bomb；输出同时受 shell/Docker file-size ulimit 与读取上限约束；宿主墙钟超时会杀死并删除整个容器。
 
-C++ 编译和每个隐藏用例分别使用新容器。源码与输入不通过宿主 bind mount 传递，而是经受控 exec stdin 解包到 tmpfs，避免容器访问宿主工作目录。结果读取发生在容器仍存活时，随后强制删除，后台进程和临时文件不会跨用例保留。
+JavaScript 语法检查和每个隐藏用例分别使用新容器。源码与输入不通过宿主 bind mount 传递，而是经受控 exec stdin 解包到 tmpfs，避免容器访问宿主工作目录。结果读取发生在容器仍存活时，随后强制删除，后台进程和临时文件不会跨用例保留。
+
+用户侧只开放两个运行模式：`javascript-v8` 由 Judge 内置兼容 runner 注入 `readline()` 与 `print()`，不会注入 `require`、`process`、`Buffer` 或 DOM；`nodejs` 直接运行 Node.js，可使用标准 Node API，但没有浏览器 DOM。兼容 runner 不是安全边界，外层独立 Docker 沙箱仍承担隔离职责。
 
 ## 幂等与重试
 

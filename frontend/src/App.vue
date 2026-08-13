@@ -22,11 +22,11 @@ async function handleLogout(): Promise<void> {
         <span class="brand-mark" aria-hidden="true">&lt;/&gt;</span><span>CodeArena</span>
       </RouterLink>
       <nav class="site-nav" aria-label="主导航">
-        <RouterLink to="/">首页</RouterLink><RouterLink to="/problems">题库</RouterLink><RouterLink to="/collections">题单</RouterLink><RouterLink v-if="auth.isAuthenticated" to="/favorites">收藏</RouterLink><RouterLink v-if="auth.isAuthenticated" to="/submissions">提交记录</RouterLink>
+        <RouterLink to="/">首页</RouterLink><RouterLink to="/problems">输入训练</RouterLink><RouterLink :to="{ name: 'problems', query: { category: 'output-format' } }">输出训练</RouterLink><RouterLink :to="{ name: 'problems', query: { category: 'comprehensive' } }">综合练习</RouterLink><RouterLink to="/handbook">速查手册</RouterLink><RouterLink v-if="auth.isAuthenticated" to="/profile">我的进度</RouterLink><RouterLink v-if="auth.isAuthenticated" to="/submissions">提交记录</RouterLink>
         <RouterLink v-if="auth.user?.is_admin" to="/admin">管理后台</RouterLink>
       </nav>
       <div class="header-actions">
-        <RouterLink class="mobile-problems-link" to="/problems">题库</RouterLink>
+        <RouterLink class="mobile-problems-link" to="/problems">训练</RouterLink>
         <button class="theme-button" type="button" :aria-label="themeLabel" @click="ui.toggleTheme">{{ ui.theme === 'dark' ? '☀' : '◐' }}</button>
         <template v-if="auth.isAuthenticated">
           <RouterLink class="mobile-submissions-link" to="/submissions">提交</RouterLink>

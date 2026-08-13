@@ -78,11 +78,11 @@ void problemStore.loadTags()
   <div class="problems-page page-container">
     <header class="problems-heading">
       <div>
-        <p class="eyebrow">PROBLEM CATALOG</p>
-        <h1>题库</h1>
-        <p>以真实 stdin / stdout 方式训练企业笔试与竞赛算法题。</p>
+        <p class="eyebrow">JAVASCRIPT I/O TRAINING</p>
+        <h1>训练课程</h1>
+        <p>按输入输出结构练习 stdin 解析与 stdout 格式，支持 JavaScript V8 和 Node.js。</p>
       </div>
-      <div class="catalog-count"><strong>{{ total }}</strong><span>公开题目</span></div>
+      <div class="catalog-count"><strong>{{ total }}</strong><span>公开练习</span></div>
     </header>
 
     <ProblemFiltersPanel
@@ -95,13 +95,13 @@ void problemStore.loadTags()
 
     <ProblemListSkeleton v-if="listLoading" />
     <section v-else-if="listError" class="catalog-feedback" aria-live="polite">
-      <el-result icon="error" title="题库加载失败" :sub-title="listError">
+      <el-result icon="error" title="训练课程加载失败" :sub-title="listError">
         <template #extra><el-button type="primary" @click="fetchProblems">重新加载</el-button></template>
       </el-result>
     </section>
     <section v-else-if="items.length === 0" class="catalog-feedback">
-      <el-empty description="没有找到符合条件的题目">
-        <el-button @click="syncFilters({ ...filters, q: '', difficulty: '', tag: '', status: '', page: 1 })">
+      <el-empty description="没有找到符合条件的练习">
+        <el-button @click="syncFilters({ ...filters, q: '', difficulty: '', category: '', tag: '', status: '', page: 1 })">
           清除筛选
         </el-button>
       </el-empty>

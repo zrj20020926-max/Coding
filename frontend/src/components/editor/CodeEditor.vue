@@ -18,8 +18,7 @@ import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController'
 import 'monaco-editor/esm/vs/editor/contrib/tokenization/browser/tokenization'
 import 'monaco-editor/esm/vs/editor/contrib/wordOperations/browser/wordOperations'
 import 'monaco-editor/esm/vs/base/browser/ui/codicons/codiconStyles'
-import 'monaco-editor/esm/vs/basic-languages/cpp/cpp.contribution'
-import 'monaco-editor/esm/vs/basic-languages/python/python.contribution'
+import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 
 const props = defineProps<{
@@ -52,17 +51,13 @@ let formattingDisposable: monaco.IDisposable | null = null
 }
 
 function registerCompletions(language: string): monaco.IDisposable {
-  const suggestions = language === 'cpp'
-    ? [
-        ['for', 'for (int ${1:i} = 0; ${1:i} < ${2:n}; ++${1:i}) {\n\t$0\n}'],
-        ['while', 'while (${1:condition}) {\n\t$0\n}'],
-        ['vector', 'vector<${1:int}> ${2:values}(${3:n});'],
-      ]
-    : [
-        ['for', 'for ${1:item} in ${2:items}:\n\t$0'],
-        ['while', 'while ${1:condition}:\n\t$0'],
-        ['readints', 'list(map(int, sys.stdin.buffer.readline().split()))'],
-      ]
+  const suggestions = [
+    ['readline', 'const ${1:line} = readline();'],
+    ['readints', 'const ${1:values} = readline().trim().split(/\\s+/).map(Number);'],
+    ['node-stdin', "const input = require('fs').readFileSync(0, 'utf8');"],
+    ['tokens', "const tokens = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/);"],
+    ['print', 'print(${1:value});'],
+  ]
   return monaco.languages.registerCompletionItemProvider(language, {
     triggerCharacters: ['.', ' '],
     provideCompletionItems(textModel, position) {

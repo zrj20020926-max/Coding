@@ -38,8 +38,8 @@ async function submit(): Promise<void> {
   <section class="auth-page page-container">
     <div class="auth-aside">
       <p class="eyebrow">WELCOME BACK</p>
-      <h1>继续你的<br />算法训练。</h1>
-      <p>每一次提交都会留下可回顾的轨迹。真正的进步，来自稳定而清晰的反馈。</p>
+      <h1>继续你的<br />JavaScript 输入输出训练。</h1>
+      <p>每一次提交都会留下可回顾的轨迹，帮你稳定掌握 stdin 解析与 stdout 格式。</p>
       <div class="auth-quote">stdin → 思考 → stdout</div>
     </div>
     <div class="auth-card">

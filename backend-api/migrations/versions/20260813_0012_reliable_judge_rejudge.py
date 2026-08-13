@@ -55,6 +55,13 @@ def upgrade() -> None:
           FROM test_cases tc
         """
     )
+    # Existing submissions make their referenced test cases immutable. The group_id
+    # backfill is a schema migration, so temporarily remove the row mutation guard;
+    # the stricter attempt-aware version is recreated below in the same transaction.
+    op.execute("DROP TRIGGER IF EXISTS trg_test_cases_protect ON test_cases")
+    # Updating group_id must not invoke the legacy totals trigger because it writes
+    # the referenced test_set row and is correctly rejected by its immutability guard.
+    op.execute("DROP TRIGGER IF EXISTS trg_test_cases_refresh_totals ON test_cases")
     op.execute("ALTER TABLE test_cases ADD COLUMN group_id UUID")
     op.execute(
         """

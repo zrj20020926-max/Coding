@@ -30,7 +30,28 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260813_0012"
+            assert revision == "20260813_0013"
+
+            problem_columns = set(
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT column_name FROM information_schema.columns "
+                            "WHERE table_schema = 'public' AND table_name = 'problems'"
+                        )
+                    )
+                ).scalars()
+            )
+            assert "training_category" in problem_columns
+
+            enabled_languages = set(
+                (
+                    await connection.execute(
+                        text("SELECT slug FROM languages WHERE enabled IS TRUE")
+                    )
+                ).scalars()
+            )
+            assert enabled_languages == {"javascript-v8", "nodejs"}
 
             submission_columns = set(
                 (
@@ -106,6 +127,7 @@ async def test_migrations_preserve_postgresql_features(
             assert "submission_mode" in enum_names
             assert "content_review_status" in enum_names
             assert {"test_set_status", "checker_type"} <= enum_names
+            assert "training_category" in enum_names
 
             indexes = set(
                 (
@@ -133,6 +155,7 @@ async def test_migrations_preserve_postgresql_features(
             assert "idx_ai_usage_user_created" in indexes
             assert "uq_test_sets_active_problem" in indexes
             assert "idx_test_cases_test_set_sequence" in indexes
+            assert "idx_problems_public_training_category" in indexes
 
             triggers = set(
                 (

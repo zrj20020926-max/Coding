@@ -43,8 +43,8 @@ watch(() => [filters.difficulty, filters.status, filters.tag, filters.sort], () 
 
     <div class="admin-filter-bar" role="search">
       <ElInput v-model="filters.q" clearable placeholder="搜索标题或 slug" aria-label="搜索题目" @input="search" />
-      <ElSelect v-model="filters.difficulty" clearable placeholder="难度" aria-label="难度筛选">
-        <ElOption label="简单" value="easy" /><ElOption label="中等" value="medium" /><ElOption label="困难" value="hard" />
+      <ElSelect v-model="filters.difficulty" clearable placeholder="结构层级" aria-label="结构层级筛选">
+        <ElOption label="基础" value="easy" /><ElOption label="组合" value="medium" /><ElOption label="综合" value="hard" />
       </ElSelect>
       <ElSelect v-model="filters.status" clearable placeholder="状态" aria-label="状态筛选">
         <ElOption label="草稿" value="draft" /><ElOption label="已发布" value="public" /><ElOption label="已下线" value="private" />
@@ -69,7 +69,7 @@ watch(() => [filters.difficulty, filters.status, filters.tag, filters.sort], () 
         <ElTableColumn label="题目" min-width="240">
           <template #default="scope"><strong>{{ scope.row.title }}</strong><small class="admin-cell-subtitle">{{ scope.row.slug }}</small></template>
         </ElTableColumn>
-        <ElTableColumn label="难度" width="90"><template #default="scope">{{ { easy: '简单', medium: '中等', hard: '困难' }[scope.row.difficulty as 'easy'] }}</template></ElTableColumn>
+        <ElTableColumn label="结构层级" width="100"><template #default="scope">{{ { easy: '基础', medium: '组合', hard: '综合' }[scope.row.difficulty as 'easy'] }}</template></ElTableColumn>
         <ElTableColumn label="标签" min-width="180"><template #default="scope"><ElTag v-for="tag in scope.row.tags" :key="tag.id" size="small">{{ tag.name }}</ElTag></template></ElTableColumn>
         <ElTableColumn label="状态" width="100"><template #default="scope"><ElTag :type="scope.row.visibility === 'public' ? 'success' : 'info'">{{ visibilityLabel(scope.row.visibility) }}</ElTag></template></ElTableColumn>
         <ElTableColumn prop="updated_at" label="更新时间" width="180"><template #default="scope">{{ new Date(scope.row.updated_at).toLocaleString() }}</template></ElTableColumn>

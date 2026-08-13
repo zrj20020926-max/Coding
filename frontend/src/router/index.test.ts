@@ -52,6 +52,7 @@ describe('authentication route guard', () => {
 
   it('registers catalog, slug detail and an independent 404 route', () => {
     expect(router.resolve('/problems').name).toBe('problems')
+    expect(router.resolve('/handbook').name).toBe('handbook')
     expect(router.resolve('/problems/a-plus-b').name).toBe('problem-detail')
     expect(router.resolve('/submissions').name).toBe('submissions')
     expect(router.resolve('/favorites').name).toBe('favorites')

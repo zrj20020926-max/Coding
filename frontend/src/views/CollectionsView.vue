@@ -18,19 +18,19 @@ watch([page, pageSize], () => void content.loadCollections(page.value, pageSize.
 <template>
   <section class="collections-page page-container">
     <header class="submissions-heading">
-      <div><p class="eyebrow">CURATED TRACKS</p><h1>精选题单</h1></div>
-      <span>共 {{ collectionsTotal }} 个公开题单</span>
+      <div><p class="eyebrow">CURATED COURSES</p><h1>训练路径</h1></div>
+      <span>共 {{ collectionsTotal }} 条公开训练路径</span>
     </header>
     <div v-if="collectionsLoading" class="collection-grid">
       <span v-for="index in 6" :key="index" class="skeleton-block collection-skeleton"></span>
     </div>
     <section v-else-if="collectionsError" class="catalog-feedback">
-      <el-result icon="error" title="题单加载失败" :sub-title="collectionsError">
+      <el-result icon="error" title="训练路径加载失败" :sub-title="collectionsError">
         <template #extra><el-button @click="content.loadCollections(page, pageSize)">重试</el-button></template>
       </el-result>
     </section>
     <section v-else-if="collections.length === 0" class="catalog-feedback">
-      <el-empty description="暂无公开题单" />
+      <el-empty description="暂无公开训练路径" />
     </section>
     <div v-else class="collection-grid">
       <RouterLink
@@ -41,10 +41,10 @@ watch([page, pageSize], () => void content.loadCollections(page.value, pageSize.
       >
         <span>{{ item.company ?? 'CodeArena' }}</span>
         <h2>{{ item.title }}</h2>
-        <p>{{ item.description || '按推荐顺序完成这组训练题目。' }}</p>
+        <p>{{ item.description || '按推荐顺序掌握这组输入输出结构。' }}</p>
         <footer>
-          <strong>{{ item.problem_count }} 题</strong>
-          <span v-if="item.solved_count !== undefined">{{ item.solved_count }} 已解决 · {{ item.completion_rate?.toFixed(0) }}%</span>
+          <strong>{{ item.problem_count }} 项练习</strong>
+          <span v-if="item.solved_count !== undefined">{{ item.solved_count }} 已完成 · {{ item.completion_rate?.toFixed(0) }}%</span>
         </footer>
       </RouterLink>
     </div>

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_optional_current_user
-from app.models.problem import ProblemDifficulty
+from app.models.problem import ProblemDifficulty, TrainingCategory
 from app.models.user import User
 from app.schemas.problem import (
     LanguagePublic,
@@ -46,6 +46,7 @@ async def get_problems(
     q: Annotated[Optional[str], Query(min_length=1, max_length=200)] = None,
     difficulty: Optional[ProblemDifficulty] = None,
     tag: Annotated[Optional[str], Query(min_length=1, max_length=50)] = None,
+    category: Optional[TrainingCategory] = None,
     progress_status: Annotated[
         Optional[ProblemProgressStatus], Query(alias="status")
     ] = None,
@@ -65,6 +66,7 @@ async def get_problems(
         q=q,
         difficulty=difficulty,
         tag=tag,
+        training_category=category,
         progress_status=progress_status,
         page=page,
         page_size=page_size,

@@ -10,6 +10,7 @@ const problem: ProblemSummary = {
   slug: 'a-plus-b',
   title: 'A+B 问题',
   difficulty: 'easy',
+  training_category: 'single-line-multiple-values',
   source: null,
   accepted_count: 80,
   submission_count: 100,

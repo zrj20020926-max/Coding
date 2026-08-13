@@ -32,6 +32,7 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
     { path: '/problems', name: 'problems', component: () => import('@/views/ProblemsView.vue') },
+    { path: '/handbook', name: 'handbook', component: () => import('@/views/HandbookView.vue') },
     { path: '/collections', name: 'collections', component: () => import('@/views/CollectionsView.vue') },
     {
       path: '/collections/:slug',

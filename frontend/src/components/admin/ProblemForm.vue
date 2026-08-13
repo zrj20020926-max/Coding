@@ -4,13 +4,13 @@ import type { FormInstance, FormRules } from 'element-plus'
 
 import MarkdownContent from '@/components/problems/MarkdownContent.vue'
 import type { AdminProblem, ProblemWritePayload } from '@/types/admin'
-import type { ProblemTag } from '@/types/problem'
+import { TRAINING_CATEGORY_LABELS, type ProblemTag, type TrainingCategory } from '@/types/problem'
 
 const props = defineProps<{ problem: AdminProblem | null; tags: ProblemTag[]; saving: boolean; fieldErrors?: Record<string, string> }>()
 const emit = defineEmits<{ save: [payload: ProblemWritePayload]; dirty: [value: boolean] }>()
 const formRef = ref<FormInstance>()
 const form = reactive<ProblemWritePayload>({
-  slug: '', title: '', description: '', difficulty: 'easy', input_description: '', output_description: '',
+  slug: '', title: '', description: '', difficulty: 'easy', training_category: 'comprehensive', input_description: '', output_description: '',
   data_constraints: '', sample_input: '', sample_output: '', sample_explanation: '', time_limit_ms: 1000,
   memory_limit_mb: 256, source: null, tag_slugs: [],
 })
@@ -29,6 +29,7 @@ const rules: FormRules = {
 function initialize(problem: AdminProblem | null): void {
   if (problem) Object.assign(form, {
     slug: problem.slug, title: problem.title, description: problem.description, difficulty: problem.difficulty,
+    training_category: problem.training_category,
     input_description: problem.input_description, output_description: problem.output_description,
     data_constraints: problem.data_constraints, sample_input: problem.sample_input, sample_output: problem.sample_output,
     sample_explanation: problem.sample_explanation, time_limit_ms: problem.time_limit_ms,
@@ -54,7 +55,8 @@ defineExpose({ markSaved: () => { original.value = JSON.stringify(form); emit('d
     <div class="admin-form-grid">
       <ElFormItem label="英文 slug" prop="slug" :error="fieldErrors?.['slug']"><ElInput v-model="form.slug" maxlength="100" /></ElFormItem>
       <ElFormItem label="中文标题" prop="title" :error="fieldErrors?.['title']"><ElInput v-model="form.title" maxlength="200" /></ElFormItem>
-      <ElFormItem label="难度"><ElSelect v-model="form.difficulty"><ElOption label="简单" value="easy" /><ElOption label="中等" value="medium" /><ElOption label="困难" value="hard" /></ElSelect></ElFormItem>
+      <ElFormItem label="输入结构层级"><ElSelect v-model="form.difficulty"><ElOption label="基础" value="easy" /><ElOption label="组合" value="medium" /><ElOption label="综合" value="hard" /></ElSelect></ElFormItem>
+      <ElFormItem label="训练分类"><ElSelect v-model="form.training_category"><ElOption v-for="(label, value) in TRAINING_CATEGORY_LABELS" :key="value" :label="label" :value="value as TrainingCategory" /></ElSelect></ElFormItem>
       <ElFormItem label="标签"><ElSelect v-model="form.tag_slugs" multiple filterable><ElOption v-for="tag in tags" :key="tag.id" :label="tag.name" :value="tag.slug" /></ElSelect></ElFormItem>
     </div>
     <div class="markdown-editor-grid">

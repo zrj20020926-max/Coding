@@ -15,6 +15,7 @@ from app.models.problem import (
     ProblemTag,
     ProblemVisibility,
     Tag,
+    TrainingCategory,
     UserProblemProgress,
 )
 from app.models.user import User
@@ -45,6 +46,7 @@ async def seed_catalog(db: AsyncSession) -> dict[str, Problem]:
             title="A+B 问题",
             description="求和",
             difficulty=ProblemDifficulty.EASY,
+            training_category=TrainingCategory.SINGLE_LINE_MULTIPLE_VALUES,
             input_description="两个整数",
             output_description="整数和",
             sample_input="1 2\n",
@@ -59,6 +61,7 @@ async def seed_catalog(db: AsyncSession) -> dict[str, Problem]:
             title="最短路径",
             description="图上最短路",
             difficulty=ProblemDifficulty.HARD,
+            training_category=TrainingCategory.LARGE_INPUT,
             input_description="图",
             output_description="距离",
             visibility=ProblemVisibility.PUBLIC,
@@ -71,6 +74,7 @@ async def seed_catalog(db: AsyncSession) -> dict[str, Problem]:
             title="窗口总和",
             description="窗口",
             difficulty=ProblemDifficulty.MEDIUM,
+            training_category=TrainingCategory.ARRAY_INPUT,
             input_description="数组",
             output_description="和",
             visibility=ProblemVisibility.PUBLIC,
@@ -101,16 +105,28 @@ async def seed_catalog(db: AsyncSession) -> dict[str, Problem]:
         [
             *problems.values(),
             Language(
-                slug="python",
-                display_name="Python",
-                version="3.12",
-                monaco_language="python",
-                source_filename="main.py",
+                slug="javascript-v8",
+                display_name="JavaScript V8",
+                version="ES2023",
+                monaco_language="javascript",
+                source_filename="main.js",
                 compile_command=None,
-                run_command="python -I main.py",
-                docker_image="private.registry/judge-python:3.12",
+                run_command="private v8 runtime",
+                docker_image="private.registry/judge-node:22",
                 enabled=True,
                 sort_order=10,
+            ),
+            Language(
+                slug="nodejs",
+                display_name="Node.js",
+                version="22",
+                monaco_language="javascript",
+                source_filename="main.js",
+                compile_command=None,
+                run_command="private node runtime",
+                docker_image="private.registry/judge-node:22",
+                enabled=True,
+                sort_order=20,
             ),
             Language(
                 slug="disabled",
@@ -122,7 +138,7 @@ async def seed_catalog(db: AsyncSession) -> dict[str, Problem]:
                 run_command="secret runner",
                 docker_image="secret image",
                 enabled=False,
-                sort_order=20,
+                sort_order=30,
             ),
         ]
     )
@@ -151,6 +167,11 @@ async def test_public_problem_pagination_filters_and_sort(
     )
     assert filtered.status_code == 200
     assert [item["slug"] for item in filtered.json()["items"]] == ["shortest-path"]
+
+    category = await client.get("/api/v1/problems?category=array-input")
+    assert category.status_code == 200
+    assert [item["slug"] for item in category.json()["items"]] == ["window-sum"]
+    assert category.json()["items"][0]["training_category"] == "array-input"
 
     acceptance = await client.get("/api/v1/problems?sort=acceptance")
     assert [item["slug"] for item in acceptance.json()["items"]] == [
@@ -218,7 +239,7 @@ async def test_public_responses_do_not_leak_runtime_configuration(
     problems = await seed_catalog(db_session)
     languages = await client.get("/api/v1/languages")
     assert languages.status_code == 200
-    assert [item["slug"] for item in languages.json()] == ["python"]
+    assert [item["slug"] for item in languages.json()] == ["javascript-v8", "nodejs"]
 
     detail = await client.get(f"/api/v1/problems/{problems['sum'].id}")
     slug_detail = await client.get(f"/api/v1/problems/{problems['sum'].slug}")
@@ -296,20 +317,6 @@ async def test_admin_permissions_crud_publish_and_offline(
         "issues": [],
     }
 
-    db_session.add(
-        Language(
-            slug="cpp",
-            display_name="C++",
-            version="C++20",
-            monaco_language="cpp",
-            source_filename="main.cpp",
-            compile_command="internal",
-            run_command="internal",
-            docker_image="internal",
-            enabled=True,
-        )
-    )
-    await db_session.commit()
     test_set_response = await client.post(
         f"/api/v1/admin/problems/{problem_id}/test-sets",
         json={"checker_type": "exact"},
@@ -445,19 +452,6 @@ async def test_test_set_admin_endpoints_reject_non_admin_and_never_leak_hidden_f
     user = await db_session.scalar(select(User).where(User.username == "test_set_normal"))
     assert user is not None
     user.is_admin = True
-    db_session.add(
-        Language(
-            slug="cpp",
-            display_name="C++",
-            version="C++20",
-            monaco_language="cpp",
-            source_filename="main.cpp",
-            compile_command="private compile command",
-            run_command="private run command",
-            docker_image="private image",
-            enabled=True,
-        )
-    )
     await db_session.commit()
     created = await client.post(
         f"/api/v1/admin/problems/{problems['draft'].id}/test-sets",

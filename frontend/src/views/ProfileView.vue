@@ -40,9 +40,9 @@ const counters = computed(() =>
 )
 
 const difficultyNames: Record<ProblemDifficulty, string> = {
-  easy: '简单',
-  medium: '中等',
-  hard: '困难',
+  easy: '基础',
+  medium: '组合',
+  hard: '综合',
 }
 
 function percentage(value: number, total: number): number {
@@ -129,7 +129,7 @@ onMounted(() => void training.loadDashboard())
     </section>
 
     <div class="stats-grid">
-      <article><span>已解决</span><strong>{{ counters.solved_count }}</strong><small>道题</small></article>
+      <article><span>已完成</span><strong>{{ counters.solved_count }}</strong><small>项练习</small></article>
       <article><span>提交次数</span><strong>{{ counters.submission_count }}</strong><small>次</small></article>
       <article><span>通过次数</span><strong>{{ counters.accepted_count }}</strong><small>次</small></article>
       <article><span>通过率</span><strong>{{ acceptanceRate.toFixed(1) }}%</strong><small>Accepted</small></article>
@@ -137,7 +137,7 @@ onMounted(() => void training.loadDashboard())
 
     <div class="training-grid">
       <section class="profile-panel">
-        <div class="panel-heading"><div><p>DIFFICULTY</p><h2>难度进度</h2></div><span>已解 / 公开题</span></div>
+        <div class="panel-heading"><div><p>STRUCTURE</p><h2>输入结构层级</h2></div><span>已完成 / 公开练习</span></div>
         <div class="difficulty-progress-list">
           <article v-for="item in dashboard?.difficulty_stats ?? []" :key="item.difficulty">
             <div>
@@ -165,7 +165,7 @@ onMounted(() => void training.loadDashboard())
       </section>
 
       <section class="profile-panel">
-        <div class="panel-heading"><div><p>KNOWLEDGE</p><h2>标签统计</h2></div><span>薄弱项优先</span></div>
+        <div class="panel-heading"><div><p>INPUT PATTERNS</p><h2>输入输出分类统计</h2></div><span>待练习项优先</span></div>
         <div v-if="dashboard?.tag_stats.length" class="tag-stat-list">
           <article v-for="item in dashboard.tag_stats" :key="item.tag.id">
             <div><strong>{{ item.tag.name }}</strong><span>{{ item.solved_count }} / {{ item.total_count }}</span></div>
@@ -194,7 +194,7 @@ onMounted(() => void training.loadDashboard())
       </section>
 
       <section class="profile-panel">
-        <div class="panel-heading"><div><p>SOLVED</p><h2>已解决题目</h2></div><span>最近 30 道</span></div>
+        <div class="panel-heading"><div><p>COMPLETED</p><h2>已完成练习</h2></div><span>最近 30 项</span></div>
         <div v-if="dashboard?.solved_problems.length" class="solved-problem-list">
           <RouterLink
             v-for="problem in dashboard.solved_problems"
@@ -205,7 +205,7 @@ onMounted(() => void training.loadDashboard())
             <DifficultyBadge :difficulty="problem.difficulty" />
           </RouterLink>
         </div>
-        <el-empty v-else description="完成第一道题后会显示在这里" :image-size="70" />
+        <el-empty v-else description="完成第一项输入输出练习后会显示在这里" :image-size="70" />
       </section>
     </div>
 
@@ -219,7 +219,7 @@ onMounted(() => void training.loadDashboard())
         </el-form>
       </section>
       <aside class="next-sprint-panel">
-        <span>TRAINING</span><h2>继续保持手感</h2><p>从收藏题目继续训练，或回顾最近提交中的错误。</p>
+        <span>JAVASCRIPT I/O</span><h2>继续保持手感</h2><p>从收藏练习继续训练，或回顾 V8 与 Node.js 的输入解析错误。</p>
         <RouterLink class="profile-submissions-link" to="/favorites">查看我的收藏 →</RouterLink>
         <br />
         <RouterLink class="profile-submissions-link" to="/submissions">查看提交记录 →</RouterLink>

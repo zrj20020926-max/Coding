@@ -21,6 +21,31 @@ from app.errors import InfrastructureError, JudgeConfigurationError
 SANDBOX_UID = 65534
 SANDBOX_GID = 65534
 KEEPALIVE_COMMAND = ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+V8_COMPAT_RUNNER = b"""'use strict';
+const fs = require('fs');
+const vm = require('vm');
+
+const input = fs.readFileSync(0, 'utf8').replace(/\\r\\n?/g, '\\n').split('\\n');
+if (input.length && input[input.length - 1] === '') input.pop();
+let cursor = 0;
+const output = [];
+const context = Object.create(null);
+Object.assign(context, {
+  readline: () => cursor < input.length ? input[cursor++] : undefined,
+  print: (...values) => output.push(values.map(String).join(' ')),
+});
+context.globalThis = context;
+Object.freeze(context);
+try {
+  const source = fs.readFileSync('/workspace/main.js', 'utf8');
+  new vm.Script(source, { filename: 'main.js' }).runInNewContext(context);
+  if (output.length) process.stdout.write(output.join('\\n') + '\\n');
+} catch (error) {
+  const message = error && error.stack ? error.stack : String(error);
+  process.stderr.write(message + '\\n');
+  process.exitCode = 1;
+}
+"""
 
 
 @dataclass(frozen=True)
@@ -383,7 +408,39 @@ class DockerSandbox:
             return await self._compile_python(source)
         if language == "cpp":
             return await self._compile_cpp_with_artifact(source)
+        if language in {"javascript-v8", "nodejs"}:
+            return await self._compile_javascript(source)
         raise JudgeConfigurationError(f"unsupported language: {language}")
+
+    async def _compile_javascript(self, source: bytes) -> CompileResult:
+        command = self._wrapper(
+            "node --check /workspace/main.js",
+            self.settings.sandbox_output_limit_bytes,
+        )
+        (
+            _container,
+            _stdout,
+            stderr,
+            exit_code,
+            _elapsed_ms,
+            _memory_used_kb,
+            timed_out,
+            oom_killed,
+        ) = await self._execute(
+            self.settings.sandbox_node_image,
+            command,
+            {"main.js": (source, 0o400), "input": (b"", 0o400)},
+            self.settings.sandbox_compile_timeout_seconds,
+            self.settings.sandbox_compile_memory_mb,
+        )
+        if timed_out:
+            return CompileResult(False, diagnostic="syntax check wall-clock limit exceeded")
+        if oom_killed or exit_code == 137:
+            return CompileResult(False, diagnostic="syntax check memory limit exceeded")
+        if exit_code != 0:
+            diagnostic = stderr[:16_384].decode("utf-8", errors="replace")
+            return CompileResult(False, diagnostic=diagnostic or "JavaScript syntax error")
+        return CompileResult(True)
 
     async def run_case(
         self,
@@ -402,6 +459,18 @@ class DockerSandbox:
             image = self.settings.sandbox_cpp_image
             program = "/workspace/app"
             files = {"app": (artifact, 0o500), "input": (stdin, 0o400)}
+        elif language == "nodejs":
+            image = self.settings.sandbox_node_image
+            program = "node /workspace/main.js"
+            files = {"main.js": (source, 0o400), "input": (stdin, 0o400)}
+        elif language == "javascript-v8":
+            image = self.settings.sandbox_node_image
+            program = "node --no-warnings /workspace/v8-runner.cjs"
+            files = {
+                "main.js": (source, 0o400),
+                "v8-runner.cjs": (V8_COMPAT_RUNNER, 0o400),
+                "input": (stdin, 0o400),
+            }
         else:
             raise JudgeConfigurationError(f"invalid runtime configuration: {language}")
 

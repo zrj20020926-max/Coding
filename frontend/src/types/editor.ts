@@ -9,27 +9,15 @@ export interface JudgeLanguage {
 }
 
 export const DEFAULT_CODE_TEMPLATES: Readonly<Record<string, string>> = {
-  python: `import sys
-
-
-def solve() -> None:
-    data = sys.stdin.buffer.read().split()
-    # Write your solution here.
-
-
-if __name__ == "__main__":
-    solve()
+  'javascript-v8': `// JavaScript V8：只能使用 readline() 逐行读取，print() 输出
+const line = readline();
+// 在这里处理输入
+print(line);
 `,
-  cpp: `#include <bits/stdc++.h>
-using namespace std;
-
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-
-    // Write your solution here.
-    return 0;
-}
+  nodejs: `// Node.js：一次读取完整 stdin，按题意解析
+const input = require('fs').readFileSync(0, 'utf8').trimEnd();
+// 在这里处理输入
+console.log(input);
 `,
 }
 

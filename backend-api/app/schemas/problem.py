@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
-from app.models.problem import ProblemDifficulty, ProblemVisibility
+from app.models.problem import ProblemDifficulty, ProblemVisibility, TrainingCategory
 
 
 class ProblemProgressStatus(str, Enum):
@@ -54,6 +54,7 @@ class ProblemSummary(BaseModel):
     slug: str
     title: str
     difficulty: ProblemDifficulty
+    training_category: TrainingCategory
     source: Optional[str]
     accepted_count: int
     submission_count: int
@@ -98,6 +99,7 @@ class ProblemWriteBase(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(min_length=1)
     difficulty: ProblemDifficulty
+    training_category: TrainingCategory = TrainingCategory.COMPREHENSIVE
     input_description: str = Field(min_length=1)
     output_description: str = Field(min_length=1)
     data_constraints: str = ""
@@ -131,6 +133,7 @@ class ProblemUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, min_length=1)
     difficulty: Optional[ProblemDifficulty] = None
+    training_category: Optional[TrainingCategory] = None
     input_description: Optional[str] = Field(default=None, min_length=1)
     output_description: Optional[str] = Field(default=None, min_length=1)
     data_constraints: Optional[str] = Field(default=None, min_length=1)

@@ -33,6 +33,7 @@ const problem = {
   slug: 'a-plus-b',
   title: 'A+B',
   difficulty: 'easy' as const,
+  training_category: 'single-line-multiple-values' as const,
   source: null,
   accepted_count: 8,
   submission_count: 10,

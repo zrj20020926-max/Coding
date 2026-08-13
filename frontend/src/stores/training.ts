@@ -46,7 +46,7 @@ export const useTrainingStore = defineStore('training', () => {
     } catch (error) {
       favorites.value = []
       favoritesTotal.value = 0
-      favoritesError.value = getApiErrorMessage(error, '收藏题目加载失败，请稍后重试')
+      favoritesError.value = getApiErrorMessage(error, '收藏练习加载失败，请稍后重试')
     } finally {
       favoritesLoading.value = false
     }

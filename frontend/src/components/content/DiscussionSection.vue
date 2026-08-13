@@ -63,7 +63,7 @@ async function submit(): Promise<void> {
 <template>
   <section class="discussion-section">
     <header>
-      <div><p class="section-kicker">COMMUNITY</p><h2>题目讨论</h2></div>
+      <div><p class="section-kicker">COMMUNITY</p><h2>练习讨论</h2></div>
       <el-button v-if="auth.isAuthenticated" type="primary" @click="composing = !composing">
         {{ composing ? '取消' : '发起讨论' }}
       </el-button>

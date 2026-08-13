@@ -111,8 +111,8 @@ onMounted(() => void loadFilterOptions())
     <section class="submission-filters" aria-label="筛选提交记录">
       <el-select
         :model-value="filters.problem_id"
-        clearable filterable :loading="filterOptionsLoading" placeholder="全部题目"
-        aria-label="按题目筛选"
+        clearable filterable :loading="filterOptionsLoading" placeholder="全部练习"
+        aria-label="按练习筛选"
         @update:model-value="updateQuery('problem_id', $event)"
       >
         <el-option v-for="problem in problems" :key="problem.id" :label="`#${problem.id} ${problem.title}`" :value="problem.id" />
@@ -149,7 +149,7 @@ onMounted(() => void loadFilterOptions())
       </el-result>
     </section>
     <el-empty v-else-if="history.length === 0" description="还没有提交记录">
-      <RouterLink class="primary-link" to="/problems">开始刷题</RouterLink>
+      <RouterLink class="primary-link" to="/problems">开始输入输出训练</RouterLink>
     </el-empty>
     <div v-else class="submission-list">
       <RouterLink

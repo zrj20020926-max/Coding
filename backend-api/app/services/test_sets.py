@@ -393,13 +393,14 @@ async def validate_test_set(
         (
             await db.scalars(
                 select(Language.slug).where(
-                    Language.enabled.is_(True), Language.slug.in_(["python", "cpp"])
+                    Language.enabled.is_(True),
+                    Language.slug.in_(["javascript-v8", "nodejs"]),
                 )
             )
         ).all()
     )
     configured = set(settings.judge_supported_language_list)
-    for language in ("python", "cpp"):
+    for language in ("javascript-v8", "nodejs"):
         if language not in language_slugs or language not in configured:
             issues.append(
                 TestSetIssue(

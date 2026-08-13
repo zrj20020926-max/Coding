@@ -66,6 +66,11 @@ watch(submissionId, load, { immediate: true })
         </div>
         <SubmissionStatusBadge :status="detail.status" />
       </header>
+      <el-alert
+        type="info"
+        :closable="false"
+        :title="detail.language.slug === 'javascript-v8' ? '此提交使用 V8 readline()/print() 模式' : '此提交使用 Node.js stdin/stdout 模式'"
+      />
       <div class="submission-detail-metrics">
         <div><span>耗时</span><strong>{{ detail.time_used_ms ?? '—' }} ms</strong></div>
         <div><span>内存</span><strong>{{ detail.memory_used_kb ?? '—' }} KB</strong></div>

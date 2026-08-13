@@ -1,6 +1,20 @@
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 
 export type ProblemDifficulty = 'easy' | 'medium' | 'hard'
+export type TrainingCategory =
+  | 'single-value'
+  | 'single-line-multiple-values'
+  | 'multi-line'
+  | 'test-cases'
+  | 'read-until-eof'
+  | 'sentinel'
+  | 'array-input'
+  | 'string-input'
+  | 'matrix-input'
+  | 'mixed-input'
+  | 'large-input'
+  | 'output-format'
+  | 'comprehensive'
 export type ProblemProgressStatus = 'solved' | 'attempted' | 'unattempted' | 'favorited'
 export type ProblemSort = 'newest' | 'oldest' | 'title' | 'difficulty' | 'acceptance'
 
@@ -15,6 +29,7 @@ export interface ProblemSummary {
   slug: string
   title: string
   difficulty: ProblemDifficulty
+  training_category: TrainingCategory
   source: string | null
   accepted_count: number
   submission_count: number
@@ -52,6 +67,7 @@ export interface ProblemFilters {
   q: string
   difficulty: ProblemDifficulty | ''
   tag: string
+  category: TrainingCategory | ''
   status: ProblemProgressStatus | ''
   sort: ProblemSort
   page: number
@@ -65,6 +81,7 @@ export interface ProblemListParams {
   q?: string
   difficulty?: ProblemDifficulty
   tag?: string
+  category?: TrainingCategory
   status?: ProblemProgressStatus
 }
 
@@ -72,6 +89,7 @@ export const DEFAULT_PROBLEM_FILTERS: Readonly<ProblemFilters> = {
   q: '',
   difficulty: '',
   tag: '',
+  category: '',
   status: '',
   sort: 'newest',
   page: 1,
@@ -79,6 +97,22 @@ export const DEFAULT_PROBLEM_FILTERS: Readonly<ProblemFilters> = {
 }
 
 const difficulties: ProblemDifficulty[] = ['easy', 'medium', 'hard']
+export const TRAINING_CATEGORY_LABELS: Readonly<Record<TrainingCategory, string>> = {
+  'single-value': '单值输入',
+  'single-line-multiple-values': '单行多值',
+  'multi-line': '多行输入',
+  'test-cases': 'T 组测试数据',
+  'read-until-eof': '读取到 EOF',
+  sentinel: '哨兵结束输入',
+  'array-input': '数组输入',
+  'string-input': '字符串输入',
+  'matrix-input': '矩阵输入',
+  'mixed-input': '混合格式输入',
+  'large-input': '大数据量输入',
+  'output-format': '常见输出格式',
+  comprehensive: '综合输入输出',
+}
+const categories = Object.keys(TRAINING_CATEGORY_LABELS) as TrainingCategory[]
 const statuses: ProblemProgressStatus[] = ['solved', 'attempted', 'unattempted', 'favorited']
 const sorts: ProblemSort[] = ['newest', 'oldest', 'title', 'difficulty', 'acceptance']
 const pageSizes = [10, 20, 50]
@@ -103,6 +137,7 @@ export function parseProblemQuery(query: LocationQuery): ProblemFilters {
     q: (firstQueryValue(query['q']) ?? '').trim().slice(0, 200),
     difficulty: enumValue(firstQueryValue(query['difficulty']), difficulties, ''),
     tag: (firstQueryValue(query['tag']) ?? '').trim().slice(0, 50),
+    category: enumValue(firstQueryValue(query['category']), categories, ''),
     status: enumValue(firstQueryValue(query['status']), statuses, ''),
     sort: enumValue(firstQueryValue(query['sort']), sorts, DEFAULT_PROBLEM_FILTERS.sort),
     page: positiveInteger(firstQueryValue(query['page']), DEFAULT_PROBLEM_FILTERS.page),
@@ -115,6 +150,7 @@ export function serializeProblemFilters(filters: ProblemFilters): LocationQueryR
   if (filters.q.trim()) query['q'] = filters.q.trim()
   if (filters.difficulty) query['difficulty'] = filters.difficulty
   if (filters.tag) query['tag'] = filters.tag
+  if (filters.category) query['category'] = filters.category
   if (filters.status) query['status'] = filters.status
   if (filters.sort !== DEFAULT_PROBLEM_FILTERS.sort) query['sort'] = filters.sort
   if (filters.page !== DEFAULT_PROBLEM_FILTERS.page) query['page'] = String(filters.page)
@@ -133,6 +169,7 @@ export function toProblemListParams(filters: ProblemFilters): ProblemListParams 
   if (filters.q.trim()) params.q = filters.q.trim()
   if (filters.difficulty) params.difficulty = filters.difficulty
   if (filters.tag) params.tag = filters.tag
+  if (filters.category) params.category = filters.category
   if (filters.status) params.status = filters.status
   return params
 }

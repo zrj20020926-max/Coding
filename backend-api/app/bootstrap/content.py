@@ -36,6 +36,7 @@ from app.models.problem import (
     TestGroup,
     TestSet,
     TestSetStatus,
+    TrainingCategory,
 )
 from app.services.object_storage import SourceObjectStore, get_source_object_store
 from app.services.test_sets import validate_test_set
@@ -172,6 +173,7 @@ class ProblemContent(StrictModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(min_length=1, max_length=100_000)
     difficulty: ProblemDifficulty
+    training_category: Optional[TrainingCategory] = None
     tags: list[str] = Field(min_length=1, max_length=30)
     input_description: str = Field(min_length=1, max_length=20_000)
     output_description: str = Field(min_length=1, max_length=20_000)
@@ -484,7 +486,7 @@ def load_content_bundle(
 
 
 def _problem_values(document: ProblemContent) -> dict[str, object]:
-    return {
+    values: dict[str, object] = {
         "title": document.title,
         "description": document.description,
         "difficulty": document.difficulty,
@@ -498,6 +500,9 @@ def _problem_values(document: ProblemContent) -> dict[str, object]:
         "memory_limit_mb": document.memory_limit_mb,
         "source": document.source,
     }
+    if document.training_category is not None:
+        values["training_category"] = document.training_category
+    return values
 
 
 def _challenge_date(item: DailyChallengeContent, timezone: str) -> Date:
@@ -600,14 +605,15 @@ async def _ensure_languages(db: AsyncSession) -> None:
         (
             await db.scalars(
                 select(Language.slug).where(
-                    Language.enabled.is_(True), Language.slug.in_(["python", "cpp"])
+                    Language.enabled.is_(True),
+                    Language.slug.in_(["javascript-v8", "nodejs"]),
                 )
             )
         ).all()
     )
-    if slugs != {"python", "cpp"}:
+    if slugs != {"javascript-v8", "nodejs"}:
         raise ContentBootstrapError(
-            "LANGUAGE_UNAVAILABLE", "内容发布要求 Python 和 C++ 判题语言"
+            "LANGUAGE_UNAVAILABLE", "内容发布要求 JavaScript V8 和 Node.js 判题模式"
         )
 
 

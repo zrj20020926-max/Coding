@@ -5,7 +5,7 @@ import type { ProblemDifficulty } from '@/types/problem'
 
 const props = defineProps<{ difficulty: ProblemDifficulty }>()
 
-const label = computed(() => ({ easy: '简单', medium: '中等', hard: '困难' })[props.difficulty])
+const label = computed(() => ({ easy: '基础', medium: '组合', hard: '综合' })[props.difficulty])
 </script>
 
 <template>

@@ -42,10 +42,10 @@ watch([page, pageSize], load, { immediate: true })
   <section class="favorites-page page-container">
     <header class="submissions-heading">
       <div>
-        <p class="eyebrow">SAVED PROBLEMS</p>
+        <p class="eyebrow">SAVED PRACTICES</p>
         <h1>我的收藏</h1>
       </div>
-      <span>共 {{ favoritesTotal }} 道题</span>
+      <span>共 {{ favoritesTotal }} 项练习</span>
     </header>
 
     <ProblemListSkeleton v-if="favoritesLoading" />
@@ -55,8 +55,8 @@ watch([page, pageSize], load, { immediate: true })
       </el-result>
     </section>
     <section v-else-if="favorites.length === 0" class="catalog-feedback">
-      <el-empty description="还没有收藏题目">
-        <RouterLink class="primary-link" to="/problems">去题库看看</RouterLink>
+      <el-empty description="还没有收藏练习">
+        <RouterLink class="primary-link" to="/problems">浏览训练课程</RouterLink>
       </el-empty>
     </section>
     <template v-else>

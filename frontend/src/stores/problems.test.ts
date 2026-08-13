@@ -27,6 +27,7 @@ const summary = {
   slug: 'a-plus-b',
   title: 'A+B 问题',
   difficulty: 'easy' as const,
+  training_category: 'single-line-multiple-values' as const,
   source: 'CodeArena',
   accepted_count: 80,
   submission_count: 100,
@@ -88,7 +89,7 @@ describe('problem store', () => {
     await store.loadProblems({ page: 1, page_size: 20, sort: 'newest' })
     await store.loadProblem('missing')
 
-    expect(store.listError).toBe('题库加载失败，请稍后重试')
+    expect(store.listError).toBe('训练课程加载失败，请稍后重试')
     expect(store.detailNotFound).toBe(true)
     expect(store.detailError).toContain('missing')
   })

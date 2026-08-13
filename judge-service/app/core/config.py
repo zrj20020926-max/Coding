@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     sandbox_python_image: str = "python:3.12-alpine"
     sandbox_cpp_image: str = "gcc:14.2-bookworm"
+    sandbox_node_image: str = "node:22-alpine"
     sandbox_pull_images: bool = True
     sandbox_cpus: float = Field(default=0.5, gt=0, le=4)
     sandbox_pids_limit: int = Field(default=32, ge=4, le=256)

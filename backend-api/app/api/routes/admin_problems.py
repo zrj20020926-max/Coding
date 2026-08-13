@@ -230,6 +230,7 @@ async def update_problem(
         "title",
         "description",
         "difficulty",
+        "training_category",
         "input_description",
         "output_description",
         "data_constraints",

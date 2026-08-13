@@ -46,7 +46,7 @@ export const useProblemStore = defineStore('problems', () => {
       items.value = []
       total.value = 0
       pages.value = 0
-      listError.value = getApiErrorMessage(error, '题库加载失败，请稍后重试')
+      listError.value = getApiErrorMessage(error, '训练课程加载失败，请稍后重试')
     } finally {
       if (requestId === listRequestId) listLoading.value = false
     }
@@ -79,7 +79,7 @@ export const useProblemStore = defineStore('problems', () => {
       detailNotFound.value = notFound
       detailError.value = notFound
         ? error.message
-        : getApiErrorMessage(error, '题目详情加载失败，请稍后重试')
+        : getApiErrorMessage(error, '练习详情加载失败，请稍后重试')
     } finally {
       if (requestId === detailRequestId) detailLoading.value = false
     }

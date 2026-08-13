@@ -1,6 +1,6 @@
-# CodeArena · ACM 模式算法训练平台
+# CodeArena · JavaScript ACM 输入输出专项训练平台
 
-面向国内互联网求职程序员的 stdin/stdout 在线算法训练平台。当前已打通题目详情、ACM 编辑器、可靠提交、独立 Judge 判题、结果轮询、训练进度、收藏、内容运营和个人统计的完整做题闭环。
+面向需要掌握 ACM 笔试输入输出的 JavaScript 开发者，系统训练 stdin 输入解析与 stdout 输出格式。平台重点支持 JavaScript V8 的 `readline()/print()` 模式和 Node.js 的 `fs.readFileSync(0, 'utf8')` 模式，不把复杂算法、竞赛排名或企业高频题作为产品主线。
 
 ## 当前范围
 
@@ -12,12 +12,12 @@
 - 后端 SQLite 快速测试、真实 PostgreSQL 集成测试
 - 前端 Vitest、ESLint、类型检查与生产构建
 - GitHub Actions CI
-- SQLAlchemy 2.0 async 题目、标签、语言与用户题目进度模型
-- 公开题目分页、搜索、难度/标签/个人状态筛选与排序
+- SQLAlchemy 2.0 async 练习、输入输出分类、标签、语言与用户进度模型
+- 公开训练课程分页、搜索、结构层级/分类/标签/个人状态筛选与排序
 - 公开题目详情、标签和启用语言接口
 - 管理员新增、修改、发布和下线题目
 - YAML/JSON 幂等题目种子导入
-- Monaco 按路由懒加载，支持 Python 3.12 / C++20、高亮、补全、主题、字号、格式化和快捷键
+- Monaco 按路由懒加载，支持 JavaScript V8 / Node.js、高亮、补全、主题、字号、格式化和快捷键
 - 草稿按用户、题目、语言隔离保存；公开样例与正式提交都通过 MinIO、Outbox、Redis Streams 进入独立 Judge
 - 断网/切页恢复、三分钟轮询超时、幂等防重、终态自动停止，以及个人提交历史和安全详情
 - 正式判题终态事务性更新进度与统计，支持收藏列表、难度/标签统计和幂等统计重建
@@ -81,12 +81,12 @@ Docker Compose 会在 API 启动前执行安全迁移入口。全新数据库执
 
 AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、改进建议和引导问题，不修改判题状态。模型输入不含隐藏用例、标准答案、对象键、凭证或其他用户数据，前端固定提示建议可能不准确。配额、缓存、成本、脱敏与部署边界见 [AI 分析文档](docs/ai-analysis.md)，生产观测、告警、备份、Secret Manager 和 digest 规范见 [生产运维文档](docs/production-operations.md)。
 
-## 题库 API
+## 训练课程 API
 
 公开接口：
 
-- `GET /api/v1/problems`：支持 `q`、`difficulty`、`tag`、`status`、`page`、`page_size`、`sort`。
-- `GET /api/v1/problems/{id}`：公开题目详情。
+- `GET /api/v1/problems`：支持 `q`、`difficulty`、`category`、`tag`、`status`、`page`、`page_size`、`sort`。
+- `GET /api/v1/problems/{id}`：公开练习详情。
 - `GET /api/v1/tags`：标签列表。
 - `GET /api/v1/languages`：启用语言的公开编辑器元数据。
 
@@ -109,7 +109,9 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 
 公开与管理响应均使用显式字段白名单，不包含隐藏测试用例、MinIO object key、编译/运行命令或 Docker 镜像。
 
-## 导入题目种子
+训练一级分类包括单值、单行多值、多行、T 组、EOF、哨兵、数组、字符串、矩阵、混合格式、大数据量、输出格式和综合输入输出。数据库仍保留 `easy/medium/hard` 兼容值，但用户侧统一显示“基础/组合/综合”，仅表示输入输出结构复杂度。
+
+## 导入内容种子
 
 参考 `backend-api/seeds/problems.example.yaml`，从 `backend-api/` 执行：
 
@@ -134,7 +136,7 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 
 ## 完整内容初始化
 
-正式内容位于 `content/`。全新 PostgreSQL 与 MinIO 启动时，Compose 会按 migration、bucket、content-bootstrap、API/Judge/前端的顺序执行；导入失败会阻止 API 假启动。当前内容包含 30 道原创 ACM 题、180 个隐藏用例、3 个渐进题单，以及按 `CONTENT_TIMEZONE` 从当天起连续 14 天的每日一题。每题提供 Python 3.12/C++20 引用实现，引用源码只用于离线验证，不进入数据库、MinIO 或公开响应。
+正式内容位于 `content/`。全新 PostgreSQL 与 MinIO 启动时，Compose 会按 migration、bucket、content-bootstrap、API/Judge/前端的顺序执行；导入失败会阻止 API 假启动。现有 30 道 ACM 内容、隐藏用例、题单与每日一题继续兼容使用。其 Python/C++ 引用实现仅用于离线生成和校验内容，不是用户可提交语言，也不会进入数据库、MinIO 或公开响应；后续内容迭代将逐步改写为以输入输出模式为主的课程。
 
 ```powershell
 cd backend-api
@@ -143,7 +145,7 @@ cd backend-api
 .\.venv\Scripts\python -m app.bootstrap.content --manifest ../content/manifest.yaml --force
 ```
 
-完整题库验证会真实运行全部 Python 3.12/C++20 引用实现，并确认 10 份错误实现得到 Wrong Answer：
+遗留内容验证会真实运行内部 Python 3.12/C++20 引用实现，并确认错误实现得到 Wrong Answer：
 
 ```powershell
 docker compose -f docker-compose.content-test.yml run --build --rm catalog-validator-test
@@ -179,7 +181,7 @@ cd backend-api
 
 ```powershell
 alembic current
-alembic upgrade 20260812_0009
+alembic upgrade head
 ```
 
 由旧版 `infra/postgres/init/001_schema.sql` 创建的已有数据库：
@@ -239,7 +241,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-## 完整做题闭环
+## 完整训练闭环
 
 - `/problems/:slug`：题面与懒加载 ACM 编辑器。`Ctrl/⌘ Enter` 运行公开样例，`Ctrl/⌘ Shift Enter` 正式提交，`Shift Alt F` 格式化。
 - `/submissions`：当前用户提交历史；`/submissions/:id`：源码、编译输出、耗时、内存和聚合用例结果。
@@ -282,11 +284,11 @@ npm run test:e2e
 
 ```powershell
 cd backend-api
-alembic upgrade 20260812_0009
+alembic upgrade head
 alembic current
 ```
 
-`20260812_0009` 会为历史隐藏用例创建 legacy v1 测试集、为旧正式提交回填不可变快照，并把旧公开样例用例保留在独立 inactive 归档版本中；未满足 100 分规则的已公开题目会安全回退为 draft。由于迁移进程不读取 MinIO，历史用例大小元数据为 0，重新发布前应创建并验证新测试集版本。
+`20260812_0009` 会为历史隐藏用例创建 legacy v1 测试集并回填提交快照；`20260813_0013` 增加训练分类并把用户判题语言切换为 JavaScript V8/Node.js。由于迁移进程不读取 MinIO，历史用例大小元数据为 0，重新发布前应创建并验证新测试集版本。
 
 若缓存计数因历史数据、运维修复或事件补偿需要校正，可在暂停/排空 Judge 写入后执行幂等重建。命令会获取与 Judge 终态事务互斥的 PostgreSQL advisory lock，并在单事务中重建进度、事件台账和计数：
 
@@ -296,9 +298,9 @@ python -m app.maintenance.rebuild_statistics --apply
 
 启动后可用 `docker compose logs -f outbox-publisher` 观察发布进程，并用 `redis-cli XINFO STREAM codearena:judge:submissions` 检查任务流。
 
-## 基础 ACM Judge Worker
+## JavaScript ACM Judge Worker
 
-`judge-service/` 是独立 Python 3.12 服务，通过 Redis Streams 消费任务，当前支持 Python 3.12 与 C++20。每次编译和测试用例都运行在独立、无网络、只读根目录、非 root、无 capabilities 且受 CPU/内存/PID/tmpfs/输出/墙钟限制的容器中。
+`judge-service/` 是独立 Python 服务，通过 Redis Streams 消费任务，用户提交只开放 `javascript-v8` 和 `nodejs`。V8 模式在沙箱中注入兼容的 `readline()/print()`，不注入 `fs`、`require`、`process`、`Buffer` 或 DOM；Node.js 模式支持标准 Node API，但不提供浏览器 DOM。语法检查和每个测试用例都运行在独立、无网络、只读根目录、非 root、无 capabilities 且受 CPU/内存/PID/tmpfs/输出/墙钟限制的容器中。
 
 ```powershell
 docker compose up --build -d minio-init backend-api outbox-publisher judge-service

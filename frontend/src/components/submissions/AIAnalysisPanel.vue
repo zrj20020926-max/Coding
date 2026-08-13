@@ -52,12 +52,12 @@ onUnmounted(() => store.stopPolling())
     </div>
     <div v-else-if="analysis?.status === 'completed'" class="ai-analysis-result">
       <div class="ai-complexity-grid">
-        <div><span>时间复杂度</span><strong>{{ analysis.time_complexity }}</strong></div>
-        <div><span>空间复杂度</span><strong>{{ analysis.space_complexity }}</strong></div>
+        <div><span>解析时间开销</span><strong>{{ analysis.time_complexity }}</strong></div>
+        <div><span>解析空间开销</span><strong>{{ analysis.space_complexity }}</strong></div>
         <div><span>置信度</span><strong>{{ analysis.confidence ?? '—' }}</strong></div>
       </div>
       <section>
-        <h3>可能的失败原因</h3>
+        <h3>可能的输入输出失败原因</h3>
         <p>{{ analysis.failure_reason }}</p>
       </section>
       <section>

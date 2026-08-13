@@ -63,9 +63,9 @@ async function submit(): Promise<void> {
   <section class="auth-page page-container">
     <div class="auth-aside">
       <p class="eyebrow">START PRACTICING</p>
-      <h1>为下一场笔试，<br />提前进入状态。</h1>
-      <p>从输入输出到复杂度分析，建立一套能在真实环境里稳定发挥的解题习惯。</p>
-      <ul class="auth-points"><li>ACM 标准输入输出</li><li>Python 3.12 与 C++20 判题</li><li>企业高频题训练路径</li></ul>
+      <h1>把 JavaScript stdin/stdout，<br />练成稳定技能。</h1>
+      <p>从单行、多行到 EOF 与混合格式，建立可复用的 ACM 输入解析习惯。</p>
+      <ul class="auth-points"><li>JavaScript ACM 标准输入输出</li><li>V8 与 Node.js 双模式</li><li>常见输入格式渐进训练</li></ul>
     </div>
     <div class="auth-card auth-card-wide">
       <div class="auth-card-heading"><p>创建账号</p><h2>开始训练</h2></div>

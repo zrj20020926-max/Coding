@@ -38,11 +38,11 @@ async def seed_catalog(db: AsyncSession) -> tuple[Problem, Language]:
         visibility=ProblemVisibility.PUBLIC,
     )
     language = Language(
-        slug="python",
-        display_name="Python",
-        version="3.12",
-        monaco_language="python",
-        source_filename="main.py",
+        slug="nodejs",
+        display_name="Node.js",
+        version="22",
+        monaco_language="javascript",
+        source_filename="main.js",
         run_command="internal",
         docker_image="internal",
         enabled=True,
@@ -64,8 +64,8 @@ async def create_failed_submission(
         headers=headers,
         json={
             "problem_id": problem.id,
-            "language": "python",
-            "source_code": "print('user source')",
+            "language": "nodejs",
+            "source_code": "console.log('user source')",
             "mode": "judge",
         },
     )

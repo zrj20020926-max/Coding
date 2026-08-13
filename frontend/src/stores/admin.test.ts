@@ -8,7 +8,7 @@ import type { AdminProblem, ProblemReadiness } from '@/types/admin'
 vi.mock('@/services/admin')
 
 const problem: AdminProblem = {
-  id: 1, slug: 'admin-problem', title: '管理题', difficulty: 'easy', source: null,
+  id: 1, slug: 'admin-problem', title: '管理题', difficulty: 'easy', training_category: 'comprehensive', source: null,
   accepted_count: 0, submission_count: 0, acceptance_rate: 0, tags: [], description: '描述',
   input_description: '输入', output_description: '输出', data_constraints: 'n <= 10',
   sample_input: '1', sample_output: '1', sample_explanation: '解释', time_limit_ms: 1000,

@@ -44,6 +44,22 @@ class ProblemVisibility(str, enum.Enum):
     PRIVATE = "private"
 
 
+class TrainingCategory(str, enum.Enum):
+    SINGLE_VALUE = "single-value"
+    SINGLE_LINE_MULTIPLE_VALUES = "single-line-multiple-values"
+    MULTI_LINE = "multi-line"
+    TEST_CASES = "test-cases"
+    READ_UNTIL_EOF = "read-until-eof"
+    SENTINEL = "sentinel"
+    ARRAY_INPUT = "array-input"
+    STRING_INPUT = "string-input"
+    MATRIX_INPUT = "matrix-input"
+    MIXED_INPUT = "mixed-input"
+    LARGE_INPUT = "large-input"
+    OUTPUT_FORMAT = "output-format"
+    COMPREHENSIVE = "comprehensive"
+
+
 class TestSetStatus(str, enum.Enum):
     DRAFT = "draft"
     VALIDATING = "validating"
@@ -83,6 +99,16 @@ class Problem(Base):
             validate_strings=True,
         ),
         nullable=False,
+    )
+    training_category: Mapped[TrainingCategory] = mapped_column(
+        Enum(
+            TrainingCategory,
+            name="training_category",
+            values_callable=enum_values,
+            validate_strings=True,
+        ),
+        nullable=False,
+        default=TrainingCategory.COMPREHENSIVE,
     )
     input_description: Mapped[str] = mapped_column(Text, nullable=False)
     output_description: Mapped[str] = mapped_column(Text, nullable=False)

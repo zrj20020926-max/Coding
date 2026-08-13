@@ -25,7 +25,7 @@ export const useEditorStore = defineStore('editor', () => {
   const languages = ref<JudgeLanguage[]>([])
   const languagesLoading = ref(false)
   const languagesError = ref('')
-  const selectedLanguage = ref(localStorage.getItem(LANGUAGE_KEY) ?? 'python')
+  const selectedLanguage = ref(localStorage.getItem(LANGUAGE_KEY) ?? 'javascript-v8')
   const fontSize = ref(initialFontSize())
 
   watch(selectedLanguage, (value) => localStorage.setItem(LANGUAGE_KEY, value))
@@ -38,7 +38,7 @@ export const useEditorStore = defineStore('editor', () => {
     try {
       languages.value = await getProblemLanguages()
       if (!languages.value.some((item) => item.slug === selectedLanguage.value)) {
-        selectedLanguage.value = languages.value[0]?.slug ?? 'python'
+        selectedLanguage.value = languages.value[0]?.slug ?? 'javascript-v8'
       }
     } catch {
       languagesError.value = '可用语言加载失败'

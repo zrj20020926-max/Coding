@@ -13,6 +13,7 @@ from app.domain.models import (
     SubmissionStatus,
 )
 from app.domain.models import TestCase as JudgeTestCase
+from app.errors import JudgeConfigurationError
 from app.infrastructure.sandbox import SandboxRunResult
 from app.judge import JudgeEngine
 
@@ -48,13 +49,13 @@ class FakeSandbox:
 def fixture(
     actual: bytes, expected: bytes
 ) -> tuple[JudgeEngine, SubmissionJob, list[JudgeTestCase]]:
-    source = b"print('answer')"
+    source = b"console.log('answer')"
     stdin = b"hidden input"
     store = FakeObjectStore(source, stdin, expected)
     job = SubmissionJob(
         id=uuid4(),
         problem_id=1,
-        language="python",
+        language="nodejs",
         status=SubmissionStatus.COMPILING,
         mode=SubmissionMode.JUDGE,
         test_set_id=uuid4(),
@@ -188,3 +189,23 @@ async def test_output_limit_has_dedicated_status() -> None:
     engine.sandbox.status = SubmissionStatus.OUTPUT_LIMIT_EXCEEDED
     result = await engine.judge(job, cases)
     assert result.status is SubmissionStatus.OUTPUT_LIMIT_EXCEEDED
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize("language", ["javascript-v8", "nodejs"])
+async def test_judge_accepts_both_javascript_modes(language: str) -> None:
+    engine, job, cases = fixture(b"answer\n", b"answer\n")
+
+    result = await engine.judge(replace(job, language=language), cases)
+
+    assert result.status is SubmissionStatus.ACCEPTED
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_judge_rejects_disabled_legacy_language() -> None:
+    engine, job, cases = fixture(b"answer\n", b"answer\n")
+
+    with pytest.raises(JudgeConfigurationError, match="unsupported language"):
+        await engine.judge(replace(job, language="python"), cases)

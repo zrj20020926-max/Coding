@@ -17,6 +17,7 @@ from app.models.problem import (
     ProblemTag,
     ProblemVisibility,
     Tag,
+    TrainingCategory,
     UserProblemProgress,
 )
 from app.schemas.problem import (
@@ -69,6 +70,7 @@ def to_problem_summary(
         slug=problem.slug,
         title=problem.title,
         difficulty=problem.difficulty,
+        training_category=problem.training_category,
         source=problem.source,
         accepted_count=problem.accepted_count,
         submission_count=problem.submission_count,
@@ -123,6 +125,7 @@ def apply_problem_filters(
     q: str | None,
     difficulty: ProblemDifficulty | None,
     tag: str | None,
+    training_category: TrainingCategory | None,
     progress_status: ProblemProgressStatus | None,
     user_id: UUID | None,
 ) -> Select[tuple[object, ...]]:
@@ -141,6 +144,8 @@ def apply_problem_filters(
                 .where(ProblemTag.problem_id == Problem.id, Tag.slug == tag)
             )
         )
+    if training_category:
+        statement = statement.where(Problem.training_category == training_category)
     if progress_status:
         if user_id is None:
             raise ValueError("authentication is required for a progress status filter")
@@ -195,6 +200,7 @@ async def list_public_problems(
     q: str | None,
     difficulty: ProblemDifficulty | None,
     tag: str | None,
+    training_category: TrainingCategory | None,
     progress_status: ProblemProgressStatus | None,
     page: int,
     page_size: int,
@@ -222,6 +228,7 @@ async def list_public_problems(
         q=q,
         difficulty=difficulty,
         tag=tag,
+        training_category=training_category,
         progress_status=progress_status,
         user_id=user_id,
     )

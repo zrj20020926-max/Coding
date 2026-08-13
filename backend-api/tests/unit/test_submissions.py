@@ -56,11 +56,11 @@ async def seed_submission_catalog(db: AsyncSession) -> tuple[Problem, Problem]:
             draft,
             active_test_set(public),
             Language(
-                slug="python",
-                display_name="Python",
-                version="3.12",
-                monaco_language="python",
-                source_filename="main.py",
+                slug="nodejs",
+                display_name="Node.js",
+                version="22",
+                monaco_language="javascript",
+                source_filename="main.js",
                 run_command="private runtime",
                 docker_image="private image",
                 enabled=True,
@@ -84,12 +84,12 @@ async def seed_submission_catalog(db: AsyncSession) -> tuple[Problem, Problem]:
 
 def request(
     problem_id: int,
-    source: str = "print(input())",
+    source: str = "console.log(require('fs').readFileSync(0, 'utf8').trim())",
     mode: str = "judge",
 ) -> dict[str, Any]:
     return {
         "problem_id": problem_id,
-        "language": "python",
+        "language": "nodejs",
         "source_code": source,
         "mode": mode,
     }
@@ -116,8 +116,9 @@ async def test_submission_is_stored_with_pending_outbox_and_safe_response(
     submission = (await db_session.scalars(select(Submission))).one()
     event = (await db_session.scalars(select(Outbox))).one()
     assert submission.source_code is None
-    assert submission.source_checksum == hashlib.sha256(b"print(input())").hexdigest()
-    assert fake_object_store.objects[submission.source_object_key] == b"print(input())"
+    expected_source = b"console.log(require('fs').readFileSync(0, 'utf8').trim())"
+    assert submission.source_checksum == hashlib.sha256(expected_source).hexdigest()
+    assert fake_object_store.objects[submission.source_object_key] == expected_source
     assert event.aggregate_id == submission.id
     assert event.published_at is None
     assert set(event.payload) == {"event_id", "submission_id"}
@@ -191,7 +192,9 @@ async def test_sample_and_formal_runs_are_distinct_and_detail_is_owner_safe(
     assert sample.json()["mode"] == "sample"
     assert formal.json()["mode"] == "judge"
     assert detail.status_code == 200
-    assert detail.json()["source_code"] == "print(input())"
+    assert detail.json()["source_code"] == (
+        "console.log(require('fs').readFileSync(0, 'utf8').trim())"
+    )
     assert detail.json()["sample_output"] is None
     assert "source_object_key" not in detail.text
     modes = set((await db_session.scalars(select(Submission.mode))).all())
@@ -302,11 +305,11 @@ async def test_submission_history_supports_language_status_and_mode_filters(
     await db_session.commit()
 
     accepted = await client.get(
-        "/api/v1/submissions?language=python&status=Accepted&mode=judge",
+        "/api/v1/submissions?language=nodejs&status=Accepted&mode=judge",
         headers=headers,
     )
     samples = await client.get(
-        "/api/v1/submissions?language=python&status=Pending&mode=sample",
+        "/api/v1/submissions?language=nodejs&status=Pending&mode=sample",
         headers=headers,
     )
     invalid = await client.get(

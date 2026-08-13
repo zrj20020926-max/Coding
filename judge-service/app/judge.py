@@ -27,7 +27,7 @@ class JudgeEngine:
     async def judge(
         self, job: SubmissionJob, test_cases: list[TestCase]
     ) -> JudgeResult:
-        if job.language not in {"python", "cpp"}:
+        if job.language not in {"javascript-v8", "nodejs"}:
             raise JudgeConfigurationError(f"unsupported language: {job.language}")
         if not test_cases:
             raise JudgeConfigurationError("problem has no hidden test cases")
