@@ -22,6 +22,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
     func,
 )
@@ -111,6 +112,10 @@ class Submission(Base):
     source_checksum: Mapped[str] = mapped_column(CHAR(64), nullable=False)
     idempotency_key: Mapped[Optional[str]] = mapped_column(String(128))
     request_fingerprint: Mapped[Optional[str]] = mapped_column(CHAR(64))
+    is_rejudge: Mapped[bool] = mapped_column(nullable=False, default=False)
+    original_submission_id: Mapped[Optional[UUID]] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("submissions.id", ondelete="RESTRICT")
+    )
     queue_message_id: Mapped[Optional[str]] = mapped_column(Text)
     compiler_output: Mapped[Optional[str]] = mapped_column(Text)
     error_message: Mapped[Optional[str]] = mapped_column(Text)
@@ -214,4 +219,52 @@ class Outbox(Base):
     last_error: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class RejudgeTask(Base):
+    __tablename__ = "rejudge_tasks"
+    __table_args__ = (
+        CheckConstraint("mode IN ('single', 'batch')", name="ck_rejudge_task_mode"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    requested_by: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    mode: Mapped[str] = mapped_column(String(20), nullable=False)
+    problem_id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        ForeignKey("problems.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    test_set_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("test_sets.id", ondelete="RESTRICT"), nullable=False
+    )
+    total_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class RejudgeTaskItem(Base):
+    __tablename__ = "rejudge_task_items"
+    __table_args__ = (
+        UniqueConstraint("rejudge_submission_id", name="uq_rejudge_item_submission"),
+    )
+
+    task_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("rejudge_tasks.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    original_submission_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("submissions.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    rejudge_submission_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("submissions.id", ondelete="RESTRICT"),
+        nullable=False,
     )

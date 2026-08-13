@@ -114,3 +114,13 @@ export function getApiErrorCode(error: unknown): string | undefined {
   const body = error.response?.data as { detail?: { code?: string } } | undefined
   return body?.detail?.code
 }
+
+export function getApiValidationIssues(
+  error: unknown,
+): Array<{ location?: string[]; message: string; code?: string; sequence?: number }> {
+  if (!axios.isAxiosError(error)) return []
+  const body = error.response?.data as {
+    detail?: { issues?: Array<{ location?: string[]; message: string; code?: string; sequence?: number }> }
+  }
+  return body.detail?.issues ?? []
+}

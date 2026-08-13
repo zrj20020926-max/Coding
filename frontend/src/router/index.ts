@@ -18,7 +18,7 @@ export async function runAuthGuard(to: GuardRoute, auth: AuthGuardState) {
   if (to.meta['requiresAuth'] && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  if (to.meta['requiresAdmin'] && !auth.user?.is_admin) return { name: 'not-found' }
+  if (to.meta['requiresAdmin'] && !auth.user?.is_admin) return { name: 'forbidden' }
   if (to.meta['guestOnly'] && auth.isAuthenticated) return { name: 'profile' }
   return true
 }
@@ -69,11 +69,21 @@ const router = createRouter({
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { guestOnly: true } },
     { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue'), meta: { guestOnly: true } },
     { path: '/profile', name: 'profile', component: () => import('@/views/ProfileView.vue'), meta: { requiresAuth: true } },
+    { path: '/forbidden', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue') },
     {
       path: '/admin',
-      name: 'admin',
-      component: () => import('@/views/AdminView.vue'),
+      component: () => import('@/components/admin/AdminLayout.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
+      children: [
+        { path: '', name: 'admin', component: () => import('@/views/AdminView.vue') },
+        { path: 'problems', name: 'admin-problems', component: () => import('@/views/admin/AdminProblemsView.vue') },
+        { path: 'problems/new', name: 'admin-problem-new', component: () => import('@/views/admin/AdminProblemEditView.vue') },
+        { path: 'problems/:id', name: 'admin-problem-edit', component: () => import('@/views/admin/AdminProblemEditView.vue') },
+        { path: 'collections', name: 'admin-collections', component: () => import('@/views/admin/AdminCollectionsView.vue') },
+        { path: 'daily-challenges', name: 'admin-daily-challenges', component: () => import('@/views/admin/AdminDailyChallengesView.vue') },
+        { path: 'moderation', name: 'admin-moderation', component: () => import('@/views/admin/AdminModerationView.vue') },
+        { path: 'rejudge', name: 'admin-rejudge', component: () => import('@/views/admin/AdminRejudgeView.vue') },
+      ],
     },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
   ],

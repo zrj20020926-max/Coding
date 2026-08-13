@@ -22,6 +22,7 @@ from app.models.problem import (
     TestSet,
     TestSetStatus,
 )
+from app.models.submission import Submission
 from app.models.user import User
 from app.schemas.problem import (
     AdminProblem,
@@ -367,7 +368,13 @@ async def get_admin_test_set(
     test_set = await get_test_set(db, test_set_id)
     if test_set is None:
         raise test_set_error(404, "TEST_SET_NOT_FOUND", "测试集不存在")
-    return to_test_set_public(test_set)
+    reference_count = int(
+        await db.scalar(
+            select(func.count(Submission.id)).where(Submission.test_set_id == test_set_id)
+        )
+        or 0
+    )
+    return to_test_set_public(test_set, reference_count)
 
 
 @router.get("/{problem_id}/test-sets", response_model=list[TestSetAdminPublic])

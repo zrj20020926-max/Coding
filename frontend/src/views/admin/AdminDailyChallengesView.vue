@@ -1,0 +1,21 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+import { deleteDailyChallenge, listDailyChallenges, setDailyChallenge } from '@/services/admin'
+import { getApiErrorMessage } from '@/services/http'
+import { getProblems } from '@/services/problems'
+import type { DailyChallengeAdmin } from '@/types/admin'
+import type { ProblemSummary } from '@/types/problem'
+
+const now = new Date(); const start = ref(new Date(now.getFullYear(), now.getMonth(), 1)); const end = ref(new Date(now.getFullYear(), now.getMonth() + 1, 0))
+const items = ref<DailyChallengeAdmin[]>([]); const problems = ref<ProblemSummary[]>([]); const loading = ref(false); const error = ref(''); const dialogVisible = ref(false); const selectedDate = ref(''); const selectedProblem = ref<number>()
+const range = computed<[string, string]>(() => [start.value.toISOString().slice(0, 10), end.value.toISOString().slice(0, 10)])
+async function load(): Promise<void> { loading.value = true; error.value = ''; try { items.value = (await listDailyChallenges(...range.value)).items } catch (reason) { error.value = getApiErrorMessage(reason, '排期加载失败') } finally { loading.value = false } }
+async function openSchedule(day?: string): Promise<void> { selectedDate.value = day ?? new Date().toISOString().slice(0, 10); selectedProblem.value = items.value.find((item) => item.challenge_date === selectedDate.value)?.problem.id; problems.value = (await getProblems({ page: 1, page_size: 100, sort: 'newest' })).items; dialogVisible.value = true }
+async function save(): Promise<void> { if (!selectedDate.value || !selectedProblem.value) { ElMessage.warning('请选择日期和题目'); return } const conflict = items.value.find((item) => item.challenge_date === selectedDate.value); try { if (conflict && conflict.problem.id !== selectedProblem.value) await ElMessageBox.confirm(`该日期已安排「${conflict.problem.title}」，确认覆盖？`, '排期冲突', { type: 'warning' }); await setDailyChallenge(selectedDate.value, selectedProblem.value); dialogVisible.value = false; ElMessage.success('每日一题排期已保存'); await load() } catch (reason) { if (reason !== 'cancel' && reason !== 'close') ElMessage.error(getApiErrorMessage(reason, '排期失败')) } }
+async function remove(day: string): Promise<void> { try { await ElMessageBox.confirm('确认删除该日排期？', '删除排期'); await deleteDailyChallenge(day); ElMessage.success('排期已删除'); await load() } catch (reason) { if (reason !== 'cancel' && reason !== 'close') ElMessage.error(getApiErrorMessage(reason, '删除失败')) } }
+function changeMonth(date: Date): void { start.value = new Date(date.getFullYear(), date.getMonth(), 1); end.value = new Date(date.getFullYear(), date.getMonth() + 1, 0); void load() }
+onMounted(load)
+</script>
+<template><section class="admin-page" aria-labelledby="daily-admin-title"><header class="admin-page-header"><div><p class="eyebrow">DAILY SCHEDULING</p><h1 id="daily-admin-title">每日一题排期</h1></div><ElButton type="primary" @click="openSchedule()">新增排期</ElButton></header><ElDatePicker :model-value="start" type="month" aria-label="选择查询月份" @change="changeMonth" /><ElSkeleton v-if="loading" :rows="8" animated class="admin-loading" /><ElAlert v-else-if="error" type="error" :title="error" /><ElEmpty v-else-if="!items.length" description="本月暂无排期" /><div v-else class="daily-admin-grid"><article v-for="item in items" :key="item.challenge_date"><time>{{ item.challenge_date }}</time><strong>{{ item.problem.title }}</strong><span>{{ item.timezone }}</span><footer><ElButton link @click="openSchedule(item.challenge_date)">修改</ElButton><ElButton link type="danger" @click="remove(item.challenge_date)">删除</ElButton></footer></article></div><ElDialog v-model="dialogVisible" title="安排每日一题" width="min(92vw, 480px)"><ElForm label-position="top"><ElFormItem label="日期" required><ElDatePicker v-model="selectedDate" value-format="YYYY-MM-DD" /></ElFormItem><ElFormItem label="公开题目" required><ElSelect v-model="selectedProblem" filterable><ElOption v-for="problem in problems" :key="problem.id" :label="`${problem.id}. ${problem.title}`" :value="problem.id" /></ElSelect></ElFormItem></ElForm><template #footer><ElButton @click="dialogVisible = false">取消</ElButton><ElButton type="primary" @click="save">保存</ElButton></template></ElDialog></section></template>

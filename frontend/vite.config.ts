@@ -32,5 +32,6 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     clearMocks: true,
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    server: { deps: { inline: ['element-plus'] } },
   },
 })

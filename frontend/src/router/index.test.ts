@@ -47,7 +47,7 @@ describe('authentication route guard', () => {
         ensureProfile: vi.fn().mockResolvedValue(undefined),
       },
     )
-    expect(result).toEqual({ name: 'not-found' })
+    expect(result).toEqual({ name: 'forbidden' })
   })
 
   it('registers catalog, slug detail and an independent 404 route', () => {
@@ -60,5 +60,13 @@ describe('authentication route guard', () => {
     expect(router.resolve('/discussions/12').name).toBe('discussion-detail')
     expect(router.resolve('/submissions/00000000-0000-0000-0000-000000000001').name).toBe('submission-detail')
     expect(router.resolve('/this-route-does-not-exist').name).toBe('not-found')
+    expect(router.resolve('/forbidden').name).toBe('forbidden')
+    expect(router.resolve('/admin/problems').name).toBe('admin-problems')
+    expect(router.resolve('/admin/problems/new').name).toBe('admin-problem-new')
+    expect(router.resolve('/admin/problems/12').name).toBe('admin-problem-edit')
+    expect(router.resolve('/admin/collections').name).toBe('admin-collections')
+    expect(router.resolve('/admin/daily-challenges').name).toBe('admin-daily-challenges')
+    expect(router.resolve('/admin/moderation').name).toBe('admin-moderation')
+    expect(router.resolve('/admin/rejudge').name).toBe('admin-rejudge')
   })
 })

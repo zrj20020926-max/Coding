@@ -12,6 +12,7 @@ from app.api.routes import (
     admin_content,
     admin_discussions,
     admin_problems,
+    admin_rejudge,
     ai_analyses,
     auth,
     collections,
@@ -85,6 +86,7 @@ app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(users.router, prefix=settings.api_prefix)
 app.include_router(problems.router, prefix=settings.api_prefix)
 app.include_router(admin_problems.router, prefix=settings.api_prefix)
+app.include_router(admin_rejudge.router, prefix=settings.api_prefix)
 app.include_router(submissions.router, prefix=settings.api_prefix)
 app.include_router(ai_analyses.router, prefix=settings.api_prefix)
 app.include_router(training.router, prefix=settings.api_prefix)

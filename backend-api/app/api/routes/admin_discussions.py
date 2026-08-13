@@ -12,11 +12,13 @@ from app.schemas.content import (
     ContentReportPublic,
     DiscussionAdminUpdate,
     DiscussionPublic,
+    ModerationQueuePage,
     ModerationUpdate,
     ReportAdminUpdate,
 )
 from app.services.discussions import (
     handle_report,
+    list_moderation_queue,
     list_reports,
     moderate_comment,
     moderate_discussion,
@@ -24,6 +26,17 @@ from app.services.discussions import (
 )
 
 router = APIRouter(prefix="/admin", tags=["讨论区管理"])
+
+
+@router.get("/moderation", response_model=ModerationQueuePage)
+async def get_moderation_queue(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_admin_user)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    target_type: Optional[Literal["discussion", "comment"]] = None,
+) -> ModerationQueuePage:
+    return await list_moderation_queue(db, page, page_size, target_type)
 
 
 @router.patch(

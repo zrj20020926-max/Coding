@@ -38,6 +38,7 @@ class Settings(BaseSettings):
 
     submission_source_max_bytes: int = Field(default=262_144, ge=1024, le=1_048_576)
     submission_min_interval_seconds: int = Field(default=2, ge=0, le=300)
+    rejudge_batch_max_submissions: int = Field(default=1000, ge=1, le=10_000)
     judge_supported_languages: str = "python,cpp"
     submission_stream_name: str = "codearena:judge:submissions"
     ai_analysis_stream_name: str = "codearena:ai:analyses"

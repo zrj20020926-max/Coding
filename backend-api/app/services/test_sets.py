@@ -41,7 +41,9 @@ def test_set_error(
     return HTTPException(status_code=http_status, detail=detail)
 
 
-def to_test_set_public(test_set: TestSet) -> TestSetAdminPublic:
+def to_test_set_public(
+    test_set: TestSet, submission_reference_count: int = 0
+) -> TestSetAdminPublic:
     return TestSetAdminPublic(
         id=test_set.id,
         problem_id=test_set.problem_id,
@@ -55,6 +57,7 @@ def to_test_set_public(test_set: TestSet) -> TestSetAdminPublic:
         created_by=test_set.created_by,
         created_at=test_set.created_at,
         activated_at=test_set.activated_at,
+        submission_reference_count=submission_reference_count,
         cases=[
             TestCaseAdminPublic(
                 id=case.id,
@@ -90,7 +93,16 @@ async def list_test_sets(db: AsyncSession, problem_id: int) -> list[TestSetAdmin
             .order_by(TestSet.version.desc())
         )
     ).all()
-    return [to_test_set_public(row) for row in rows]
+    counts = dict(
+        (
+            await db.execute(
+                select(Submission.test_set_id, func.count(Submission.id))
+                .where(Submission.test_set_id.in_([row.id for row in rows]))
+                .group_by(Submission.test_set_id)
+            )
+        ).all()
+    ) if rows else {}
+    return [to_test_set_public(row, int(counts.get(row.id, 0))) for row in rows]
 
 
 async def create_test_set(

@@ -242,3 +242,25 @@ class ContentReportPage(BaseModel):
     page: int
     page_size: int
     pages: int
+
+
+class ModerationQueueItem(BaseModel):
+    target_type: Literal["discussion", "comment"]
+    target_id: int
+    discussion_id: int
+    problem_id: int
+    author: Optional[ContentAuthor]
+    title: Optional[str]
+    content: str
+    review_status: ContentReviewStatus
+    is_pinned: bool = False
+    is_locked: bool = False
+    created_at: datetime
+
+
+class ModerationQueuePage(BaseModel):
+    items: list[ModerationQueueItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int

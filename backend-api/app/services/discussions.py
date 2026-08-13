@@ -27,6 +27,8 @@ from app.schemas.content import (
     DiscussionDetail,
     DiscussionPage,
     DiscussionPublic,
+    ModerationQueueItem,
+    ModerationQueuePage,
     ReportState,
 )
 from app.services.audit import record_audit
@@ -517,6 +519,107 @@ def add_moderation_action(
             action=action,
             reason=reason,
         )
+    )
+
+
+async def list_moderation_queue(
+    db: AsyncSession,
+    page: int,
+    page_size: int,
+    target_type: str | None,
+) -> ModerationQueuePage:
+    discussion_filters = [
+        Discussion.deleted_at.is_(None),
+        Discussion.review_status == ContentReviewStatus.PENDING,
+    ]
+    comment_filters = [
+        DiscussionComment.deleted_at.is_(None),
+        DiscussionComment.review_status == ContentReviewStatus.PENDING,
+    ]
+    discussion_total = (
+        int(await db.scalar(select(func.count(Discussion.id)).where(*discussion_filters)) or 0)
+        if target_type in {None, "discussion"}
+        else 0
+    )
+    comment_total = (
+        int(
+            await db.scalar(
+                select(func.count(DiscussionComment.id)).where(*comment_filters)
+            )
+            or 0
+        )
+        if target_type in {None, "comment"}
+        else 0
+    )
+    candidates: list[ModerationQueueItem] = []
+    fetch_limit = page * page_size
+    if target_type in {None, "discussion"}:
+        discussions = (
+            await db.scalars(
+                select(Discussion)
+                .where(*discussion_filters)
+                .order_by(Discussion.created_at.desc(), Discussion.id.desc())
+                .limit(fetch_limit)
+            )
+        ).all()
+        candidates.extend(
+            ModerationQueueItem(
+                target_type="discussion",
+                target_id=item.id,
+                discussion_id=item.id,
+                problem_id=item.problem_id,
+                author=to_author(item.author),
+                title=item.title,
+                content=item.content,
+                review_status=item.review_status,
+                is_pinned=item.is_pinned,
+                is_locked=item.is_locked,
+                created_at=item.created_at,
+            )
+            for item in discussions
+        )
+    if target_type in {None, "comment"}:
+        comments = (
+            await db.scalars(
+                select(DiscussionComment)
+                .where(*comment_filters)
+                .order_by(DiscussionComment.created_at.desc(), DiscussionComment.id.desc())
+                .limit(fetch_limit)
+            )
+        ).all()
+        discussion_ids = {item.discussion_id for item in comments}
+        problems = dict(
+            (
+                await db.execute(
+                    select(Discussion.id, Discussion.problem_id).where(
+                        Discussion.id.in_(discussion_ids)
+                    )
+                )
+            ).all()
+        ) if discussion_ids else {}
+        candidates.extend(
+            ModerationQueueItem(
+                target_type="comment",
+                target_id=item.id,
+                discussion_id=item.discussion_id,
+                problem_id=problems[item.discussion_id],
+                author=to_author(item.author),
+                title=None,
+                content=item.content,
+                review_status=item.review_status,
+                created_at=item.created_at,
+            )
+            for item in comments
+        )
+    candidates.sort(key=lambda item: (item.created_at, item.target_id), reverse=True)
+    start = (page - 1) * page_size
+    total = discussion_total + comment_total
+    return ModerationQueuePage(
+        items=candidates[start : start + page_size],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=math.ceil(total / page_size) if total else 0,
     )
 
 

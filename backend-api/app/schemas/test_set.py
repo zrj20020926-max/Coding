@@ -60,6 +60,7 @@ class TestSetAdminPublic(BaseModel):
     created_by: Optional[UUID]
     created_at: datetime
     activated_at: Optional[datetime]
+    submission_reference_count: int = 0
     cases: list[TestCaseAdminPublic] = Field(default_factory=list)
 
 

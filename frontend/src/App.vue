@@ -23,7 +23,7 @@ async function handleLogout(): Promise<void> {
       </RouterLink>
       <nav class="site-nav" aria-label="主导航">
         <RouterLink to="/">首页</RouterLink><RouterLink to="/problems">题库</RouterLink><RouterLink to="/collections">题单</RouterLink><RouterLink v-if="auth.isAuthenticated" to="/favorites">收藏</RouterLink><RouterLink v-if="auth.isAuthenticated" to="/submissions">提交记录</RouterLink>
-        <RouterLink v-if="auth.user?.is_admin" to="/admin">管理</RouterLink>
+        <RouterLink v-if="auth.user?.is_admin" to="/admin">管理后台</RouterLink>
       </nav>
       <div class="header-actions">
         <RouterLink class="mobile-problems-link" to="/problems">题库</RouterLink>

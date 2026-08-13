@@ -200,7 +200,7 @@ class JudgeRepository:
                    judged_at = :judged_at
              WHERE id = :submission_id
                AND status = CAST(:expected_status AS submission_status)
-            RETURNING id, user_id, problem_id, mode::text AS mode
+            RETURNING id, user_id, problem_id, mode::text AS mode, is_rejudge
             """
         )
         update_progress = text(
@@ -321,7 +321,10 @@ class JudgeRepository:
                             for item in result.case_results
                         ],
                     )
-                if updated["mode"] == SubmissionMode.JUDGE.value:
+                if (
+                    updated["mode"] == SubmissionMode.JUDGE.value
+                    and not updated["is_rejudge"]
+                ):
                     accepted = result.status is SubmissionStatus.ACCEPTED
                     stat_event_id = await connection.scalar(
                         insert_stat_event,

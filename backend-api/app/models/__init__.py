@@ -25,6 +25,8 @@ from app.models.problem import (
 )
 from app.models.submission import (
     Outbox,
+    RejudgeTask,
+    RejudgeTaskItem,
     Submission,
     SubmissionCaseResult,
     SubmissionMode,
@@ -49,6 +51,8 @@ __all__ = [
     "Favorite",
     "Language",
     "Outbox",
+    "RejudgeTask",
+    "RejudgeTaskItem",
     "Problem",
     "ProblemDifficulty",
     "ProblemTag",

@@ -54,6 +54,14 @@ describe('HTTP error handling', () => {
     expect(getApiErrorMessage(new Error('internal'), '稍后再试')).toBe('稍后再试')
   })
 
+  it('does not treat a backend 403 as an expired login session', async () => {
+    localStorage.setItem(AUTH_TOKEN_KEY, 'valid-admin-token')
+    const error = new AxiosError('forbidden')
+    Object.assign(error, { response: { status: 403, data: { detail: { code: 'FORBIDDEN' } } } })
+    await expect(handleHttpError(error)).rejects.toBe(error)
+    expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('valid-admin-token')
+  })
+
   it('removes the token after a 401 response and preserves the original error', async () => {
     localStorage.setItem(AUTH_TOKEN_KEY, 'expired-token')
     const error = new AxiosError('unauthorized')
