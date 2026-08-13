@@ -29,6 +29,7 @@ watch([id, page], () => void content.loadDiscussion(id.value, page.value, pageSi
 })
 
 async function submitComment(): Promise<void> {
+  if (!commentText.value.trim() || submitting.value) return
   submitting.value = true
   try {
     const created = await content.addComment(commentText.value, replyTo.value?.id)
@@ -40,6 +41,18 @@ async function submitComment(): Promise<void> {
   } finally {
     submitting.value = false
   }
+}
+
+async function beginReply(comment: DiscussionComment): Promise<void> {
+  if (!auth.isAuthenticated) {
+    await router.push({ name: 'login', query: { redirect: route.fullPath } })
+    return
+  }
+  replyTo.value = comment
+}
+
+function retryLoad(): void {
+  void content.loadDiscussion(id.value, page.value, pageSize)
 }
 
 async function editThread(): Promise<void> {
@@ -112,7 +125,9 @@ async function report(target: 'discussion' | 'comment', targetId: number): Promi
 <template>
   <section class="discussion-detail-page page-container">
     <div v-if="discussionLoading" class="detail-skeleton"><span class="skeleton-block detail-title-skeleton"></span></div>
-    <el-result v-else-if="discussionError" icon="error" title="讨论加载失败" :sub-title="discussionError" />
+    <el-result v-else-if="discussionError" icon="error" title="讨论加载失败" :sub-title="discussionError">
+      <template #extra><el-button type="primary" @click="retryLoad">重试</el-button></template>
+    </el-result>
     <template v-else-if="discussionDetail">
       <article class="discussion-thread">
         <div class="discussion-flags">
@@ -142,7 +157,7 @@ async function report(target: 'discussion' | 'comment', targetId: number): Promi
             <div><strong>{{ comment.author?.nickname ?? '已注销用户' }}</strong><time>{{ new Date(comment.created_at).toLocaleString('zh-CN') }}</time></div>
             <MarkdownContent :content="comment.content" />
             <footer v-if="!comment.deleted">
-              <button v-if="comment.depth < 3 && !discussionDetail.discussion.is_locked" type="button" @click="replyTo = comment">回复</button>
+              <button v-if="comment.depth < 3 && !discussionDetail.discussion.is_locked" type="button" @click="beginReply(comment)">回复</button>
               <button v-if="comment.can_edit" type="button" @click="editReply(comment)">编辑</button>
               <button v-if="comment.can_edit" type="button" @click="removeReply(comment)">删除</button>
               <button type="button" @click="report('comment', comment.id)">举报</button>
@@ -161,11 +176,11 @@ async function report(target: 'discussion' | 'comment', targetId: number): Promi
         </div>
         <el-form v-if="auth.isAuthenticated && !discussionDetail.discussion.is_locked" class="comment-compose" @submit.prevent="submitComment">
           <p v-if="replyTo">回复 {{ replyTo.author?.nickname ?? '已注销用户' }} <button type="button" @click="replyTo = null">取消</button></p>
-          <el-input v-model="commentText" type="textarea" :rows="4" maxlength="20000" placeholder="友善讨论，支持 Markdown" />
-          <el-button type="primary" native-type="submit" :loading="submitting">发表评论</el-button>
+          <el-input v-model="commentText" type="textarea" :rows="4" maxlength="20000" show-word-limit placeholder="友善讨论，支持 Markdown" />
+          <el-button type="primary" native-type="submit" :loading="submitting" :disabled="!commentText.trim()">发表评论</el-button>
         </el-form>
         <p v-else-if="discussionDetail.discussion.is_locked" class="discussion-locked-notice">该讨论已被管理员锁定</p>
-        <RouterLink v-else class="primary-link" to="/login">登录后参与讨论</RouterLink>
+        <RouterLink v-else class="primary-link" :to="{ name: 'login', query: { redirect: route.fullPath } }">登录后参与讨论</RouterLink>
       </section>
     </template>
   </section>

@@ -86,8 +86,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function changePassword(payload: ChangePasswordPayload): Promise<void> {
-    try { await changeAccountPassword(payload) }
-    finally { clearSession() }
+    await changeAccountPassword(payload)
+    clearSession()
   }
 
   return {

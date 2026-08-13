@@ -84,4 +84,35 @@ describe('auth store', () => {
     expect(store.isAuthenticated).toBe(false)
     expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull()
   })
+
+  it('keeps the current session when password validation fails', async () => {
+    localStorage.setItem(AUTH_TOKEN_KEY, 'access-token')
+    vi.mocked(authService.changeAccountPassword).mockRejectedValue(new Error('wrong password'))
+    const store = useAuthStore()
+    store.acceptSession('access-token', profile)
+
+    await expect(store.changePassword({
+      current_password: 'wrong-password',
+      new_password: 'new-safe-password-123',
+    })).rejects.toThrow('wrong password')
+
+    expect(store.isAuthenticated).toBe(true)
+    expect(store.user).toEqual(profile)
+    expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('access-token')
+  })
+
+  it('clears every local credential after a successful password change', async () => {
+    vi.mocked(authService.changeAccountPassword).mockResolvedValue()
+    const store = useAuthStore()
+    store.acceptSession('access-token', profile)
+
+    await store.changePassword({
+      current_password: 'safe-password-123',
+      new_password: 'new-safe-password-123',
+    })
+
+    expect(store.isAuthenticated).toBe(false)
+    expect(store.user).toBeNull()
+    expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull()
+  })
 })

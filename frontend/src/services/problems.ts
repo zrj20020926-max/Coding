@@ -26,23 +26,15 @@ export async function getProblemLanguages(): Promise<JudgeLanguage[]> {
 }
 
 export async function getProblemBySlug(slug: string): Promise<ProblemDetail> {
-  let pageNumber = 1
-  let matchId: number | undefined
-  do {
-    const page = await getProblems({
-      q: slug,
-      page: pageNumber,
-      page_size: 100,
-      sort: 'newest',
-    })
-    matchId = page.items.find((problem) => problem.slug === slug)?.id
-    if (matchId !== undefined || pageNumber >= page.pages) break
-    pageNumber += 1
-  } while (matchId === undefined)
-
-  if (matchId === undefined) throw new ProblemNotFoundError(slug)
-  const { data } = await http.get<ProblemDetail>(`/problems/${matchId}`)
-  return data
+  try {
+    const { data } = await http.get<ProblemDetail>(`/problems/${encodeURIComponent(slug)}`)
+    return data
+  } catch (error) {
+    if ((error as { response?: { status?: number } }).response?.status === 404) {
+      throw new ProblemNotFoundError(slug)
+    }
+    throw error
+  }
 }
 
 export async function setProblemFavorite(

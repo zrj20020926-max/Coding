@@ -59,6 +59,18 @@ export interface SubmissionPage {
   pages: number
 }
 
+export interface SubmissionHistoryFilters {
+  problem_id?: number
+  language?: string
+  status?: SubmissionStatus
+  mode?: SubmissionMode
+}
+
+export interface SubmissionListParams extends SubmissionHistoryFilters {
+  page: number
+  page_size: number
+}
+
 export interface CreateSubmissionPayload {
   problem_id: number
   language: string

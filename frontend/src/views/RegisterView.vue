@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
@@ -16,6 +16,7 @@ interface RegisterForm {
 }
 
 const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 const formRef = ref<FormInstance>()
 const form = reactive<RegisterForm>({ nickname: '', username: '', email: '', password: '', confirmPassword: '' })
@@ -52,7 +53,8 @@ async function submit(): Promise<void> {
   try {
     await auth.register({ nickname: form.nickname, username: form.username, email: form.email, password: form.password })
     ElMessage.success('账号创建成功')
-    await router.push('/profile')
+    const redirect = typeof route.query['redirect'] === 'string' ? route.query['redirect'] : '/profile'
+    await router.push(redirect)
   } catch (error) { ElMessage.error(getApiErrorMessage(error, '注册失败，请稍后重试')) }
 }
 </script>
@@ -63,7 +65,7 @@ async function submit(): Promise<void> {
       <p class="eyebrow">START PRACTICING</p>
       <h1>为下一场笔试，<br />提前进入状态。</h1>
       <p>从输入输出到复杂度分析，建立一套能在真实环境里稳定发挥的解题习惯。</p>
-      <ul class="auth-points"><li>ACM 标准输入输出</li><li>五种主流编程语言</li><li>企业高频题训练路径</li></ul>
+      <ul class="auth-points"><li>ACM 标准输入输出</li><li>Python 3.12 与 C++20 判题</li><li>企业高频题训练路径</li></ul>
     </div>
     <div class="auth-card auth-card-wide">
       <div class="auth-card-heading"><p>创建账号</p><h2>开始训练</h2></div>
@@ -79,7 +81,7 @@ async function submit(): Promise<void> {
         </div>
         <el-button class="auth-submit" type="primary" size="large" native-type="submit" :loading="auth.loading">创建账号</el-button>
       </el-form>
-      <p class="auth-switch">已有账号？<RouterLink to="/login">直接登录</RouterLink></p>
+      <p class="auth-switch">已有账号？<RouterLink :to="{ name: 'login', query: route.query }">直接登录</RouterLink></p>
     </div>
   </section>
 </template>

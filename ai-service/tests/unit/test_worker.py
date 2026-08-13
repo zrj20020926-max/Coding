@@ -4,7 +4,11 @@ import pytest
 
 from app.core.config import Settings
 from app.domain import AIAnalysisOutput, ProviderResult
-from app.provider import ProviderPermanentError, ProviderTransientError
+from app.provider import (
+    ProviderNotConfiguredError,
+    ProviderPermanentError,
+    ProviderTransientError,
+)
 from app.worker import AIWorker, MessageDisposition
 from tests.unit.test_security import make_job
 
@@ -79,6 +83,11 @@ class InvalidProvider:
         raise ProviderPermanentError("invalid response containing provider internals")
 
 
+class UnconfiguredProvider:
+    async def analyze(self, _safe_input):
+        raise ProviderNotConfiguredError("secret provider details")
+
+
 def settings() -> Settings:
     return Settings(
         ai_provider_api_key="test-key",
@@ -117,6 +126,24 @@ async def test_worker_degrades_safely_without_changing_submission_state() -> Non
         "AI_RESPONSE_INVALID",
         "AI analysis could not produce a safe structured response",
     )
+    assert repository.job.submission_status == original_submission_status
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_worker_reports_unconfigured_provider_without_leaking_details() -> None:
+    repository = FakeRepository()
+    original_submission_status = repository.job.submission_status
+    worker = AIWorker(settings(), None, repository, FakeSourceStore(), UnconfiguredProvider())
+
+    disposition = await worker.process_analysis(repository.job.analysis_id)
+
+    assert disposition is MessageDisposition.ACK
+    assert repository.failed == (
+        "AI_PROVIDER_NOT_CONFIGURED",
+        "AI analysis is not configured",
+    )
+    assert "secret" not in repository.failed[1]
     assert repository.job.submission_status == original_submission_status
 
 

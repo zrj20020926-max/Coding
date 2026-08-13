@@ -1,6 +1,7 @@
 import hashlib
 import json
 from typing import Any
+from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
@@ -276,6 +277,46 @@ async def test_foreign_submission_is_hidden_and_problem_filter_works(
     assert stranger_list.json()["total"] == 0
     assert owner_list.json()["total"] == 1
     assert empty_filter.json()["total"] == 0
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_submission_history_supports_language_status_and_mode_filters(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    problem, _ = await seed_submission_catalog(db_session)
+    headers = await register(client, "submission_filters")
+    judge = await client.post(
+        "/api/v1/submissions", json=request(problem.id), headers=headers
+    )
+    sample = await client.post(
+        "/api/v1/submissions",
+        json=request(problem.id, mode="sample"),
+        headers=headers,
+    )
+    assert judge.status_code == sample.status_code == 202
+
+    judge_record = await db_session.get(Submission, UUID(judge.json()["id"]))
+    assert judge_record is not None
+    judge_record.status = SubmissionStatus.ACCEPTED
+    await db_session.commit()
+
+    accepted = await client.get(
+        "/api/v1/submissions?language=python&status=Accepted&mode=judge",
+        headers=headers,
+    )
+    samples = await client.get(
+        "/api/v1/submissions?language=python&status=Pending&mode=sample",
+        headers=headers,
+    )
+    invalid = await client.get(
+        "/api/v1/submissions?status=not-a-status", headers=headers
+    )
+
+    assert accepted.status_code == samples.status_code == 200
+    assert [item["id"] for item in accepted.json()["items"]] == [judge.json()["id"]]
+    assert [item["id"] for item in samples.json()["items"]] == [sample.json()["id"]]
+    assert invalid.status_code == 422
 
 
 class StubPublisherRedis:

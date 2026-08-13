@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/message-box/style/css'
 import { storeToRefs } from 'pinia'
 
 import DifficultyBadge from '@/components/problems/DifficultyBadge.vue'
@@ -12,10 +14,13 @@ import { useTrainingStore } from '@/stores/training'
 import type { ProblemDifficulty } from '@/types/problem'
 
 const auth = useAuthStore()
+const router = useRouter()
 const training = useTrainingStore()
 const { dashboard, dashboardLoading, dashboardError, acceptanceRate } = storeToRefs(training)
-const saving = reactive({ profile: false })
+const saving = reactive({ profile: false, password: false, logoutAll: false })
 const form = reactive({ nickname: '', bio: '' })
+const passwordForm = reactive({ current_password: '', new_password: '', confirm_password: '' })
+const passwordError = ref('')
 
 watch(
   () => auth.user,
@@ -53,6 +58,49 @@ async function saveProfile(): Promise<void> {
     ElMessage.error(getApiErrorMessage(error, '保存失败，请稍后重试'))
   } finally {
     saving.profile = false
+  }
+}
+
+async function changePassword(): Promise<void> {
+  passwordError.value = ''
+  if (passwordForm.new_password.length < 8) {
+    passwordError.value = '新密码至少 8 位'
+    return
+  }
+  if (passwordForm.new_password !== passwordForm.confirm_password) {
+    passwordError.value = '两次输入的新密码不一致'
+    return
+  }
+  saving.password = true
+  try {
+    await auth.changePassword({
+      current_password: passwordForm.current_password,
+      new_password: passwordForm.new_password,
+    })
+    ElMessage.success('密码已修改，所有设备均需重新登录')
+    await router.push({ name: 'login', query: { redirect: '/profile' } })
+  } catch (error) {
+    passwordError.value = getApiErrorMessage(error, '密码修改失败')
+  } finally {
+    saving.password = false
+  }
+}
+
+async function logoutAllDevices(): Promise<void> {
+  try {
+    await ElMessageBox.confirm('这会让包括当前设备在内的所有登录会话失效，确认继续？', '退出全部设备', {
+      type: 'warning',
+    })
+    saving.logoutAll = true
+    await auth.logoutAll()
+    ElMessage.success('已退出全部设备')
+    await router.push({ name: 'login' })
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(getApiErrorMessage(error, '退出全部设备失败'))
+    }
+  } finally {
+    saving.logoutAll = false
   }
 }
 
@@ -101,6 +149,19 @@ onMounted(() => void training.loadDashboard())
             <small>已尝试 {{ item.attempted_count }} 道</small>
           </article>
         </div>
+      </section>
+      <section class="profile-panel account-security-panel">
+        <div class="panel-heading"><div><p>SECURITY</p><h2>账户安全</h2></div><span>所有设备</span></div>
+        <el-form label-position="top" @submit.prevent="changePassword">
+          <el-form-item label="当前密码"><el-input v-model="passwordForm.current_password" type="password" show-password autocomplete="current-password" /></el-form-item>
+          <el-form-item label="新密码"><el-input v-model="passwordForm.new_password" type="password" show-password autocomplete="new-password" /></el-form-item>
+          <el-form-item label="确认新密码"><el-input v-model="passwordForm.confirm_password" type="password" show-password autocomplete="new-password" /></el-form-item>
+          <p v-if="passwordError" class="form-error" role="alert">{{ passwordError }}</p>
+          <el-button type="primary" native-type="submit" :loading="saving.password">修改密码</el-button>
+        </el-form>
+        <el-divider />
+        <p>如怀疑账号泄漏，可撤销全部 Refresh Token 和 Access Token 会话。</p>
+        <el-button type="danger" plain :loading="saving.logoutAll" @click="logoutAllDevices">退出全部设备</el-button>
       </section>
 
       <section class="profile-panel">

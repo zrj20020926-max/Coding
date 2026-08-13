@@ -24,6 +24,7 @@ from app.infrastructure.database import AnalysisRepository
 from app.infrastructure.object_storage import SourceStore
 from app.provider import (
     OpenAICompatibleProvider,
+    ProviderNotConfiguredError,
     ProviderPermanentError,
     ProviderTransientError,
 )
@@ -130,6 +131,14 @@ class AIWorker:
                 await self.repository.record_retry(analysis_id)
                 PROVIDER_RETRIES.inc()
                 await asyncio.sleep(self.settings.ai_retry_base_seconds * (2**attempt))
+            except ProviderNotConfiguredError:
+                await self.repository.fail(
+                    job,
+                    "AI_PROVIDER_NOT_CONFIGURED",
+                    "AI analysis is not configured",
+                )
+                ANALYSES.labels("failed_not_configured").inc()
+                return MessageDisposition.ACK
             except ProviderPermanentError:
                 await self.repository.fail(
                     job,

@@ -53,7 +53,7 @@ async function submit(): Promise<void> {
         </el-form-item>
         <el-button class="auth-submit" type="primary" size="large" native-type="submit" :loading="auth.loading">登录</el-button>
       </el-form>
-      <p class="auth-switch">还没有账号？<RouterLink to="/register">立即注册</RouterLink></p>
+      <p class="auth-switch">还没有账号？<RouterLink :to="{ name: 'register', query: route.query }">立即注册</RouterLink></p>
     </div>
   </section>
 </template>

@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, get_redis_client
+from app.models.submission import SubmissionMode, SubmissionStatus
 from app.models.user import User
 from app.schemas.submission import (
     SubmissionCreate,
@@ -61,8 +62,22 @@ async def get_my_submissions(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     problem_id: Annotated[Optional[int], Query(gt=0)] = None,
+    language: Annotated[Optional[str], Query(min_length=1, max_length=30)] = None,
+    submission_status: Annotated[
+        Optional[SubmissionStatus], Query(alias="status")
+    ] = None,
+    mode: Annotated[Optional[SubmissionMode], Query()] = None,
 ) -> SubmissionPage:
-    return await list_owned_submissions(db, current_user.id, page, page_size, problem_id)
+    return await list_owned_submissions(
+        db,
+        current_user.id,
+        page,
+        page_size,
+        problem_id,
+        language,
+        submission_status,
+        mode,
+    )
 
 
 @router.get(

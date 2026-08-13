@@ -321,14 +321,31 @@ async def list_owned_submissions(
     page: int,
     page_size: int,
     problem_id: int | None,
+    language_slug: str | None = None,
+    submission_status: SubmissionStatus | None = None,
+    mode: SubmissionMode | None = None,
 ) -> SubmissionPage:
     filters = [Submission.user_id == user_id]
     if problem_id is not None:
         filters.append(Submission.problem_id == problem_id)
-    total = await db.scalar(select(func.count(Submission.id)).where(*filters)) or 0
+    if language_slug is not None:
+        filters.append(Language.slug == language_slug)
+    if submission_status is not None:
+        filters.append(Submission.status == submission_status)
+    if mode is not None:
+        filters.append(Submission.mode == mode)
+    total = (
+        await db.scalar(
+            select(func.count(Submission.id))
+            .join(Language, Submission.language_id == Language.id)
+            .where(*filters)
+        )
+        or 0
+    )
     items = (
         await db.scalars(
             select(Submission)
+            .join(Language, Submission.language_id == Language.id)
             .options(joinedload(Submission.problem), joinedload(Submission.language))
             .where(*filters)
             .order_by(Submission.created_at.desc(), Submission.id.desc())

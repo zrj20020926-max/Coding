@@ -221,7 +221,10 @@ async def test_public_responses_do_not_leak_runtime_configuration(
     assert [item["slug"] for item in languages.json()] == ["python"]
 
     detail = await client.get(f"/api/v1/problems/{problems['sum'].id}")
+    slug_detail = await client.get(f"/api/v1/problems/{problems['sum'].slug}")
     tags = await client.get("/api/v1/tags")
+    assert slug_detail.status_code == 200
+    assert slug_detail.json()["id"] == problems["sum"].id
     serialized = json.dumps(
         {"languages": languages.json(), "problem": detail.json(), "tags": tags.json()}
     )

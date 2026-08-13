@@ -133,9 +133,21 @@ describe('submission store', () => {
     })
     const store = useSubmissionStore()
 
-    await store.loadHistory(1, 20, 7)
+    await store.loadHistory(1, 20, {
+      problem_id: 7,
+      language: 'python',
+      status: 'Accepted',
+      mode: 'sample',
+    })
 
-    expect(getMySubmissions).toHaveBeenCalledWith({ page: 1, page_size: 20, problem_id: 7 })
+    expect(getMySubmissions).toHaveBeenCalledWith({
+      page: 1,
+      page_size: 20,
+      problem_id: 7,
+      language: 'python',
+      status: 'Accepted',
+      mode: 'sample',
+    })
     expect(store.history).toEqual([accepted])
     expect(store.historyLoading).toBe(false)
   })

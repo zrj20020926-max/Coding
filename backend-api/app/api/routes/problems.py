@@ -15,7 +15,7 @@ from app.schemas.problem import (
     TagPublic,
 )
 from app.services.problems import (
-    get_problem_with_tags,
+    get_public_problem_by_identifier,
     get_user_favorite,
     get_user_progress,
     list_public_languages,
@@ -73,17 +73,17 @@ async def get_problems(
 
 
 @router.get(
-    "/problems/{problem_id}",
+    "/problems/{identifier}",
     response_model=ProblemDetail,
     response_model_exclude_none=True,
     summary="获取公开题目详情",
 )
 async def get_problem(
-    problem_id: int,
+    identifier: str,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[Optional[User], Depends(get_optional_current_user)],
 ) -> ProblemDetail:
-    problem = await get_problem_with_tags(db, problem_id, public_only=True)
+    problem = await get_public_problem_by_identifier(db, identifier)
     if problem is None:
         raise not_found()
     progress = await get_user_progress(

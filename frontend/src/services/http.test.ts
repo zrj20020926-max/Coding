@@ -62,6 +62,15 @@ describe('HTTP error handling', () => {
     expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('valid-admin-token')
   })
 
+  it('does not clear the login session for a network failure without an HTTP response', async () => {
+    localStorage.setItem(AUTH_TOKEN_KEY, 'valid-token')
+    const error = new AxiosError('Network Error', 'ERR_NETWORK')
+
+    await expect(handleHttpError(error)).rejects.toBe(error)
+
+    expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('valid-token')
+  })
+
   it('removes the token after a 401 response and preserves the original error', async () => {
     localStorage.setItem(AUTH_TOKEN_KEY, 'expired-token')
     const error = new AxiosError('unauthorized')

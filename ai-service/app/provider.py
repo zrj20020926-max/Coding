@@ -18,6 +18,10 @@ class ProviderPermanentError(RuntimeError):
     pass
 
 
+class ProviderNotConfiguredError(ProviderPermanentError):
+    pass
+
+
 class OpenAICompatibleProvider:
     def __init__(self, settings: Settings, client: httpx.AsyncClient | None = None) -> None:
         self.settings = settings
@@ -25,7 +29,7 @@ class OpenAICompatibleProvider:
 
     async def analyze(self, safe_input: dict[str, Any]) -> ProviderResult:
         if not self.settings.resolved_api_key:
-            raise ProviderPermanentError("AI provider is not configured")
+            raise ProviderNotConfiguredError("AI provider is not configured")
         started = monotonic()
         owned_client = self._client is None
         client = self._client or httpx.AsyncClient(

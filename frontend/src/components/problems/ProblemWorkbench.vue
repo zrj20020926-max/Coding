@@ -97,7 +97,7 @@ function resumePolling(): void {
 }
 
 function handleOnline(): void {
-  if (auth.user && !polling.value) resumePolling()
+  if (auth.user) resumePolling()
 }
 
 function handleVisibility(): void {
@@ -106,7 +106,6 @@ function handleVisibility(): void {
     && auth.user
     && current.value
     && !isTerminalSubmission(current.value.status)
-    && !polling.value
   ) {
     resumePolling()
   }

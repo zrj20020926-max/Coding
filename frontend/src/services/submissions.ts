@@ -4,6 +4,7 @@ import type {
   SubmissionCreated,
   SubmissionDetail,
   SubmissionPage,
+  SubmissionListParams,
   SubmissionSummary,
 } from '@/types/submission'
 
@@ -27,11 +28,7 @@ export async function getSubmissionDetail(id: string): Promise<SubmissionDetail>
   return data
 }
 
-export async function getMySubmissions(params: {
-  page: number
-  page_size: number
-  problem_id?: number
-}): Promise<SubmissionPage> {
+export async function getMySubmissions(params: SubmissionListParams): Promise<SubmissionPage> {
   const { data } = await http.get<SubmissionPage>('/submissions', { params })
   return data
 }

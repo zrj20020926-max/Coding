@@ -49,8 +49,19 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function loadDraft(userId: string, problemId: number, language: string): string {
-    return localStorage.getItem(draftStorageKey(userId, problemId, language))
-      ?? defaultCodeFor(language)
+    const key = draftStorageKey(userId, problemId, language)
+    const ownDraft = localStorage.getItem(key)
+    if (ownDraft !== null) return ownDraft
+    if (userId !== 'anonymous') {
+      const anonymousKey = draftStorageKey('anonymous', problemId, language)
+      const anonymousDraft = localStorage.getItem(anonymousKey)
+      if (anonymousDraft !== null) {
+        localStorage.setItem(key, anonymousDraft)
+        localStorage.removeItem(anonymousKey)
+        return anonymousDraft
+      }
+    }
+    return defaultCodeFor(language)
   }
 
   function saveDraft(

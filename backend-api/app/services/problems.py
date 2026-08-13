@@ -269,6 +269,20 @@ async def get_problem_with_tags(
     return await db.scalar(statement)
 
 
+async def get_public_problem_by_identifier(
+    db: AsyncSession, identifier: str
+) -> Problem | None:
+    """Resolve by stable slug while retaining the existing numeric ID endpoint."""
+    identity_filter = (
+        Problem.id == int(identifier) if identifier.isdecimal() else Problem.slug == identifier
+    )
+    return await db.scalar(
+        select(Problem)
+        .where(identity_filter, Problem.visibility == ProblemVisibility.PUBLIC)
+        .options(selectinload(Problem.tag_links).selectinload(ProblemTag.tag))
+    )
+
+
 async def get_user_progress(
     db: AsyncSession, problem_id: int, user_id: UUID | None
 ) -> UserProblemProgress | None:

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     minio_secret_key: str = "minio_local_password"
     minio_source_bucket: str = "codearena-submissions"
     minio_secure: bool = False
+    minio_region: str = "us-east-1"
     source_max_bytes: int = Field(default=262_144, ge=1024, le=1_048_576)
 
     ai_provider: Literal["openai-compatible"] = "openai-compatible"

@@ -37,6 +37,9 @@ function memoryLabel(value: number | null): string {
     </div>
 
     <p v-if="polling" class="judge-progress-copy">判题服务正在处理，页面可安全切换后再返回。</p>
+    <div v-if="submission?.status === 'System Error'" class="judge-system-error" role="alert">
+      平台判题环境暂时异常，不代表你的代码有误。请稍后重新提交；本次结果不会计为代码错误。
+    </div>
     <div v-if="error" class="judge-poll-error">
       <span>{{ error }}</span>
       <button

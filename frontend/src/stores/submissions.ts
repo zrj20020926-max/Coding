@@ -12,10 +12,13 @@ import { isTerminalSubmission } from '@/types/submission'
 import type {
   CreateSubmissionPayload,
   SubmissionDetail,
+  SubmissionHistoryFilters,
   SubmissionSummary,
 } from '@/types/submission'
 
 const MAX_POLL_DURATION_MS = 3 * 60 * 1000
+const VISIBLE_POLL_INTERVAL_MS = 1200
+const HIDDEN_POLL_INTERVAL_MS = 8000
 
 interface ActiveSubmission {
   id: string
@@ -95,6 +98,12 @@ export const useSubmissionStore = defineStore('submissions', () => {
     timer = setTimeout(callback, delay)
   }
 
+  function nextPollDelay(): number {
+    return typeof document !== 'undefined' && document.visibilityState === 'hidden'
+      ? HIDDEN_POLL_INTERVAL_MS
+      : VISIBLE_POLL_INTERVAL_MS
+  }
+
   function startPolling(
     submissionId: string,
     userId: string,
@@ -133,7 +142,7 @@ export const useSubmissionStore = defineStore('submissions', () => {
           timer = null
           return
         }
-        schedulePoll(() => void poll(), 1200)
+        schedulePoll(() => void poll(), nextPollDelay())
       } catch (error) {
         if (generation !== pollGeneration) return
         pollError.value = getApiErrorMessage(error, '判题状态查询失败，稍后自动重试')
@@ -183,8 +192,12 @@ export const useSubmissionStore = defineStore('submissions', () => {
   }
 
   function resumePolling(userId: string, problemId: number): void {
+    const active = parseStored<ActiveSubmission>(
+      localStorage.getItem(activeSubmissionKey(userId, problemId)),
+    )
     if (current.value) {
-      startPolling(current.value.id, userId, problemId)
+      const startedAt = active?.id === current.value.id ? active.startedAt : Date.now()
+      startPolling(current.value.id, userId, problemId, startedAt)
       return
     }
     resumeActive(userId, problemId)
@@ -193,17 +206,17 @@ export const useSubmissionStore = defineStore('submissions', () => {
   async function loadHistory(
     page: number,
     pageSize: number,
-    problemId?: number,
+    filters: SubmissionHistoryFilters = {},
   ): Promise<void> {
     const requestId = ++historyRequestId
     historyLoading.value = true
     historyError.value = ''
     try {
-      const params: { page: number; page_size: number; problem_id?: number } = {
+      const params = {
         page,
         page_size: pageSize,
+        ...filters,
       }
-      if (problemId !== undefined) params.problem_id = problemId
       const response = await getMySubmissions(params)
       if (requestId !== historyRequestId) return
       history.value = response.items

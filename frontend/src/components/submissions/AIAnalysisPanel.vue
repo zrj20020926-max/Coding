@@ -46,7 +46,9 @@ onUnmounted(() => store.stopPolling())
       AI 正在分析，失败不会影响本次判题结果…
     </div>
     <div v-else-if="analysis?.status === 'failed'" class="ai-analysis-error" role="alert">
-      {{ analysis.error_message || 'AI 分析暂时不可用，请稍后重新分析。' }}
+      {{ analysis.error_code === 'AI_PROVIDER_NOT_CONFIGURED'
+        ? 'AI 分析暂未配置'
+        : (analysis.error_message || 'AI 分析暂时不可用，请稍后重新分析。') }}
     </div>
     <div v-else-if="analysis?.status === 'completed'" class="ai-analysis-result">
       <div class="ai-complexity-grid">

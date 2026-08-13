@@ -8,6 +8,11 @@ import type { AIAnalysis, AIQuota } from '@/types/aiAnalysis'
 const POLL_INTERVAL_MS = 1800
 const POLL_TIMEOUT_MS = 90_000
 
+function analysisFailureMessage(code: string | null, fallback: string | null): string {
+  if (code === 'AI_PROVIDER_NOT_CONFIGURED') return 'AI 分析暂未配置'
+  return fallback || 'AI 分析暂时不可用，请稍后重新分析'
+}
+
 export const useAIAnalysisStore = defineStore('ai-analysis', () => {
   const analysis = ref<AIAnalysis | null>(null)
   const quota = ref<AIQuota | null>(null)
@@ -37,6 +42,9 @@ export const useAIAnalysisStore = defineStore('ai-analysis', () => {
         if (currentGeneration !== generation) return
         analysis.value = result
         error.value = ''
+        if (result.status === 'failed') {
+          error.value = analysisFailureMessage(result.error_code, result.error_message)
+        }
         if (result.status === 'pending' || result.status === 'running') {
           timer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
         }
@@ -56,6 +64,12 @@ export const useAIAnalysisStore = defineStore('ai-analysis', () => {
     loading.value = true
     try {
       analysis.value = await getAIAnalysis(submissionId)
+      if (analysis.value.status === 'failed') {
+        error.value = analysisFailureMessage(
+          analysis.value.error_code,
+          analysis.value.error_message,
+        )
+      }
       if (analysis.value.status === 'pending' || analysis.value.status === 'running') {
         startPolling(submissionId)
       }
@@ -76,6 +90,12 @@ export const useAIAnalysisStore = defineStore('ai-analysis', () => {
       const result = await requestAIAnalysis(submissionId)
       analysis.value = result.analysis
       quota.value = result.quota
+      if (analysis.value.status === 'failed') {
+        error.value = analysisFailureMessage(
+          analysis.value.error_code,
+          analysis.value.error_message,
+        )
+      }
       if (analysis.value.status === 'pending' || analysis.value.status === 'running') {
         startPolling(submissionId)
       }

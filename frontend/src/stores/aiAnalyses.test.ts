@@ -74,4 +74,18 @@ describe('AI analysis store', () => {
     expect(store.analysis).toBeNull()
     expect(store.error).toBe('')
   })
+
+  it('shows an explicit safe message when the provider is not configured', async () => {
+    vi.mocked(getAIAnalysis).mockResolvedValue({
+      ...pending,
+      status: 'failed',
+      error_code: 'AI_PROVIDER_NOT_CONFIGURED',
+      error_message: 'AI analysis is not configured',
+    })
+    const store = useAIAnalysisStore()
+
+    await store.load('submission-1')
+
+    expect(store.error).toBe('AI 分析暂未配置')
+  })
 })

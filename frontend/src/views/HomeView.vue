@@ -19,8 +19,10 @@ const auth = useAuthStore()
         </RouterLink>
         <a class="hero-secondary" href="#workflow">了解判题流程</a>
       </div>
-      <div class="language-strip" aria-label="计划支持的语言">
-        <span>Python</span><span>C++</span><span>Java</span><span>Go</span><span>Node.js</span>
+      <div class="language-strip" aria-label="判题语言支持状态">
+        <span class="language-current">Python 3.12 · 当前支持</span>
+        <span class="language-current">C++20 · 当前支持</span>
+        <span>Java · 规划中</span><span>Go · 规划中</span><span>Node.js · 规划中</span>
       </div>
     </div>
 

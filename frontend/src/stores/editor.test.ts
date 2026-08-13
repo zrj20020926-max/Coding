@@ -48,4 +48,14 @@ describe('editor store', () => {
     expect(store.languages).toHaveLength(1)
     expect(store.languagesLoading).toBe(false)
   })
+
+  it('moves an anonymous draft into the authenticated user scope after login', () => {
+    const store = useEditorStore()
+    store.saveDraft('anonymous', 7, 'python', 'print("keep me")')
+
+    expect(store.loadDraft('user-after-login', 7, 'python')).toBe('print("keep me")')
+    expect(localStorage.getItem(draftStorageKey('anonymous', 7, 'python'))).toBeNull()
+    expect(localStorage.getItem(draftStorageKey('user-after-login', 7, 'python')))
+      .toBe('print("keep me")')
+  })
 })
