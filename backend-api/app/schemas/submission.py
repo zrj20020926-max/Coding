@@ -53,6 +53,30 @@ class SubmissionDetail(SubmissionPublic):
     compiler_output: Optional[str]
     error_message: Optional[str]
     sample_output: Optional[str]
+    attempts: list["SubmissionAttemptPublic"] = Field(default_factory=list)
+
+
+class SubmissionAttemptGroupPublic(BaseModel):
+    name: str
+    sequence: int
+    status: SubmissionStatus
+    score: Decimal
+    passed_case_count: int
+    total_case_count: int
+    skipped: bool
+
+
+class SubmissionAttemptPublic(BaseModel):
+    sequence: int
+    kind: str
+    status: SubmissionStatus
+    time_used_ms: Optional[int]
+    memory_used_kb: Optional[int]
+    passed_case_count: int
+    total_case_count: int
+    score: Decimal
+    judged_at: Optional[datetime]
+    groups: list[SubmissionAttemptGroupPublic] = Field(default_factory=list)
 
 
 class SubmissionPage(BaseModel):

@@ -11,7 +11,7 @@ from app.core.config import settings
 
 TERMINAL_SQL = (
     "'Accepted', 'Wrong Answer', 'Compile Error', 'Runtime Error', "
-    "'Time Limit Exceeded', 'Memory Limit Exceeded', 'System Error'"
+    "'Time Limit Exceeded', 'Memory Limit Exceeded', 'Output Limit Exceeded'"
 )
 
 

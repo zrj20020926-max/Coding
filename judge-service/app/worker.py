@@ -15,7 +15,12 @@ from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
 from app.core.config import Settings
-from app.domain.models import TERMINAL_STATUSES, JudgeResult, SubmissionStatus
+from app.domain.models import (
+    TERMINAL_STATUSES,
+    JudgeResult,
+    SubmissionJob,
+    SubmissionStatus,
+)
 from app.errors import InfrastructureError, JudgeConfigurationError
 from app.infrastructure.database import JudgeRepository
 from app.judge import JudgeEngine
@@ -48,6 +53,7 @@ class SubmissionLease:
     token: str
     acquired: bool
     lost: bool = False
+    attempt_id: UUID | None = None
 
 
 class JudgeWorker:
@@ -81,7 +87,10 @@ class JudgeWorker:
         )
 
     async def _renew_lease(self, lease: SubmissionLease) -> None:
-        interval = self.settings.judge_lock_ttl_ms / 3000
+        interval = min(
+            self.settings.judge_lock_ttl_ms / 3000,
+            self.settings.judge_database_lease_seconds / 3,
+        )
         try:
             while True:
                 await asyncio.sleep(interval)
@@ -95,6 +104,15 @@ class JudgeWorker:
                 if not renewed:
                     lease.lost = True
                     return
+                if lease.attempt_id is not None:
+                    database_renewed = await self.repository.renew_lease(
+                        lease.attempt_id,
+                        lease.token,
+                        self.settings.judge_database_lease_seconds,
+                    )
+                    if not database_renewed:
+                        lease.lost = True
+                        return
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -124,25 +142,39 @@ class JudgeWorker:
             if renewal is not None:
                 renewal.cancel()
                 await asyncio.gather(renewal, return_exceptions=True)
+                if lease.attempt_id is not None:
+                    try:
+                        await self.repository.release_lease(lease.attempt_id, lease.token)
+                    except InfrastructureError:
+                        logger.exception("database submission lease release failed")
                 try:
                     await self.cache.eval(RELEASE_LOCK_SCRIPT, 1, key, token)
                 except Exception:
                     logger.exception("submission lease release failed")
 
-    async def _reload_status(self, submission_id: UUID) -> SubmissionStatus | None:
-        current = await self.repository.load_submission(submission_id)
+    async def _reload_status(
+        self, submission_id: UUID, attempt_id: UUID | None = None
+    ) -> SubmissionStatus | None:
+        current = await self.repository.load_submission(submission_id, attempt_id)
         return current.status if current else None
 
     async def _finalize_configuration_error(
-        self, submission_id: UUID, current_status: SubmissionStatus, message: str
+        self,
+        job: SubmissionJob,
+        current_status: SubmissionStatus,
+        message: str,
+        lease: SubmissionLease,
     ) -> MessageDisposition:
         expected = current_status
         if current_status is SubmissionStatus.PENDING:
             moved = await self.repository.transition(
-                submission_id, SubmissionStatus.PENDING, SubmissionStatus.COMPILING
+                job,
+                SubmissionStatus.PENDING,
+                SubmissionStatus.COMPILING,
+                lease.token,
             )
             if not moved:
-                status = await self._reload_status(submission_id)
+                status = await self._reload_status(job.id, job.attempt_id)
                 return (
                     MessageDisposition.ACK
                     if status in TERMINAL_STATUSES
@@ -153,29 +185,38 @@ class JudgeWorker:
             status=SubmissionStatus.SYSTEM_ERROR,
             error_message=message,
         )
-        finalized = await self.repository.finalize(submission_id, expected, result)
+        finalized = await self.repository.finalize(job, expected, result, lease.token)
         if finalized:
             return MessageDisposition.ACK
-        status = await self._reload_status(submission_id)
+        status = await self._reload_status(job.id, job.attempt_id)
         return MessageDisposition.ACK if status in TERMINAL_STATUSES else MessageDisposition.RETRY
 
-    async def process_submission(self, submission_id: UUID) -> MessageDisposition:
+    async def process_submission(
+        self, submission_id: UUID, attempt_id: UUID | None = None
+    ) -> MessageDisposition:
         async with self.submission_lease(submission_id) as lease:
             if not lease.acquired:
                 return MessageDisposition.RETRY
-            job = await self.repository.load_submission(submission_id)
+            job = await self.repository.claim_submission(
+                submission_id,
+                attempt_id,
+                lease.token,
+                self.settings.judge_database_lease_seconds,
+            )
             if job is None or job.status in TERMINAL_STATUSES:
                 return MessageDisposition.ACK
+            lease.attempt_id = job.attempt_id
 
             current_status = job.status
             if current_status is SubmissionStatus.PENDING:
                 moved = await self.repository.transition(
-                    submission_id,
+                    job,
                     SubmissionStatus.PENDING,
                     SubmissionStatus.COMPILING,
+                    lease.token,
                 )
                 if not moved:
-                    status = await self._reload_status(submission_id)
+                    status = await self._reload_status(submission_id, job.attempt_id)
                     return (
                         MessageDisposition.ACK
                         if status in TERMINAL_STATUSES
@@ -186,9 +227,9 @@ class JudgeWorker:
             try:
                 test_cases = await self.repository.load_test_cases(job)
                 result = await self.engine.judge(job, test_cases)
-            except JudgeConfigurationError as exc:
+            except JudgeConfigurationError:
                 return await self._finalize_configuration_error(
-                    submission_id, current_status, str(exc)
+                    job, current_status, "judge configuration is invalid", lease
                 )
             except InfrastructureError:
                 return MessageDisposition.RETRY
@@ -209,12 +250,13 @@ class JudgeWorker:
             else:
                 if current_status is SubmissionStatus.COMPILING:
                     moved = await self.repository.transition(
-                        submission_id,
+                        job,
                         SubmissionStatus.COMPILING,
                         SubmissionStatus.RUNNING,
+                        lease.token,
                     )
                     if not moved:
-                        status = await self._reload_status(submission_id)
+                        status = await self._reload_status(submission_id, job.attempt_id)
                         return (
                             MessageDisposition.ACK
                             if status in TERMINAL_STATUSES
@@ -222,9 +264,9 @@ class JudgeWorker:
                         )
                 expected = SubmissionStatus.RUNNING
 
-            finalized = await self.repository.finalize(submission_id, expected, result)
+            finalized = await self.repository.finalize(job, expected, result, lease.token)
             if not finalized:
-                status = await self._reload_status(submission_id)
+                status = await self._reload_status(submission_id, job.attempt_id)
                 if status not in TERMINAL_STATUSES:
                     return MessageDisposition.RETRY
             try:
@@ -247,6 +289,16 @@ class JudgeWorker:
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             return None
 
+    @staticmethod
+    def _attempt_id(fields: dict[str, Any]) -> UUID | None:
+        try:
+            payload_raw = fields.get("payload")
+            payload = json.loads(payload_raw) if isinstance(payload_raw, (str, bytes)) else {}
+            value = payload.get("attempt_id")
+            return UUID(str(value)) if value else None
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None
+
     async def handle_message(self, message_id: str, fields: dict[str, Any]) -> None:
         submission_id = self._submission_id(fields)
         if submission_id is None:
@@ -258,7 +310,9 @@ class JudgeWorker:
             )
             return
         try:
-            disposition = await self.process_submission(submission_id)
+            disposition = await self.process_submission(
+                submission_id, self._attempt_id(fields)
+            )
         except InfrastructureError:
             logger.exception("judge infrastructure failure for %s", submission_id)
             return

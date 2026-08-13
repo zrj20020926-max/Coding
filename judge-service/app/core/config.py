@@ -15,8 +15,9 @@ class Settings(BaseSettings):
     judge_consumer_name: str = Field(default_factory=lambda: f"judge-{gethostname()}")
     judge_block_ms: int = Field(default=5000, ge=100, le=60_000)
     judge_claim_idle_ms: int = Field(default=60_000, ge=1000, le=3_600_000)
-    judge_lock_ttl_ms: int = Field(default=600_000, ge=10_000, le=3_600_000)
+    judge_lock_ttl_ms: int = Field(default=120_000, ge=10_000, le=3_600_000)
     judge_done_ttl_seconds: int = Field(default=604_800, ge=3600, le=2_592_000)
+    judge_database_lease_seconds: int = Field(default=120, ge=10, le=3600)
 
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"

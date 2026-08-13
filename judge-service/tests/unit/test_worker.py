@@ -36,22 +36,39 @@ class FakeRedis:
 
 class FakeRepository:
     def __init__(self, job: SubmissionJob) -> None:
-        self.job = job
+        self.job = replace(job, attempt_id=uuid4())
         self.finalize_calls = 0
+        self.lease_owner = None
 
-    async def load_submission(self, _submission_id):
+    async def claim_submission(self, _submission_id, _attempt_id, owner, _seconds):
+        if self.job.status in {
+            SubmissionStatus.ACCEPTED,
+            SubmissionStatus.WRONG_ANSWER,
+        }:
+            return None
+        self.lease_owner = owner
+        return self.job
+
+    async def renew_lease(self, _attempt_id, owner, _seconds):
+        return self.lease_owner == owner
+
+    async def release_lease(self, _attempt_id, owner):
+        if self.lease_owner == owner:
+            self.lease_owner = None
+
+    async def load_submission(self, _submission_id, _attempt_id=None):
         return self.job
 
     async def load_test_cases(self, _job):
         return [object()]
 
-    async def transition(self, _submission_id, expected, next_status):
+    async def transition(self, _job, expected, next_status, _owner):
         if self.job.status is not expected:
             return False
         self.job = replace(self.job, status=next_status)
         return True
 
-    async def finalize(self, _submission_id, expected, result):
+    async def finalize(self, _job, expected, result, _owner):
         self.finalize_calls += 1
         if self.job.status is not expected:
             return False
@@ -124,7 +141,7 @@ async def test_old_worker_cannot_overwrite_a_new_terminal_status() -> None:
     engine = FakeEngine()
     worker = JudgeWorker(Settings(_env_file=None), FakeRedis(), repository, engine)
 
-    async def reject_stale(_submission_id, _expected, _result):
+    async def reject_stale(_job, _expected, _result, _owner):
         repository.job = replace(repository.job, status=SubmissionStatus.WRONG_ANSWER)
         return False
 

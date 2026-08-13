@@ -115,4 +115,4 @@ async def get_my_submission(
         raise submission_error(
             status.HTTP_404_NOT_FOUND, "SUBMISSION_NOT_FOUND", "submission not found"
         )
-    return await to_submission_detail(submission, object_store)
+    return await to_submission_detail(submission, object_store, db)

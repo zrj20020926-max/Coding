@@ -14,6 +14,7 @@ const labels: Record<SubmissionStatus, string> = {
   'Runtime Error': '运行错误',
   'Time Limit Exceeded': '超出时间限制',
   'Memory Limit Exceeded': '超出内存限制',
+  'Output Limit Exceeded': '超出输出限制',
   'System Error': '系统错误',
 }
 

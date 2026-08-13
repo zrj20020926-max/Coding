@@ -33,6 +33,7 @@ from app.models.problem import (
     ProblemVisibility,
     Tag,
     TestCase,
+    TestGroup,
     TestSet,
     TestSetStatus,
 )
@@ -826,7 +827,15 @@ async def import_content_bundle(
                     relative_tolerance=config.relative_tolerance,
                     case_count=len(desired.cases),
                     total_score=Decimal("100"),
-                    cases=[
+                )
+                for case in desired.cases:
+                    group = TestGroup(
+                        name=f"case-{case.sequence}",
+                        sequence=case.sequence,
+                        score=case.score,
+                        short_circuit=True,
+                    )
+                    group.cases.append(
                         TestCase(
                             sequence=case.sequence,
                             score=case.score,
@@ -836,11 +845,11 @@ async def import_content_bundle(
                             input_size_bytes=len(case.input_data),
                             output_size_bytes=len(case.output_data),
                         )
-                        for case in desired.cases
-                    ],
-                )
+                    )
+                    new_set.groups.append(group)
                 db.add(new_set)
                 await db.flush()
+                await db.refresh(new_set, attribute_names=["cases", "groups"])
                 new_set.status = TestSetStatus.VALIDATING
                 await db.flush()
                 issues = await validate_test_set(db, new_set, store)

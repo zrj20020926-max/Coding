@@ -22,6 +22,7 @@ const analyzableStatuses = new Set([
   'Runtime Error',
   'Time Limit Exceeded',
   'Memory Limit Exceeded',
+  'Output Limit Exceeded',
 ])
 
 function load(): void {

@@ -17,6 +17,7 @@ from app.models.problem import (
     Language,
     Problem,
     TestCase,
+    TestGroup,
     TestSet,
     TestSetStatus,
 )
@@ -24,6 +25,8 @@ from app.models.submission import Submission
 from app.schemas.test_set import (
     TestCaseAdminPublic,
     TestCaseCreate,
+    TestGroupAdminPublic,
+    TestGroupCreate,
     TestSetAdminPublic,
     TestSetCreate,
     TestSetIssue,
@@ -65,8 +68,21 @@ def to_test_set_public(
                 score=case.score,
                 input_size_bytes=case.input_size_bytes,
                 output_size_bytes=case.output_size_bytes,
+                group_id=case.group_id,
             )
             for case in test_set.cases
+        ],
+        groups=[
+            TestGroupAdminPublic(
+                id=group.id,
+                name=group.name,
+                sequence=group.sequence,
+                score=group.score,
+                short_circuit=group.short_circuit,
+                dependency_group_id=group.dependency_group_id,
+                case_count=len(group.cases),
+            )
+            for group in test_set.groups
         ],
     )
 
@@ -74,7 +90,7 @@ def to_test_set_public(
 async def get_test_set(db: AsyncSession, test_set_id: UUID, lock: bool = False) -> TestSet | None:
     statement = (
         select(TestSet)
-        .options(selectinload(TestSet.cases))
+        .options(selectinload(TestSet.cases), selectinload(TestSet.groups))
         .where(TestSet.id == test_set_id)
     )
     if lock:
@@ -88,7 +104,7 @@ async def list_test_sets(db: AsyncSession, problem_id: int) -> list[TestSetAdmin
     rows = (
         await db.scalars(
             select(TestSet)
-            .options(selectinload(TestSet.cases))
+            .options(selectinload(TestSet.cases), selectinload(TestSet.groups))
             .where(TestSet.problem_id == problem_id)
             .order_by(TestSet.version.desc())
         )
@@ -167,8 +183,24 @@ async def add_test_case(
             "TEST_DATA_CHECKSUM_MISMATCH",
             "测试数据校验失败",
         )
+    group = None
+    if payload.group_id is not None:
+        group = next((item for item in test_set.groups if item.id == payload.group_id), None)
+        if group is None:
+            raise test_set_error(422, "TEST_GROUP_INVALID", "测试组不属于当前测试集")
+    else:
+        if payload.score <= 0:
+            raise test_set_error(422, "TEST_GROUP_SCORE_REQUIRED", "自动测试组需要正分值")
+        group = TestGroup(
+            test_set_id=test_set_id,
+            name=f"case-{payload.sequence}",
+            sequence=payload.sequence,
+            score=payload.score,
+            short_circuit=True,
+        )
     case = TestCase(
         test_set_id=test_set_id,
+        group=group,
         sequence=payload.sequence,
         score=payload.score,
         input_object_key=payload.input_object_key,
@@ -180,8 +212,8 @@ async def add_test_case(
     db.add(case)
     test_set.case_count = len(test_set.cases) + 1
     test_set.total_score = sum(
-        (existing.score for existing in test_set.cases), Decimal("0")
-    ) + payload.score
+        (existing.score for existing in test_set.groups), Decimal("0")
+    ) + (group.score if group not in test_set.groups else Decimal("0"))
     try:
         await db.commit()
     except IntegrityError:
@@ -197,6 +229,51 @@ async def add_test_case(
         score=case.score,
         input_size_bytes=case.input_size_bytes,
         output_size_bytes=case.output_size_bytes,
+        group_id=case.group_id,
+    )
+
+
+async def add_test_group(
+    db: AsyncSession, test_set_id: UUID, payload: TestGroupCreate
+) -> TestGroupAdminPublic:
+    test_set = await get_test_set(db, test_set_id, lock=True)
+    if test_set is None:
+        raise test_set_error(404, "TEST_SET_NOT_FOUND", "测试集不存在")
+    referenced = await db.scalar(
+        select(func.count(Submission.id)).where(Submission.test_set_id == test_set_id)
+    )
+    if referenced or test_set.status not in {TestSetStatus.DRAFT, TestSetStatus.INVALID}:
+        raise test_set_error(409, "TEST_SET_IMMUTABLE", "已引用或非草稿测试集不可修改")
+    if payload.dependency_group_id is not None:
+        dependency = next(
+            (item for item in test_set.groups if item.id == payload.dependency_group_id), None
+        )
+        if dependency is None or dependency.sequence >= payload.sequence:
+            raise test_set_error(
+                422, "TEST_GROUP_DEPENDENCY_INVALID", "测试组只能依赖当前测试集中的前序组"
+            )
+    group = TestGroup(
+        test_set_id=test_set_id,
+        name=payload.name,
+        sequence=payload.sequence,
+        score=payload.score,
+        short_circuit=payload.short_circuit,
+        dependency_group_id=payload.dependency_group_id,
+    )
+    db.add(group)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise test_set_error(409, "TEST_GROUP_SEQUENCE_CONFLICT", "测试组序号必须唯一") from None
+    return TestGroupAdminPublic(
+        id=group.id,
+        name=group.name,
+        sequence=group.sequence,
+        score=group.score,
+        short_circuit=group.short_circuit,
+        dependency_group_id=group.dependency_group_id,
+        case_count=0,
     )
 
 
@@ -225,20 +302,45 @@ def _checker_issues(test_set: TestSet) -> list[TestSetIssue]:
 async def validate_test_set(
     db: AsyncSession, test_set: TestSet, object_store: SourceObjectStore
 ) -> list[TestSetIssue]:
+    """Validate checker, group graph, score total and every hidden object."""
     issues = _checker_issues(test_set)
     if not test_set.cases:
         issues.append(TestSetIssue(code="NO_HIDDEN_CASES", message="测试集至少需要一个隐藏用例"))
     sequences = [case.sequence for case in test_set.cases]
     if len(sequences) != len(set(sequences)):
         issues.append(TestSetIssue(code="DUPLICATE_SEQUENCE", message="测试用例序号重复"))
-    if sum((case.score for case in test_set.cases), Decimal("0")) != Decimal("100"):
-        issues.append(TestSetIssue(code="INVALID_TOTAL_SCORE", message="测试用例总分必须等于 100"))
+    if not test_set.groups:
+        issues.append(TestSetIssue(code="NO_TEST_GROUPS", message="测试集至少需要一个测试组"))
+    if sum((group.score for group in test_set.groups), Decimal("0")) != Decimal("100"):
+        issues.append(TestSetIssue(code="INVALID_TOTAL_SCORE", message="测试组总分必须等于 100"))
+
+    group_ids = {group.id for group in test_set.groups}
+    group_sequences = {group.id: group.sequence for group in test_set.groups}
+    for group in test_set.groups:
+        if not group.cases:
+            issues.append(TestSetIssue(code="EMPTY_TEST_GROUP", message="测试组不能为空"))
+        if group.dependency_group_id is not None and (
+            group.dependency_group_id not in group_ids
+            or group_sequences[group.dependency_group_id] >= group.sequence
+        ):
+            issues.append(
+                TestSetIssue(code="INVALID_GROUP_DEPENDENCY", message="测试组依赖无效")
+            )
+
     for case in test_set.cases:
-        if case.score <= 0 or case.score > 100:
+        if case.group_id not in group_ids:
+            issues.append(
+                TestSetIssue(
+                    code="INVALID_CASE_GROUP",
+                    message="测试用例未关联有效测试组",
+                    sequence=case.sequence,
+                )
+            )
+        if case.score < 0 or case.score > 100:
             issues.append(
                 TestSetIssue(
                     code="INVALID_CASE_SCORE",
-                    message="测试用例分值必须大于 0 且不超过 100",
+                    message="测试用例分值必须在 0 到 100 之间",
                     sequence=case.sequence,
                 )
             )
@@ -261,7 +363,7 @@ async def validate_test_set(
             issues.append(
                 TestSetIssue(
                     code="TEST_DATA_TOO_LARGE",
-                    message="测试数据超过大小限制",
+                    message="测试数据超出大小限制",
                     sequence=case.sequence,
                 )
             )
@@ -286,6 +388,7 @@ async def validate_test_set(
                     sequence=case.sequence,
                 )
             )
+
     language_slugs = set(
         (
             await db.scalars(

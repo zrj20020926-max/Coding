@@ -42,12 +42,14 @@ const filters = computed<SubmissionHistoryFilters>(() => {
 
 const submissionStatuses: SubmissionStatus[] = [
   'Pending', 'Compiling', 'Running', 'Accepted', 'Wrong Answer', 'Compile Error',
-  'Runtime Error', 'Time Limit Exceeded', 'Memory Limit Exceeded', 'System Error',
+  'Runtime Error', 'Time Limit Exceeded', 'Memory Limit Exceeded',
+  'Output Limit Exceeded', 'System Error',
 ]
 const statusLabels: Record<SubmissionStatus, string> = {
   Pending: '等待中', Compiling: '编译中', Running: '运行中', Accepted: '已通过',
   'Wrong Answer': '答案错误', 'Compile Error': '编译错误', 'Runtime Error': '运行错误',
   'Time Limit Exceeded': '超出时间限制', 'Memory Limit Exceeded': '超出内存限制',
+  'Output Limit Exceeded': '超出输出限制',
   'System Error': '平台错误',
 }
 

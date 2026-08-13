@@ -36,6 +36,8 @@ from app.schemas.test_set import (
     TestCaseAdminPublic,
     TestCaseBatchUploadPublic,
     TestCaseCreate,
+    TestGroupAdminPublic,
+    TestGroupCreate,
     TestSetAdminPublic,
     TestSetCreate,
     TestSetValidationPublic,
@@ -47,6 +49,7 @@ from app.services.test_data_uploads import upload_test_case_archive
 from app.services.test_sets import (
     activate_test_set,
     add_test_case,
+    add_test_group,
     create_test_set,
     deactivate_test_set,
     delete_test_set,
@@ -444,6 +447,22 @@ async def create_test_set_case(
 ) -> TestCaseAdminPublic:
     result = await add_test_case(db, test_set_id, payload, object_store)
     await audit_admin_action(db, current_admin, "test_set.add_case", "test_set", test_set_id)
+    return result
+
+
+@router.post(
+    "/test-sets/{test_set_id}/groups",
+    response_model=TestGroupAdminPublic,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_test_set_group(
+    test_set_id: UUID,
+    payload: TestGroupCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_admin: Annotated[User, Depends(get_admin_user)],
+) -> TestGroupAdminPublic:
+    result = await add_test_group(db, test_set_id, payload)
+    await audit_admin_action(db, current_admin, "test_set.add_group", "test_set", test_set_id)
     return result
 
 

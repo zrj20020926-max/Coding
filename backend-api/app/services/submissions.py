@@ -14,10 +14,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
-from app.models.problem import Language, Problem, ProblemVisibility, TestSet, TestSetStatus
-from app.models.submission import Outbox, Submission, SubmissionMode, SubmissionStatus
+from app.models.problem import (
+    Language,
+    Problem,
+    ProblemVisibility,
+    TestGroup,
+    TestSet,
+    TestSetStatus,
+)
+from app.models.submission import (
+    Outbox,
+    Submission,
+    SubmissionAttempt,
+    SubmissionAttemptGroupResult,
+    SubmissionMode,
+    SubmissionStatus,
+)
 from app.models.user import User
 from app.schemas.submission import (
+    SubmissionAttemptGroupPublic,
+    SubmissionAttemptPublic,
     SubmissionCreated,
     SubmissionDetail,
     SubmissionLanguagePublic,
@@ -136,7 +152,7 @@ def to_submission_created(submission: Submission, replay: bool) -> SubmissionCre
 
 
 async def to_submission_detail(
-    submission: Submission, object_store: SourceObjectStore
+    submission: Submission, object_store: SourceObjectStore, db: AsyncSession | None = None
 ) -> SubmissionDetail:
     if not submission.source_object_key:
         raise submission_error(
@@ -153,6 +169,49 @@ async def to_submission_detail(
             "SOURCE_UNAVAILABLE",
             "submission source is temporarily unavailable",
         ) from exc
+    attempts: list[SubmissionAttemptPublic] = []
+    if db is not None:
+        rows = (
+            await db.execute(
+                select(SubmissionAttempt, SubmissionAttemptGroupResult, TestGroup)
+                .outerjoin(
+                    SubmissionAttemptGroupResult,
+                    SubmissionAttemptGroupResult.attempt_id == SubmissionAttempt.id,
+                )
+                .outerjoin(TestGroup, TestGroup.id == SubmissionAttemptGroupResult.group_id)
+                .where(SubmissionAttempt.submission_id == submission.id)
+                .order_by(SubmissionAttempt.sequence, TestGroup.sequence)
+            )
+        ).all()
+        by_attempt: dict[UUID, SubmissionAttemptPublic] = {}
+        for attempt, group_result, group in rows:
+            public = by_attempt.get(attempt.id)
+            if public is None:
+                public = SubmissionAttemptPublic(
+                    sequence=attempt.sequence,
+                    kind=attempt.kind,
+                    status=attempt.status,
+                    time_used_ms=attempt.time_used_ms,
+                    memory_used_kb=attempt.memory_used_kb,
+                    passed_case_count=attempt.passed_case_count,
+                    total_case_count=attempt.total_case_count,
+                    score=attempt.score,
+                    judged_at=attempt.judged_at,
+                )
+                by_attempt[attempt.id] = public
+            if group_result is not None and group is not None:
+                public.groups.append(
+                    SubmissionAttemptGroupPublic(
+                        name=group.name,
+                        sequence=group.sequence,
+                        status=group_result.status,
+                        score=group_result.score,
+                        passed_case_count=group_result.passed_case_count,
+                        total_case_count=group_result.total_case_count,
+                        skipped=group_result.skipped,
+                    )
+                )
+        attempts = list(by_attempt.values())
     return SubmissionDetail(
         **to_submission_public(submission).model_dump(),
         source_code=source_code,
@@ -163,6 +222,7 @@ async def to_submission_detail(
             if submission.mode is SubmissionMode.SAMPLE
             else None
         ),
+        attempts=attempts,
     )
 
 
@@ -238,6 +298,7 @@ async def create_submission(
     await _enforce_submission_rate(cache, user.id, mode)
 
     submission_id = uuid4()
+    attempt_id = uuid4()
     object_key = (
         f"submissions/{user.id}/{datetime.now(timezone.utc):%Y/%m/%d}/"
         f"{submission_id}/{checksum}"
@@ -267,6 +328,19 @@ async def create_submission(
         source_checksum=checksum,
         idempotency_key=key,
         request_fingerprint=request_fingerprint,
+        effective_attempt_id=attempt_id,
+    )
+    attempt = SubmissionAttempt(
+        id=attempt_id,
+        submission_id=submission_id,
+        sequence=1,
+        kind="initial",
+        status=SubmissionStatus.PENDING,
+        problem_id=problem.id,
+        test_set_id=active_test_set.id if active_test_set is not None else None,
+        problem_version=problem.version,
+        time_limit_ms_snapshot=problem.time_limit_ms,
+        memory_limit_mb_snapshot=problem.memory_limit_mb,
     )
     event_id = uuid4()
     event = Outbox(
@@ -279,7 +353,7 @@ async def create_submission(
             "submission_id": str(submission_id),
         },
     )
-    db.add_all([submission, event])
+    db.add_all([submission, attempt, event])
     try:
         await db.commit()
     except IntegrityError:
@@ -370,6 +444,7 @@ TERMINAL_STATUSES = frozenset(
         SubmissionStatus.RUNTIME_ERROR,
         SubmissionStatus.TIME_LIMIT_EXCEEDED,
         SubmissionStatus.MEMORY_LIMIT_EXCEEDED,
+        SubmissionStatus.OUTPUT_LIMIT_EXCEEDED,
         SubmissionStatus.SYSTEM_ERROR,
     }
 )
@@ -389,6 +464,7 @@ ALLOWED_STATUS_TRANSITIONS = {
             SubmissionStatus.RUNTIME_ERROR,
             SubmissionStatus.TIME_LIMIT_EXCEEDED,
             SubmissionStatus.MEMORY_LIMIT_EXCEEDED,
+            SubmissionStatus.OUTPUT_LIMIT_EXCEEDED,
             SubmissionStatus.SYSTEM_ERROR,
         }
     ),

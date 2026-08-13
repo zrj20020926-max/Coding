@@ -10,6 +10,7 @@ from app.models.submission import (
     Outbox,
     RejudgeTask,
     Submission,
+    SubmissionAttempt,
     SubmissionMode,
     SubmissionStatus,
 )
@@ -88,18 +89,19 @@ async def test_rejudge_requires_admin_and_creates_new_snapshot(
     assert response.status_code == 202
     assert response.json()["total_count"] == 1
     assert response.json()["status"] == "queued"
-    submissions = (
-        await db_session.scalars(select(Submission).order_by(Submission.created_at))
-    ).all()
-    assert len(submissions) == 2
-    cloned = next(item for item in submissions if item.id != original.id)
-    assert cloned.is_rejudge is True
-    assert cloned.original_submission_id == original.id
-    assert cloned.test_set_id == test_set.id
-    assert cloned.status is SubmissionStatus.PENDING
+    submissions = (await db_session.scalars(select(Submission))).all()
+    assert len(submissions) == 1
+    attempt = await db_session.scalar(
+        select(SubmissionAttempt).where(SubmissionAttempt.kind == "rejudge")
+    )
+    assert attempt is not None
+    assert attempt.submission_id == original.id
+    assert attempt.test_set_id == test_set.id
+    assert attempt.status is SubmissionStatus.PENDING
     assert await db_session.scalar(select(func.count(RejudgeTask.id))) == 1
     assert await db_session.scalar(select(func.count(Outbox.id))) == 1
     assert "source_object_key" not in response.text
+    assert "attempt_id" not in response.text
 
 
 @pytest.mark.unit

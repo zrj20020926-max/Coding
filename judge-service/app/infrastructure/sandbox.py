@@ -457,7 +457,7 @@ class DockerSandbox:
             or b"File too large" in stderr
         ):
             return SandboxRunResult(
-                SubmissionStatus.RUNTIME_ERROR,
+                SubmissionStatus.OUTPUT_LIMIT_EXCEEDED,
                 b"",
                 elapsed_ms,
                 memory_used_kb,

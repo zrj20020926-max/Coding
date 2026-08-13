@@ -147,3 +147,44 @@ async def test_token_and_float_checkers_use_submission_snapshot() -> None:
         float_cases,
     )
     assert float_result.status is SubmissionStatus.ACCEPTED
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_group_dependency_short_circuits_and_aggregates_score() -> None:
+    engine, job, cases = fixture(b"wrong", b"expected")
+    first_group = uuid4()
+    second_group = uuid4()
+    first = replace(
+        cases[0],
+        score=Decimal("0"),
+        group_id=first_group,
+        group_sequence=1,
+        group_score=Decimal("40"),
+        group_short_circuit=True,
+    )
+    second = replace(
+        cases[0],
+        id=uuid4(),
+        sequence=2,
+        group_id=second_group,
+        group_sequence=2,
+        group_score=Decimal("60"),
+        dependency_group_id=first_group,
+    )
+    result = await engine.judge(job, [first, second])
+
+    assert result.status is SubmissionStatus.WRONG_ANSWER
+    assert len(result.case_results) == 1
+    assert result.group_results[0].score == 0
+    assert result.group_results[1].skipped is True
+    assert result.total_case_count == 2
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_output_limit_has_dedicated_status() -> None:
+    engine, job, cases = fixture(b"", b"expected")
+    engine.sandbox.status = SubmissionStatus.OUTPUT_LIMIT_EXCEEDED
+    result = await engine.judge(job, cases)
+    assert result.status is SubmissionStatus.OUTPUT_LIMIT_EXCEEDED

@@ -43,6 +43,7 @@ class SubmissionStatus(str, enum.Enum):
     RUNTIME_ERROR = "Runtime Error"
     TIME_LIMIT_EXCEEDED = "Time Limit Exceeded"
     MEMORY_LIMIT_EXCEEDED = "Memory Limit Exceeded"
+    OUTPUT_LIMIT_EXCEEDED = "Output Limit Exceeded"
     SYSTEM_ERROR = "System Error"
 
 
@@ -116,6 +117,7 @@ class Submission(Base):
     original_submission_id: Mapped[Optional[UUID]] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("submissions.id", ondelete="RESTRICT")
     )
+    effective_attempt_id: Mapped[Optional[UUID]] = mapped_column(Uuid(as_uuid=True))
     queue_message_id: Mapped[Optional[str]] = mapped_column(Text)
     compiler_output: Mapped[Optional[str]] = mapped_column(Text)
     error_message: Mapped[Optional[str]] = mapped_column(Text)
@@ -242,6 +244,9 @@ class RejudgeTask(Base):
         Uuid(as_uuid=True), ForeignKey("test_sets.id", ondelete="RESTRICT"), nullable=False
     )
     total_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="queued")
+    paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -263,8 +268,113 @@ class RejudgeTaskItem(Base):
         ForeignKey("submissions.id", ondelete="RESTRICT"),
         primary_key=True,
     )
-    rejudge_submission_id: Mapped[UUID] = mapped_column(
+    rejudge_submission_id: Mapped[Optional[UUID]] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("submissions.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    attempt_id: Mapped[Optional[UUID]] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("submission_attempts.id", ondelete="RESTRICT")
+    )
+
+
+class SubmissionAttempt(Base):
+    __tablename__ = "submission_attempts"
+    __table_args__ = (
+        UniqueConstraint("submission_id", "sequence", name="uq_submission_attempt_sequence"),
+        ForeignKeyConstraint(
+            ["test_set_id", "problem_id"],
+            ["test_sets.id", "test_sets.problem_id"],
+            name="fk_attempt_test_set_problem",
+            ondelete="RESTRICT",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    submission_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("submissions.id", ondelete="CASCADE"), nullable=False
+    )
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[SubmissionStatus] = mapped_column(
+        submission_status_type, nullable=False, default=SubmissionStatus.PENDING
+    )
+    problem_id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        ForeignKey("problems.id", ondelete="RESTRICT"),
         nullable=False,
     )
+    test_set_id: Mapped[Optional[UUID]] = mapped_column(Uuid(as_uuid=True))
+    problem_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    time_limit_ms_snapshot: Mapped[int] = mapped_column(Integer, nullable=False)
+    memory_limit_mb_snapshot: Mapped[int] = mapped_column(Integer, nullable=False)
+    compiler_output: Mapped[Optional[str]] = mapped_column(Text)
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    public_output: Mapped[Optional[str]] = mapped_column(Text)
+    time_used_ms: Mapped[Optional[int]] = mapped_column(Integer)
+    memory_used_kb: Mapped[Optional[int]] = mapped_column(Integer)
+    passed_case_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_case_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    score: Mapped[Decimal] = mapped_column(Numeric(9, 2), nullable=False, default=0)
+    lease_owner: Mapped[Optional[str]] = mapped_column(String(128))
+    lease_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    judged_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class SubmissionAttemptCaseResult(Base):
+    __tablename__ = "submission_attempt_case_results"
+
+    id: Mapped[int] = mapped_column(case_result_id_type, primary_key=True, autoincrement=True)
+    attempt_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("submission_attempts.id", ondelete="CASCADE"), nullable=False
+    )
+    test_case_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("test_cases.id", ondelete="RESTRICT"), nullable=False
+    )
+    group_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("test_groups.id", ondelete="RESTRICT"), nullable=False
+    )
+    status: Mapped[SubmissionStatus] = mapped_column(submission_status_type, nullable=False)
+    time_used_ms: Mapped[Optional[int]] = mapped_column(Integer)
+    memory_used_kb: Mapped[Optional[int]] = mapped_column(Integer)
+    exit_code: Mapped[Optional[int]] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class SubmissionAttemptGroupResult(Base):
+    __tablename__ = "submission_attempt_group_results"
+
+    id: Mapped[int] = mapped_column(case_result_id_type, primary_key=True, autoincrement=True)
+    attempt_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("submission_attempts.id", ondelete="CASCADE"), nullable=False
+    )
+    group_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("test_groups.id", ondelete="RESTRICT"), nullable=False
+    )
+    status: Mapped[SubmissionStatus] = mapped_column(submission_status_type, nullable=False)
+    score: Mapped[Decimal] = mapped_column(Numeric(9, 2), nullable=False, default=0)
+    passed_case_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_case_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    skipped: Mapped[bool] = mapped_column(nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+Index(
+    "uq_submission_initial_attempt",
+    SubmissionAttempt.submission_id,
+    unique=True,
+    postgresql_where=SubmissionAttempt.kind == "initial",
+    sqlite_where=SubmissionAttempt.kind == "initial",
+)
+Index("idx_submission_attempts_lease", SubmissionAttempt.status, SubmissionAttempt.lease_expires_at)

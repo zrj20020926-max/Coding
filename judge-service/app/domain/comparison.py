@@ -32,10 +32,10 @@ def float_outputs_equal(
             if actual_token != expected_token:
                 return False
             continue
+        # NaN and infinities must never compare equal: accepting matching non-finite
+        # values would let user output bypass tolerance checks.
         if not actual_number.is_finite() or not expected_number.is_finite():
-            if actual_number != expected_number:
-                return False
-            continue
+            return False
         difference = abs(actual_number - expected_number)
         allowed = max(absolute_tolerance, relative_tolerance * abs(expected_number))
         if difference > allowed:

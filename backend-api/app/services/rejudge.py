@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from math import ceil
 from uuid import UUID, uuid4
 
@@ -14,6 +15,7 @@ from app.models.submission import (
     RejudgeTask,
     RejudgeTaskItem,
     Submission,
+    SubmissionAttempt,
     SubmissionMode,
     SubmissionStatus,
 )
@@ -46,23 +48,18 @@ async def _load_target_test_set(
     return test_set
 
 
-def _clone_submission(original: Submission, test_set: TestSet, problem: Problem) -> Submission:
-    return Submission(
+def _new_attempt(original: Submission, test_set: TestSet, problem: Problem) -> SubmissionAttempt:
+    return SubmissionAttempt(
         id=uuid4(),
-        user_id=original.user_id,
-        problem_id=original.problem_id,
-        language_id=original.language_id,
+        submission_id=original.id,
+        sequence=1,  # assigned atomically below while the submission row is locked
+        kind="rejudge",
         status=SubmissionStatus.PENDING,
-        mode=SubmissionMode.JUDGE,
+        problem_id=original.problem_id,
         test_set_id=test_set.id,
         problem_version=problem.version,
         time_limit_ms_snapshot=problem.time_limit_ms,
         memory_limit_mb_snapshot=problem.memory_limit_mb,
-        source_code=None,
-        source_object_key=original.source_object_key,
-        source_checksum=original.source_checksum,
-        is_rejudge=True,
-        original_submission_id=original.id,
     )
 
 
@@ -81,25 +78,41 @@ async def _create_task(
         problem_id=problem.id,
         test_set_id=test_set.id,
         total_count=len(originals),
+        status="queued",
     )
     db.add(task)
     for original in originals:
-        cloned = _clone_submission(original, test_set, problem)
+        await db.refresh(original, with_for_update=True)
+        next_sequence = int(
+            await db.scalar(
+                select(func.coalesce(func.max(SubmissionAttempt.sequence), 0) + 1).where(
+                    SubmissionAttempt.submission_id == original.id
+                )
+            )
+            or 1
+        )
+        attempt = _new_attempt(original, test_set, problem)
+        attempt.sequence = next_sequence
         event_id = uuid4()
         db.add_all(
             [
-                cloned,
+                attempt,
                 RejudgeTaskItem(
                     task_id=task.id,
                     original_submission_id=original.id,
-                    rejudge_submission_id=cloned.id,
+                    rejudge_submission_id=None,
+                    attempt_id=attempt.id,
                 ),
                 Outbox(
                     id=event_id,
                     aggregate_type="submission",
-                    aggregate_id=cloned.id,
-                    event_type="submission.created",
-                    payload={"event_id": str(event_id), "submission_id": str(cloned.id)},
+                    aggregate_id=original.id,
+                    event_type="submission.rejudge",
+                    payload={
+                        "event_id": str(event_id),
+                        "submission_id": str(original.id),
+                        "attempt_id": str(attempt.id),
+                    },
                 ),
             ]
         )
@@ -116,7 +129,10 @@ async def _create_task(
 
 
 async def create_single_rejudge(
-    db: AsyncSession, admin: User, submission_id: UUID
+    db: AsyncSession,
+    admin: User,
+    submission_id: UUID,
+    test_set_id: UUID | None = None,
 ) -> RejudgeTaskPublic:
     original = await db.get(Submission, submission_id)
     if (
@@ -133,7 +149,8 @@ async def create_single_rejudge(
         )
     problem = await db.get(Problem, original.problem_id)
     assert problem is not None
-    test_set = await _load_target_test_set(db, problem.id, original.test_set_id)
+    target_id = test_set_id or original.test_set_id
+    test_set = await _load_target_test_set(db, problem.id, target_id)
     task = await _create_task(db, admin, [original], test_set, problem, "single")
     return await get_rejudge_task(db, task.id)
 
@@ -175,16 +192,28 @@ async def create_batch_rejudge(
     return await get_rejudge_task(db, task.id)
 
 
-def _status_from_counts(
-    total: int, queued: int, running: int, success: int, failed: int
-) -> str:
-    if queued == total:
-        return "queued"
-    if queued or running:
-        return "running"
-    if success + failed == total:
-        return "completed_with_errors" if failed else "completed"
-    return "running"
+async def set_rejudge_paused(
+    db: AsyncSession, admin: User, task_id: UUID, paused: bool
+) -> RejudgeTaskPublic:
+    task = await db.scalar(
+        select(RejudgeTask).where(RejudgeTask.id == task_id).with_for_update()
+    )
+    if task is None:
+        raise rejudge_error(404, "REJUDGE_TASK_NOT_FOUND", "重判任务不存在")
+    if task.status in {"completed", "completed_with_errors"}:
+        raise rejudge_error(409, "REJUDGE_TASK_FINISHED", "已结束的重判任务不能暂停或恢复")
+    task.status = "paused" if paused else "queued"
+    task.paused_at = datetime.now(timezone.utc) if paused else None
+    record_audit(
+        db,
+        action=f"rejudge.task.{'pause' if paused else 'resume'}",
+        target_type="rejudge_task",
+        target_id=task.id,
+        actor_user_id=admin.id,
+        metadata={"problem_id": task.problem_id},
+    )
+    await db.commit()
+    return await get_rejudge_task(db, task.id)
 
 
 async def _task_rows(db: AsyncSession, filters: list, offset: int, limit: int):
@@ -194,11 +223,13 @@ async def _task_rows(db: AsyncSession, filters: list, offset: int, limit: int):
         await db.execute(
             select(
                 RejudgeTask,
-                func.sum(case((Submission.status == SubmissionStatus.PENDING, 1), else_=0)),
+                func.sum(
+                    case((SubmissionAttempt.status == SubmissionStatus.PENDING, 1), else_=0)
+                ),
                 func.sum(
                     case(
                         (
-                            Submission.status.in_(
+                            SubmissionAttempt.status.in_(
                                 [SubmissionStatus.COMPILING, SubmissionStatus.RUNNING]
                             ),
                             1,
@@ -206,11 +237,15 @@ async def _task_rows(db: AsyncSession, filters: list, offset: int, limit: int):
                         else_=0,
                     )
                 ),
-                func.sum(case((Submission.status.in_(success_statuses), 1), else_=0)),
-                func.sum(case((Submission.status.in_(failure_statuses), 1), else_=0)),
+                func.sum(
+                    case((SubmissionAttempt.status.in_(success_statuses), 1), else_=0)
+                ),
+                func.sum(
+                    case((SubmissionAttempt.status.in_(failure_statuses), 1), else_=0)
+                ),
             )
             .join(RejudgeTaskItem, RejudgeTaskItem.task_id == RejudgeTask.id)
-            .join(Submission, Submission.id == RejudgeTaskItem.rejudge_submission_id)
+            .join(SubmissionAttempt, SubmissionAttempt.id == RejudgeTaskItem.attempt_id)
             .where(*filters)
             .group_by(RejudgeTask.id)
             .order_by(RejudgeTask.created_at.desc(), RejudgeTask.id.desc())
@@ -223,18 +258,26 @@ async def _task_rows(db: AsyncSession, filters: list, offset: int, limit: int):
 def _to_public(row) -> RejudgeTaskPublic:
     task, queued, running, success, failed = row
     values = [int(value or 0) for value in (queued, running, success, failed)]
+    computed = task.status
+    if task.status != "paused":
+        if values[0] or values[1]:
+            computed = "queued" if values[0] == task.total_count else "running"
+        elif values[2] + values[3] == task.total_count:
+            computed = "completed_with_errors" if values[3] else "completed"
     return RejudgeTaskPublic(
         id=task.id,
         mode=task.mode,
         problem_id=task.problem_id,
         test_set_id=task.test_set_id,
-        status=_status_from_counts(task.total_count, *values),
+        status=computed,
         total_count=task.total_count,
         queued_count=values[0],
         running_count=values[1],
         success_count=values[2],
         failed_count=values[3],
         created_at=task.created_at,
+        paused_at=task.paused_at,
+        completed_at=task.completed_at,
     )
 
 

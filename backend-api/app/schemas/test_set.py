@@ -33,7 +33,8 @@ class TestSetCreate(BaseModel):
 
 class TestCaseCreate(BaseModel):
     sequence: int = Field(ge=0)
-    score: Decimal = Field(gt=0, le=100, decimal_places=2)
+    score: Decimal = Field(ge=0, le=100, decimal_places=2)
+    group_id: Optional[UUID] = None
     input_object_key: str = Field(min_length=1, max_length=1024)
     output_object_key: str = Field(min_length=1, max_length=1024)
     checksum: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -45,6 +46,25 @@ class TestCaseAdminPublic(BaseModel):
     score: Decimal
     input_size_bytes: int
     output_size_bytes: int
+    group_id: UUID
+
+
+class TestGroupCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    sequence: int = Field(ge=0)
+    score: Decimal = Field(gt=0, le=100, decimal_places=2)
+    short_circuit: bool = True
+    dependency_group_id: Optional[UUID] = None
+
+
+class TestGroupAdminPublic(BaseModel):
+    id: UUID
+    name: str
+    sequence: int
+    score: Decimal
+    short_circuit: bool
+    dependency_group_id: Optional[UUID]
+    case_count: int
 
 
 class TestSetAdminPublic(BaseModel):
@@ -62,6 +82,7 @@ class TestSetAdminPublic(BaseModel):
     activated_at: Optional[datetime]
     submission_reference_count: int = 0
     cases: list[TestCaseAdminPublic] = Field(default_factory=list)
+    groups: list[TestGroupAdminPublic] = Field(default_factory=list)
 
 
 class TestSetValidationPublic(BaseModel):

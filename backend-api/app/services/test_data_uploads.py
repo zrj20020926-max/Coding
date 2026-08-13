@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models.problem import TestCase, TestSetStatus
+from app.models.problem import TestCase, TestGroup, TestSetStatus
 from app.models.submission import Submission
 from app.schemas.test_set import TestCaseBatchUploadPublic
 from app.services.object_storage import SourceObjectStore
@@ -167,8 +167,14 @@ async def upload_test_case_archive(
             uploaded.append(input_key)
             await object_store.put_test_data(output_key, item.output_data)
             uploaded.append(output_key)
-            cases.append(
-                TestCase(
+            group = TestGroup(
+                test_set_id=test_set_id,
+                name=f"case-{item.sequence}",
+                sequence=item.sequence,
+                score=item.score,
+                short_circuit=True,
+            )
+            case = TestCase(
                     test_set_id=test_set_id,
                     sequence=item.sequence,
                     score=item.score,
@@ -177,8 +183,9 @@ async def upload_test_case_archive(
                     checksum=item.checksum,
                     input_size_bytes=len(item.input_data),
                     output_size_bytes=len(item.output_data),
-                )
+                    group=group,
             )
+            cases.append(case)
         db.add_all(cases)
         test_set.case_count = len(cases)
         test_set.total_score = sum((item.score for item in prepared), Decimal("0"))

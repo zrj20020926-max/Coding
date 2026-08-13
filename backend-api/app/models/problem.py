@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -199,6 +200,54 @@ class TestSet(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
         order_by="TestCase.sequence",
+        overlaps="cases,group",
+    )
+    groups: Mapped[list[TestGroup]] = relationship(
+        back_populates="test_set",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="TestGroup.sequence",
+    )
+
+
+class TestGroup(Base):
+    __tablename__ = "test_groups"
+    __table_args__ = (
+        UniqueConstraint("test_set_id", "sequence", name="uq_test_groups_set_sequence"),
+        UniqueConstraint("id", "test_set_id", name="uq_test_groups_id_set"),
+        ForeignKeyConstraint(
+            ["dependency_group_id", "test_set_id"],
+            ["test_groups.id", "test_groups.test_set_id"],
+            name="fk_test_groups_dependency",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("sequence >= 0", name="ck_test_groups_sequence"),
+        CheckConstraint("score > 0", name="ck_test_groups_score"),
+        CheckConstraint(
+            "dependency_group_id IS NULL OR dependency_group_id <> id",
+            name="ck_test_groups_no_self_dependency",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    test_set_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("test_sets.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    score: Mapped[Decimal] = mapped_column(Numeric(9, 2), nullable=False)
+    short_circuit: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    dependency_group_id: Mapped[Optional[UUID]] = mapped_column(Uuid(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    test_set: Mapped[TestSet] = relationship(back_populates="groups")
+    cases: Mapped[list[TestCase]] = relationship(
+        back_populates="group",
+        lazy="selectin",
+        order_by="TestCase.sequence",
+        overlaps="cases,test_set",
     )
 
 
@@ -206,6 +255,12 @@ class TestCase(Base):
     __tablename__ = "test_cases"
     __table_args__ = (
         UniqueConstraint("test_set_id", "sequence", name="uq_test_cases_set_sequence"),
+        ForeignKeyConstraint(
+            ["group_id", "test_set_id"],
+            ["test_groups.id", "test_groups.test_set_id"],
+            name="fk_test_cases_group_set",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint("sequence >= 0", name="ck_test_cases_sequence"),
         CheckConstraint("score >= 0", name="test_cases_score_check"),
         CheckConstraint("input_size_bytes >= 0", name="ck_test_cases_input_size"),
@@ -218,6 +273,7 @@ class TestCase(Base):
         ForeignKey("test_sets.id", ondelete="CASCADE"),
         nullable=False,
     )
+    group_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     input_object_key: Mapped[str] = mapped_column(Text, nullable=False)
     output_object_key: Mapped[str] = mapped_column(Text, nullable=False)
     checksum: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -229,7 +285,10 @@ class TestCase(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    test_set: Mapped[TestSet] = relationship(back_populates="cases")
+    test_set: Mapped[TestSet] = relationship(back_populates="cases", overlaps="cases,group")
+    group: Mapped[TestGroup] = relationship(
+        back_populates="cases", overlaps="cases,test_set"
+    )
 
 
 Index(
@@ -241,6 +300,7 @@ Index(
 )
 Index("idx_test_sets_problem_version", TestSet.problem_id, TestSet.version)
 Index("idx_test_cases_test_set_sequence", TestCase.test_set_id, TestCase.sequence)
+Index("idx_test_cases_group_sequence", TestCase.group_id, TestCase.sequence)
 
 
 class Tag(Base):

@@ -9,6 +9,7 @@ export type SubmissionStatus =
   | 'Runtime Error'
   | 'Time Limit Exceeded'
   | 'Memory Limit Exceeded'
+  | 'Output Limit Exceeded'
   | 'System Error'
 
 export interface SubmissionProblem {
@@ -85,6 +86,7 @@ export const TERMINAL_SUBMISSION_STATUSES: ReadonlySet<SubmissionStatus> = new S
   'Runtime Error',
   'Time Limit Exceeded',
   'Memory Limit Exceeded',
+  'Output Limit Exceeded',
   'System Error',
 ])
 

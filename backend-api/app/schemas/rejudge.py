@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class SingleRejudgeCreate(BaseModel):
     submission_id: UUID
+    test_set_id: Optional[UUID] = None
 
 
 class BatchRejudgeCreate(BaseModel):
@@ -19,13 +20,15 @@ class RejudgeTaskPublic(BaseModel):
     mode: Literal["single", "batch"]
     problem_id: int
     test_set_id: UUID
-    status: Literal["queued", "running", "completed", "completed_with_errors"]
+    status: Literal["queued", "running", "paused", "completed", "completed_with_errors"]
     total_count: int
     queued_count: int
     running_count: int
     success_count: int
     failed_count: int
     created_at: datetime
+    paused_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
 
 
 class RejudgeTaskPage(BaseModel):

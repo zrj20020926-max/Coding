@@ -14,6 +14,7 @@ class SubmissionStatus(StrEnum):
     RUNTIME_ERROR = "Runtime Error"
     TIME_LIMIT_EXCEEDED = "Time Limit Exceeded"
     MEMORY_LIMIT_EXCEEDED = "Memory Limit Exceeded"
+    OUTPUT_LIMIT_EXCEEDED = "Output Limit Exceeded"
     SYSTEM_ERROR = "System Error"
 
 
@@ -36,6 +37,7 @@ TERMINAL_STATUSES = frozenset(
         SubmissionStatus.RUNTIME_ERROR,
         SubmissionStatus.TIME_LIMIT_EXCEEDED,
         SubmissionStatus.MEMORY_LIMIT_EXCEEDED,
+        SubmissionStatus.OUTPUT_LIMIT_EXCEEDED,
         SubmissionStatus.SYSTEM_ERROR,
     }
 )
@@ -57,6 +59,8 @@ class SubmissionJob:
     checker_type: CheckerType
     absolute_tolerance: Decimal | None = None
     relative_tolerance: Decimal | None = None
+    attempt_id: UUID | None = None
+    attempt_kind: str = "initial"
 
 
 @dataclass(frozen=True)
@@ -69,6 +73,12 @@ class TestCase:
     sequence: int
     inline_input: bytes | None = None
     inline_output: bytes | None = None
+    group_id: UUID | None = None
+    group_name: str | None = None
+    group_sequence: int | None = None
+    group_score: Decimal | None = None
+    group_short_circuit: bool = True
+    dependency_group_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -86,6 +96,17 @@ class CaseResult:
     memory_used_kb: int
     exit_code: int | None
     score: Decimal = Decimal("0")
+    group_id: UUID | None = None
+
+
+@dataclass(frozen=True)
+class GroupResult:
+    group_id: UUID
+    status: SubmissionStatus
+    score: Decimal
+    passed_case_count: int
+    total_case_count: int
+    skipped: bool = False
 
 
 @dataclass(frozen=True)
@@ -96,6 +117,7 @@ class JudgeResult:
     compiler_output: str | None = None
     error_message: str | None = None
     public_output: str | None = None
+    group_results: list[GroupResult] = field(default_factory=list)
 
     @property
     def time_used_ms(self) -> int:

@@ -80,7 +80,7 @@ async def test_fork_bomb_is_contained_by_pid_limit(sandbox: DockerSandbox) -> No
 async def test_excessive_output_is_stopped(sandbox: DockerSandbox) -> None:
     source = b"while True: print('x' * 1024)"
     result = await sandbox.run_case("python", source, None, b"", 2000, 64)
-    assert result.status is SubmissionStatus.RUNTIME_ERROR
+    assert result.status is SubmissionStatus.OUTPUT_LIMIT_EXCEEDED
     assert result.diagnostic == "output limit exceeded"
 
 

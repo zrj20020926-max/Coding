@@ -18,6 +18,7 @@ from app.services.rejudge import (
     create_single_rejudge,
     get_rejudge_task,
     list_rejudge_tasks,
+    set_rejudge_paused,
 )
 
 router = APIRouter(prefix="/admin/rejudge", tags=["重判管理"])
@@ -48,7 +49,9 @@ async def rejudge_submission(
     db: Annotated[AsyncSession, Depends(get_db)],
     admin: Annotated[User, Depends(get_admin_user)],
 ) -> RejudgeTaskPublic:
-    return await create_single_rejudge(db, admin, payload.submission_id)
+    return await create_single_rejudge(
+        db, admin, payload.submission_id, payload.test_set_id
+    )
 
 
 @router.post("/batch", response_model=RejudgeTaskPublic, status_code=status.HTTP_202_ACCEPTED)
@@ -58,3 +61,21 @@ async def rejudge_problem_batch(
     admin: Annotated[User, Depends(get_admin_user)],
 ) -> RejudgeTaskPublic:
     return await create_batch_rejudge(db, admin, payload.problem_id, payload.test_set_id)
+
+
+@router.post("/{task_id}/pause", response_model=RejudgeTaskPublic)
+async def pause_rejudge_task(
+    task_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[User, Depends(get_admin_user)],
+) -> RejudgeTaskPublic:
+    return await set_rejudge_paused(db, admin, task_id, True)
+
+
+@router.post("/{task_id}/resume", response_model=RejudgeTaskPublic)
+async def resume_rejudge_task(
+    task_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[User, Depends(get_admin_user)],
+) -> RejudgeTaskPublic:
+    return await set_rejudge_paused(db, admin, task_id, False)
