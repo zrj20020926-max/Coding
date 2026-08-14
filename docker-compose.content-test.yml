@@ -91,6 +91,8 @@ services:
     build:
       context: .
       dockerfile: content/Dockerfile.validator
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
     environment:
       DATABASE_URL: postgresql+asyncpg://content_test:content_test_password@postgres-content-test:5432/codearena_content_test
       MINIO_ENDPOINT: minio-content-test:9000

@@ -20,8 +20,11 @@ def test_output_comparison_normalizes_line_endings_and_trailing_whitespace() -> 
 @pytest.mark.unit
 def test_exact_preserves_middle_whitespace_semantics() -> None:
     assert outputs_equal(b"a b  \r\n", b"a b\n")
+    assert outputs_equal(b"answer", b"answer\n")
     assert not outputs_equal(b"a  b\n", b"a b\n")
     assert not outputs_equal(b" a\n", b"a\n")
+    assert not outputs_equal(b"a\n\nb\n", b"a\nb\n")
+    assert not outputs_equal(b"debug: answer\n", b"answer\n")
 
 
 @pytest.mark.unit

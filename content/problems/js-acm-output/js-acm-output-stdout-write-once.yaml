@@ -1,0 +1,201 @@
+slug: js-acm-output-stdout-write-once
+title: 使用 process.stdout.write()
+description: '本练习专门训练 **使用 process.stdout.write()**，计算本身保持简单，重点是 stdout 格式。
+
+
+  ### 正确示例
+
+
+  使用可见空白符表示为：`2↵
+
+  4↵
+
+  6↵
+
+  8↵
+
+  10↵
+
+  `。
+
+
+  ### 常见错误示例
+
+
+  `debug:␠2↵
+
+  4↵
+
+  6↵
+
+  8↵
+
+  10↵
+
+  ` 会因为包含额外调试前缀而得到 Wrong Answer。
+
+
+  ### exact checker 规则
+
+
+  CRLF 与 LF 等价；每行行尾空格和最终空白会被忽略。行内多余空格、内部空行、TAB/空格混用和额外调试行仍会被识别。缺少最后一个换行符可以通过。'
+difficulty: hard
+training_category: output-format
+tags:
+- stdout
+- output-format
+- javascript-v8
+- nodejs
+input_description: 输入一个非负整数 n，表示需要产生的结果数量。
+output_description: 精确输出要求：输出 1 到 n 的两倍，每行一个。
+data_constraints: 输入为 UTF-8 文本；单个隐藏输入不超过 2 MB；单次标准输出必须低于平台 1 MB 上限。
+sample_input: '5
+
+  '
+sample_output: '2
+
+  4
+
+  6
+
+  8
+
+  10
+
+  '
+sample_explanation: '输出可视化为 `2↵
+
+  4↵
+
+  6↵
+
+  8↵
+
+  10↵
+
+  `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+samples:
+- input: '5
+
+    '
+  output: '2
+
+    4
+
+    6
+
+    8
+
+    10
+
+    '
+  explanation: '输出可视化为 `2↵
+
+    4↵
+
+    6↵
+
+    8↵
+
+    10↵
+
+    `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+- input: '3
+
+    '
+  output: '2
+
+    4
+
+    6
+
+    '
+  explanation: '输出可视化为 `2↵
+
+    4↵
+
+    6↵
+
+    `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+learning_objective: Node.js 中一次写出缓冲结果。
+v8_hint: 把所有结果先放入数组，使用 join 组成字符串后只调用一次 print(output)。print 会自动追加最终换行。
+nodejs_hint: 少量结果可用 console.log；批量结果优先数组加 join，最后调用一次 process.stdout.write。
+common_errors:
+- 输出 result:、debug 等题目未要求的提示语。
+- 把一个空格写成多个空格，或把换行写成空格。
+- 在循环中逐次 console.log，造成大量系统调用和不合理超时。
+- 直接调试打印 BigInt，出现不符合题意的 n 后缀。
+- 混淆 TAB、反斜杠、引号等转义后的实际输出。
+chapter: js-acm-output-performance
+chapter_order: 4
+prerequisites:
+- js-acm-output-join-newlines-once
+estimated_minutes: 12
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 使用 process.stdout.write()\nconst output = '';\nprint(output);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+
+  // TODO: 使用 process.stdout.write()
+
+  const output = '''';
+
+  process.stdout.write(`${output}\n`);
+
+  '
+time_limit_ms: 5000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创输出课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm-output/js-acm-output-stdout-write-once/solution-v8.js
+  nodejs: reference-solutions/js-acm-output/js-acm-output-stdout-write-once/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：检查“使用 process.stdout.write()”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-stdout-write-once/01.in
+    output_file: js-acm-output/js-acm-output-stdout-write-once/01.out
+    checksum: 99bbe759a1624c1a3155652a7b761dba85d5b1022ecaf79f49c722fc74f3ca7a
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输出：检查“使用 process.stdout.write()”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-stdout-write-once/02.in
+    output_file: js-acm-output/js-acm-output-stdout-write-once/02.out
+    checksum: e70326233eb4dbd97b6e5deb1a824e0a6fbdb37a8dafa5aea1410a131222dc4c
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值下的空格与换行边界：检查“使用 process.stdout.write()”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-stdout-write-once/03.in
+    output_file: js-acm-output/js-acm-output-stdout-write-once/03.out
+    checksum: b7ab2f9c3a78d62ab090b0f9d67b751e2caf36156901c00067db28d91bce1d2b
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊字符或格式结构：检查“使用 process.stdout.write()”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-stdout-write-once/04.in
+    output_file: js-acm-output/js-acm-output-stdout-write-once/04.out
+    checksum: 21d8c6283f428cac51e56fb111362c7ee33b14b122d59e116c67c9164149e371
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定规模批量输出：检查“使用 process.stdout.write()”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-stdout-write-once/05.in
+    output_file: js-acm-output/js-acm-output-stdout-write-once/05.out
+    checksum: 1c5db0639985b9411bbb72582f1a025dea422f4999aa041e110cf8654b7edbda
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见 Wrong Answer 反例：检查“使用 process.stdout.write()”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-stdout-write-once/06.in
+    output_file: js-acm-output/js-acm-output-stdout-write-once/06.out
+    checksum: b14d541203bf4fbbf50b1752238db23147a234cfe900a3ea4eb35ab325b0cb4f

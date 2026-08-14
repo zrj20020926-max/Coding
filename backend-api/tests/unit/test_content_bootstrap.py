@@ -104,7 +104,7 @@ async def test_validate_only_and_dry_run_do_not_write(
         store=fake_object_store,
     )
     assert dry_run.status == "dry-run"
-    assert dry_run.problems.created == 105
+    assert dry_run.problems.created == 168
     assert await db_session.scalar(select(func.count(Problem.id))) == 0
     assert fake_object_store.test_objects == {}
 
@@ -121,27 +121,27 @@ async def test_empty_bootstrap_is_idempotent_and_populates_all_content(
     second = await run_content_bootstrap(
         CONTENT_ROOT / "manifest.yaml", db=db_session, store=fake_object_store
     )
-    assert first.problems.created == 105
-    assert first.test_sets.created == 105
-    assert second.problems.skipped == 105
-    assert second.test_sets.skipped == 105
-    assert second.collections.skipped == 11
+    assert first.problems.created == 168
+    assert first.test_sets.created == 168
+    assert second.problems.skipped == 168
+    assert second.test_sets.skipped == 168
+    assert second.collections.skipped == 18
     assert second.daily_challenges.skipped == 14
-    assert await db_session.scalar(select(func.count(Problem.id))) == 105
-    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 105
-    assert await db_session.scalar(select(func.count(Collection.id))) == 11
-    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 105
+    assert await db_session.scalar(select(func.count(Problem.id))) == 168
+    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 168
+    assert await db_session.scalar(select(func.count(Collection.id))) == 18
+    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 168
     assert await db_session.scalar(select(func.count(DailyChallenge.problem_id))) == 14
     challenge = await db_session.scalar(select(DailyChallenge))
     assert challenge is not None
     assert challenge.challenge_date == datetime.now(ZoneInfo("Asia/Shanghai")).date()
-    assert len(fake_object_store.test_objects) == 1260
+    assert len(fake_object_store.test_objects) == 2016
     public = (
         await db_session.scalars(
             select(Problem).where(Problem.visibility == ProblemVisibility.PUBLIC)
         )
     ).all()
-    assert len(public) == 105
+    assert len(public) == 168
     for problem in public:
         active_count = await db_session.scalar(
             select(func.count(ProblemTestSet.id)).where(
@@ -242,7 +242,7 @@ async def test_single_problem_statement_update_does_not_create_test_set(
     )
     assert updated.problems.updated == 1
     assert updated.test_sets.skipped == 1
-    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 105
+    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 168
 
     problem_document["test_set"]["version"] = 99
     problem_path.write_text(
@@ -256,7 +256,7 @@ async def test_single_problem_statement_update_does_not_create_test_set(
         store=fake_object_store,
     )
     assert version_only.test_sets.skipped == 1
-    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 105
+    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 168
 
 
 class FailingStore(FakeSourceObjectStore):

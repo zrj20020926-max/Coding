@@ -45,6 +45,7 @@ class CatalogValidationReport(BaseModel):
     javascript_v8_accepted: int
     nodejs_accepted: int
     wrong_reading_detected: int
+    wrong_output_detected: int
     minio_objects_verified: int
     duration_ms: int
     failures: list[ValidationFailure]
@@ -161,6 +162,36 @@ def _validate_wrong_reading(
     return False
 
 
+def _validate_wrong_output(
+    problem: MaterializedProblem,
+    root: Path,
+    node: str,
+) -> bool:
+    relative = problem.document.reference_solutions.nodejs
+    if relative is None:
+        return False
+    source = (root / relative).read_text(encoding="utf-8")
+    marker = "'use strict';"
+    if marker not in source:
+        raise RuntimeError("Node.js output reference lacks strict-mode marker")
+    # Extra debug output is the most common stdout-only Wrong Answer and is
+    # applicable to every output exercise, including empty-line exercises.
+    mutation = source.replace(
+        marker,
+        marker + "\nprocess.stdout.write('debug: ');",
+        1,
+    )
+    for case in problem.cases:
+        result = _run(
+            [node, "-e", mutation],
+            case.input_data,
+            max(5, problem.document.time_limit_ms / 1000 * 4),
+        )
+        if result.returncode or _normalize(result.stdout) != _normalize(case.output_data):
+            return True
+    return False
+
+
 async def _verify_minio(
     problems: dict[str, MaterializedProblem], store: SourceObjectStore
 ) -> int:
@@ -193,8 +224,9 @@ async def validate_catalog(
     root = await asyncio.to_thread(lambda: manifest.resolve().parent)
     runner = v8_runner or root / "tools" / "run_v8_reference.cjs"
     _check_public_contracts()
-    v8_accepted = nodejs_accepted = wrong_reading_detected = 0
-    chapters_with_counterexample: set[str] = set()
+    v8_accepted = nodejs_accepted = wrong_reading_detected = wrong_output_detected = 0
+    input_chapters_with_counterexample: set[str] = set()
+    output_chapters_with_counterexample: set[str] = set()
     for slug, problem in bundle.problems.items():
         try:
             v8_ok, nodejs_ok = _validate_solution(
@@ -223,24 +255,42 @@ async def validate_catalog(
                 problem=slug, check="nodejs_reference", message="reference output mismatch"
             ))
         try:
-            if check_nodejs and _validate_wrong_reading(problem, root, node):
+            chapter = problem.document.chapter
+            if check_nodejs and chapter is not None and chapter.startswith("js-acm-output-"):
+                if _validate_wrong_output(problem, root, node):
+                    wrong_output_detected += 1
+                    output_chapters_with_counterexample.add(chapter)
+            elif check_nodejs and _validate_wrong_reading(problem, root, node):
                 wrong_reading_detected += 1
-                if problem.document.chapter is not None:
-                    chapters_with_counterexample.add(problem.document.chapter)
+                if chapter is not None:
+                    input_chapters_with_counterexample.add(chapter)
         except (OSError, subprocess.TimeoutExpired) as exc:
             failures.append(ValidationFailure(
                 problem=slug, check="wrong_reading", message=str(exc)[:300]
             ))
-    course_chapters = {
+    input_course_chapters = {
         item.document.chapter
         for item in bundle.problems.values()
         if item.document.chapter is not None
+        and not item.document.chapter.startswith("js-acm-output-")
     }
-    if check_nodejs and chapters_with_counterexample != course_chapters:
+    output_course_chapters = {
+        item.document.chapter
+        for item in bundle.problems.values()
+        if item.document.chapter is not None
+        and item.document.chapter.startswith("js-acm-output-")
+    }
+    if check_nodejs and input_chapters_with_counterexample != input_course_chapters:
         failures.append(ValidationFailure(
             problem="catalog",
             check="wrong_reading_counterexamples",
-            message="not every course chapter detects an unsafe reading mutation",
+            message="not every input course chapter detects an unsafe reading mutation",
+        ))
+    if check_nodejs and output_chapters_with_counterexample != output_course_chapters:
+        failures.append(ValidationFailure(
+            problem="catalog",
+            check="wrong_output_counterexamples",
+            message="not every output course chapter detects extra stdout",
         ))
     minio_verified = 0
     if check_minio:
@@ -263,6 +313,7 @@ async def validate_catalog(
         javascript_v8_accepted=v8_accepted,
         nodejs_accepted=nodejs_accepted,
         wrong_reading_detected=wrong_reading_detected,
+        wrong_output_detected=wrong_output_detected,
         minio_objects_verified=minio_verified,
         duration_ms=round((time.monotonic() - started) * 1000),
         failures=failures,
@@ -291,6 +342,7 @@ def main() -> None:
         report = CatalogValidationReport(
             status="failed", problem_count=0, hidden_case_count=0,
             javascript_v8_accepted=0, nodejs_accepted=0, wrong_reading_detected=0,
+            wrong_output_detected=0,
             minio_objects_verified=0, duration_ms=0,
             failures=[
                 ValidationFailure(

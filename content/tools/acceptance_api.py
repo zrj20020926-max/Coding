@@ -159,9 +159,12 @@ def require_status(
     # A previous acceptance run may have snapshotted an older resource limit.
     # One fresh key is sufficient to verify the current content version while
     # preserving the original immutable submission for audit.
-    return submit_and_wait(
+    status = submit_and_wait(
         client, problem_id, language, source, f"{key}-current-content"
     )
+    if status != expected:
+        raise RuntimeError(f"unexpected status for {key}: expected {expected}, got {status}")
+    return status
 
 
 def enqueue(
@@ -229,11 +232,14 @@ def main() -> int:
             "GET", f"/problems?page={page_number}&page_size=100&sort=oldest"
         )
         items.extend(page["items"])
-    if len(items) != 105:
-        raise RuntimeError("public training API did not return exactly 105 exercises")
+    if len(items) != 168:
+        raise RuntimeError("public training API did not return exactly 168 exercises")
     problems = {str(item["slug"]): int(item["id"]) for item in items}
-    if len(problems) != 105:
+    if len(problems) != 168:
         raise RuntimeError("public problem slugs are not unique")
+    output_problem_count = sum(slug.startswith("js-acm-output-") for slug in problems)
+    if output_problem_count != 63:
+        raise RuntimeError("public training API did not return all 63 output exercises")
     forbidden = {
         "reference_solutions", "test_set", "test_cases", "input_object_key",
         "output_object_key", "checksum", "docker_image", "compile_command",
@@ -245,8 +251,8 @@ def main() -> int:
             raise RuntimeError(f"public problem DTO leaked internal fields: {slug}")
     collections = client.request("GET", "/collections?page=1&page_size=100")
     collection_items = collections["items"]
-    if not isinstance(collection_items, list) or len(collection_items) != 11:
-        raise RuntimeError("expected eleven public course chapters")
+    if not isinstance(collection_items, list) or len(collection_items) != 18:
+        raise RuntimeError("expected eighteen public course chapters")
     for collection in collection_items:
         detail = client.request(
             "GET", f"/collections/{collection['slug']}?page=1&page_size=100"
@@ -257,7 +263,8 @@ def main() -> int:
 
     submissions: list[tuple[str, str, str]] = []
     for slug, problem_id in problems.items():
-        solution_root = ROOT / "reference-solutions" / "js-acm" / slug
+        course_directory = "js-acm-output" if slug.startswith("js-acm-output-") else "js-acm"
+        solution_root = ROOT / "reference-solutions" / course_directory / slug
         v8_id = enqueue(
             client,
             problem_id,
@@ -276,12 +283,58 @@ def main() -> int:
         submissions.append((nodejs_id, slug, "nodejs"))
     wait_for_all(client, submissions)
 
+    wrong_output_sources: dict[str, str] = {}
+    for slug in (
+        "js-acm-output-values-single-space",
+        "js-acm-output-no-debug-output",
+        "js-acm-output-bigint-without-suffix",
+        "js-acm-output-fixed-two-decimals",
+        "js-acm-output-blank-between-groups",
+    ):
+        source_path = (
+            ROOT / "reference-solutions" / "js-acm-output" / slug / "solution-nodejs.js"
+        )
+        source = source_path.read_text(encoding="utf-8")
+        if slug == "js-acm-output-values-single-space":
+            mutated = source.replace("tokens.join(' ')", "tokens.join('  ')", 1)
+        elif slug == "js-acm-output-bigint-without-suffix":
+            mutated = source.replace(
+                "BigInt(tokens[0] ?? '0').toString()",
+                "`${BigInt(tokens[0] ?? '0')}n`",
+                1,
+            )
+        elif slug == "js-acm-output-fixed-two-decimals":
+            mutated = source.replace(
+                "fixedDecimal(tokens[0] ?? '0', 2)",
+                "Number(tokens[0] ?? 0).toFixed(1)",
+                1,
+            )
+        elif slug == "js-acm-output-blank-between-groups":
+            mutated = source.replace("join('\\n\\n')", "join('\\n')", 1)
+        else:
+            mutated = "process.stdout.write('debug: extra\\n');\n" + source
+        if mutated == source:
+            raise RuntimeError(f"wrong-output mutation did not change source: {slug}")
+        wrong_output_sources[slug] = mutated
+
+    for slug, source in wrong_output_sources.items():
+        require_status(
+            client,
+            problems[slug],
+            "nodejs",
+            source,
+            f"course-wrong-output-{slug}",
+            "Wrong Answer",
+        )
+
     report = {
         "status": "success",
         "public_problems": len(problems),
         "details_opened": len(problems),
         "javascript_v8_accepted": len(problems),
         "nodejs_accepted": len(problems),
+        "output_exercises": output_problem_count,
+        "wrong_output_verified": len(wrong_output_sources),
         "collections": len(collection_items),
         "daily_challenge": 1,
         "duration_ms": round((time.monotonic() - started) * 1000),

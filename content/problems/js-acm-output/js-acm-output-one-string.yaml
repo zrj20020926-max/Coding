@@ -1,0 +1,145 @@
+slug: js-acm-output-one-string
+title: 输出一个字符串
+description: '本练习专门训练 **输出一个字符串**，计算本身保持简单，重点是 stdout 格式。
+
+
+  ### 正确示例
+
+
+  使用可见空白符表示为：`hello↵
+
+  `。
+
+
+  ### 常见错误示例
+
+
+  `debug:␠hello↵
+
+  ` 会因为包含额外调试前缀而得到 Wrong Answer。
+
+
+  ### exact checker 规则
+
+
+  CRLF 与 LF 等价；每行行尾空格和最终空白会被忽略。行内多余空格、内部空行、TAB/空格混用和额外调试行仍会被识别。缺少最后一个换行符可以通过。'
+difficulty: easy
+training_category: output-format
+tags:
+- stdout
+- output-format
+- javascript-v8
+- nodejs
+input_description: 输入为一行或少量多行 UTF-8 文本，字段含义见题目描述与公开样例。
+output_description: 精确输出要求：字符串正文必须与输入首行一致。
+data_constraints: 输入为 UTF-8 文本；单个隐藏输入不超过 2 MB；单次标准输出必须低于平台 1 MB 上限。
+sample_input: 'hello
+
+  '
+sample_output: 'hello
+
+  '
+sample_explanation: '输出可视化为 `hello↵
+
+  `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+samples:
+- input: 'hello
+
+    '
+  output: 'hello
+
+    '
+  explanation: '输出可视化为 `hello↵
+
+    `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+- input: 'CodeArena
+
+    '
+  output: 'CodeArena
+
+    '
+  explanation: '输出可视化为 `CodeArena↵
+
+    `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+learning_objective: 原样输出指定字符串。
+v8_hint: 把所有结果先放入数组，使用 join 组成字符串后只调用一次 print(output)。print 会自动追加最终换行。
+nodejs_hint: 少量结果可用 console.log；批量结果优先数组加 join，最后调用一次 process.stdout.write。
+common_errors:
+- 输出 result:、debug 等题目未要求的提示语。
+- 把一个空格写成多个空格，或把换行写成空格。
+- 在循环中逐次 console.log，造成大量系统调用和不合理超时。
+- 直接调试打印 BigInt，出现不符合题意的 n 后缀。
+- 混淆 TAB、反斜杠、引号等转义后的实际输出。
+chapter: js-acm-output-basics
+chapter_order: 2
+prerequisites:
+- js-acm-output-one-integer
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 输出一个字符串\nconst output = '';\nprint(output);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+
+  // TODO: 输出一个字符串
+
+  const output = '''';
+
+  process.stdout.write(`${output}\n`);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创输出课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm-output/js-acm-output-one-string/solution-v8.js
+  nodejs: reference-solutions/js-acm-output/js-acm-output-one-string/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：检查“输出一个字符串”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-one-string/01.in
+    output_file: js-acm-output/js-acm-output-one-string/01.out
+    checksum: 090c98eeba25383164ac3af14f2f24b8442ca55d48fbe7cd7dfaa61d5e19b7c9
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输出：检查“输出一个字符串”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-one-string/02.in
+    output_file: js-acm-output/js-acm-output-one-string/02.out
+    checksum: c0db63db37ef5ef05cda8c445b0022904faca446e0945c07bbbab61b23070c67
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值下的空格与换行边界：检查“输出一个字符串”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-one-string/03.in
+    output_file: js-acm-output/js-acm-output-one-string/03.out
+    checksum: 0b3198e02ff67ab740a82955ce7429646eef3dd19aa26d376ded8f7a6b91ea7f
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊字符或格式结构：检查“输出一个字符串”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-one-string/04.in
+    output_file: js-acm-output/js-acm-output-one-string/04.out
+    checksum: 3476a58758b2eeb3ea4b89724ea34a16fbc19b8ccf1e03ad7f042fc843eac2b4
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定规模批量输出：检查“输出一个字符串”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-one-string/05.in
+    output_file: js-acm-output/js-acm-output-one-string/05.out
+    checksum: 71d37bb01f937177b99685d7880dc3fc10475a3846da0102890b53a52011191c
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见 Wrong Answer 反例：检查“输出一个字符串”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-one-string/06.in
+    output_file: js-acm-output/js-acm-output-one-string/06.out
+    checksum: 81d88b6b58e6e521e63b23bdded840e8f5e8a514fb77847c49fedf3f7f40fe58

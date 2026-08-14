@@ -1,0 +1,161 @@
+slug: js-acm-output-header-separator
+title: 表头和分隔线
+description: '本练习专门训练 **表头和分隔线**，计算本身保持简单，重点是 stdout 格式。
+
+
+  ### 正确示例
+
+
+  使用可见空白符表示为：`Name␠Score↵
+
+  ----------↵
+
+  `。
+
+
+  ### 常见错误示例
+
+
+  `debug:␠Name␠Score↵
+
+  ----------↵
+
+  ` 会因为包含额外调试前缀而得到 Wrong Answer。
+
+
+  ### exact checker 规则
+
+
+  CRLF 与 LF 等价；每行行尾空格和最终空白会被忽略。行内多余空格、内部空行、TAB/空格混用和额外调试行仍会被识别。缺少最后一个换行符可以通过。'
+difficulty: medium
+training_category: output-format
+tags:
+- stdout
+- output-format
+- javascript-v8
+- nodejs
+input_description: 输入为一行或少量多行 UTF-8 文本，字段含义见题目描述与公开样例。
+output_description: 精确输出要求：第二行连字符数量与第一行字符数一致。
+data_constraints: 输入为 UTF-8 文本；单个隐藏输入不超过 2 MB；单次标准输出必须低于平台 1 MB 上限。
+sample_input: 'Name Score
+
+  '
+sample_output: 'Name Score
+
+  ----------
+
+  '
+sample_explanation: '输出可视化为 `Name␠Score↵
+
+  ----------↵
+
+  `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+samples:
+- input: 'Name Score
+
+    '
+  output: 'Name Score
+
+    ----------
+
+    '
+  explanation: '输出可视化为 `Name␠Score↵
+
+    ----------↵
+
+    `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+- input: 'A B
+
+    '
+  output: 'A B
+
+    ---
+
+    '
+  explanation: '输出可视化为 `A␠B↵
+
+    ---↵
+
+    `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+learning_objective: 输出表头和等长分隔线。
+v8_hint: 把所有结果先放入数组，使用 join 组成字符串后只调用一次 print(output)。print 会自动追加最终换行。
+nodejs_hint: 少量结果可用 console.log；批量结果优先数组加 join，最后调用一次 process.stdout.write。
+common_errors:
+- 输出 result:、debug 等题目未要求的提示语。
+- 把一个空格写成多个空格，或把换行写成空格。
+- 在循环中逐次 console.log，造成大量系统调用和不合理超时。
+- 直接调试打印 BigInt，出现不符合题意的 n 后缀。
+- 混淆 TAB、反斜杠、引号等转义后的实际输出。
+chapter: js-acm-output-alignment
+chapter_order: 6
+prerequisites:
+- js-acm-output-aligned-matrix
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 表头和分隔线\nconst output = '';\nprint(output);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+
+  // TODO: 表头和分隔线
+
+  const output = '''';
+
+  process.stdout.write(`${output}\n`);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创输出课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm-output/js-acm-output-header-separator/solution-v8.js
+  nodejs: reference-solutions/js-acm-output/js-acm-output-header-separator/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：检查“表头和分隔线”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-header-separator/01.in
+    output_file: js-acm-output/js-acm-output-header-separator/01.out
+    checksum: d4e9491d4c411d8423e54e858c337b520ad576b02078e66265a866336333c6b9
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输出：检查“表头和分隔线”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-header-separator/02.in
+    output_file: js-acm-output/js-acm-output-header-separator/02.out
+    checksum: f742a68e9b38a3b7ecf0bff886b6ee98125d54ac096969f6ec53bbbb71f6d7fc
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值下的空格与换行边界：检查“表头和分隔线”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-header-separator/03.in
+    output_file: js-acm-output/js-acm-output-header-separator/03.out
+    checksum: 467e16f0c010a66e35e4735955ddd462cb5a67891d5bfa11e1389fa2b68453b3
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊字符或格式结构：检查“表头和分隔线”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-header-separator/04.in
+    output_file: js-acm-output/js-acm-output-header-separator/04.out
+    checksum: 4f96b52ad9a5485f03ee76b4dba8bad2e6bee11cdb8993e1f21066f3b3fd001f
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定规模批量输出：检查“表头和分隔线”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-header-separator/05.in
+    output_file: js-acm-output/js-acm-output-header-separator/05.out
+    checksum: 3d727c693fbcedab964e656039649775c8063eea16e01bbdbde15b38c1f35dc2
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见 Wrong Answer 反例：检查“表头和分隔线”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-header-separator/06.in
+    output_file: js-acm-output/js-acm-output-header-separator/06.out
+    checksum: 2a0d3dbaae344630eb04b43a5630750edc705baf854dacd1f9a10e6fe9722d13

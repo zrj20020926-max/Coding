@@ -82,10 +82,10 @@ async def test_fresh_postgres_and_minio_initialize_and_remain_idempotent(
             second = await run_content_bootstrap(
                 CONTENT_ROOT / "manifest.yaml", db=session, store=store
             )
-        assert first.problems.created == 105
-        assert first.test_sets.created == 105
-        assert second.problems.skipped == 105
-        assert second.test_sets.skipped == 105
+        assert first.problems.created == 168
+        assert first.test_sets.created == 168
+        assert second.problems.skipped == 168
+        assert second.test_sets.skipped == 168
         async with engine.connect() as connection:
             counts = (
                 await connection.execute(
@@ -105,14 +105,14 @@ async def test_fresh_postgres_and_minio_initialize_and_remain_idempotent(
                 )
             ).mappings().one()
         assert counts == {
-            "problems": 105,
-            "active_sets": 105,
-            "collections": 11,
-            "collection_items": 105,
+            "problems": 168,
+            "active_sets": 168,
+            "collections": 18,
+            "collection_items": 168,
             "daily": 1,
         }
         objects = [item.object_name for item in minio.list_objects(bucket, recursive=True)]
-        assert len(objects) == 1260
+        assert len(objects) == 2016
         validation = await validate_catalog(
             CONTENT_ROOT / "manifest.yaml",
             node=os.getenv("CATALOG_NODE", "node"),
@@ -120,10 +120,11 @@ async def test_fresh_postgres_and_minio_initialize_and_remain_idempotent(
             store=store,
         )
         assert validation.status == "success"
-        assert validation.javascript_v8_accepted == 105
-        assert validation.nodejs_accepted == 105
+        assert validation.javascript_v8_accepted == 168
+        assert validation.nodejs_accepted == 168
         assert validation.wrong_reading_detected >= 11
-        assert validation.minio_objects_verified == 1260
+        assert validation.wrong_output_detected == 63
+        assert validation.minio_objects_verified == 2016
     finally:
         await engine.dispose()
         await _drop_database(postgres_database_url, database_name)

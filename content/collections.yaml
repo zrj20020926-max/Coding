@@ -170,3 +170,108 @@ collections:
   - js-acm-avoid-repeated-split
   - js-acm-buffer-output-join
   - js-acm-efficient-recommended-pattern
+- slug: js-acm-output-basics
+  title: 输出课程一：基础输出
+  description: 掌握单值、固定文本、空行和最终换行等 stdout 基础契约。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-output-one-integer
+  - js-acm-output-one-string
+  - js-acm-output-values-single-space
+  - js-acm-output-value-per-line
+  - js-acm-output-fixed-text
+  - js-acm-output-no-extra-prompt
+  - js-acm-output-negative-number
+  - js-acm-output-bigint-without-suffix
+  - js-acm-output-internal-empty-line
+  - js-acm-output-terminal-newline
+- slug: js-acm-output-arrays
+  title: 输出课程二：数组输出
+  description: 练习 join、逐行输出、二维数组和 BigInt/浮点数组的稳定格式。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-output-array-space-join
+  - js-acm-output-array-comma-join
+  - js-acm-output-array-one-per-line
+  - js-acm-output-array-length-first
+  - js-acm-output-array-reverse
+  - js-acm-output-matrix-row-output
+  - js-acm-output-character-array-compact
+  - js-acm-output-empty-array-rule
+  - js-acm-output-bigint-array-output
+  - js-acm-output-float-array-output
+- slug: js-acm-output-groups
+  title: 输出课程三：多组结果
+  description: 组织 Case 前缀、组间空行、多行分组和大批量结果。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-output-group-one-line
+  - js-acm-output-case-hash-format
+  - js-acm-output-case-plain-format
+  - js-acm-output-blank-between-groups
+  - js-acm-output-group-multiple-lines
+  - js-acm-output-group-title-first
+  - js-acm-output-no-blank-after-last-group
+  - js-acm-output-many-results-buffer
+- slug: js-acm-output-numbers
+  title: 输出课程四：数值格式
+  description: 掌握小数位、百分比、科学计数法、补零和大整数文本化。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-output-fixed-two-decimals
+  - js-acm-output-fixed-n-decimals
+  - js-acm-output-percentage-format
+  - js-acm-output-scientific-notation
+  - js-acm-output-leading-zero
+  - js-acm-output-explicit-plus-sign
+  - js-acm-output-decimal-rounding
+  - js-acm-output-floating-error-format
+  - js-acm-output-large-integer-text
+  - js-acm-output-negative-zero
+- slug: js-acm-output-alignment
+  title: 输出课程五：表格和对齐
+  description: 使用 padStart、padEnd 构建等宽字段，并理解 Unicode 显示宽度边界。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-output-right-align
+  - js-acm-output-left-align
+  - js-acm-output-number-zero-padding
+  - js-acm-output-simple-table
+  - js-acm-output-aligned-matrix
+  - js-acm-output-header-separator
+  - js-acm-output-variable-string-alignment
+  - js-acm-output-unicode-alignment-limit
+- slug: js-acm-output-strings
+  title: 输出课程六：字符串格式
+  description: 练习拼接、转义、制表符、多行文本、Unicode 和 JSON 序列化。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-output-string-concatenation
+  - js-acm-output-template-string
+  - js-acm-output-preserve-output-spaces
+  - js-acm-output-output-backslash
+  - js-acm-output-output-quotes
+  - js-acm-output-output-tabs
+  - js-acm-output-output-multiline-text
+  - js-acm-output-output-unicode
+  - js-acm-output-json-stringify-use
+  - js-acm-output-no-debug-output
+- slug: js-acm-output-performance
+  title: 输出课程七：输出性能
+  description: 用数组与 join 批量输出，理解 stdout 限制、时间和内存权衡。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-output-avoid-loop-console-log
+  - js-acm-output-collect-output-array
+  - js-acm-output-join-newlines-once
+  - js-acm-output-stdout-write-once
+  - js-acm-output-v8-batch-print
+  - js-acm-output-large-output-memory-tradeoff
+  - js-acm-output-output-limit-contract

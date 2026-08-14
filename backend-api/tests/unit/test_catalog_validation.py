@@ -21,8 +21,9 @@ def test_full_catalog_has_required_coverage_and_six_scenarios() -> None:
         "stdin", "stdout", "javascript-v8", "nodejs", "single-value",
         "single-line-values", "multi-line", "test-cases", "read-until-eof",
         "sentinel", "arrays", "matrices", "strings", "mixed-nested", "large-input",
+        "output-format",
     }
-    assert len(bundle.problems) == 105
+    assert len(bundle.problems) == 168
     assert required_tags <= tags
     for problem in bundle.problems.values():
         assert len(problem.cases) == 6
@@ -43,9 +44,9 @@ def test_full_catalog_has_required_coverage_and_six_scenarios() -> None:
 @pytest.mark.unit
 def test_catalog_collections_and_relative_challenges_are_complete() -> None:
     bundle = load_content_bundle(CONTENT_ROOT / "manifest.yaml")
-    assert len(bundle.collections) == 11
+    assert len(bundle.collections) == 18
     assert all(collection.is_public and collection.problems for collection in bundle.collections)
-    assert sum(len(collection.problems) for collection in bundle.collections) == 105
+    assert sum(len(collection.problems) for collection in bundle.collections) == 168
     assert len(bundle.daily_challenges) == 14
     today = datetime.now(ZoneInfo(bundle.manifest.timezone)).date()
     actual = []
@@ -95,3 +96,58 @@ def test_course_prerequisites_form_a_valid_ordered_dag() -> None:
         )
         collection = next(item for item in bundle.collections if item.slug == document.chapter)
         assert collection.problems[document.chapter_order - 1] == slug
+
+
+@pytest.mark.unit
+def test_output_course_covers_every_requested_chapter_and_contract() -> None:
+    bundle = load_content_bundle(CONTENT_ROOT / "manifest.yaml")
+    output_problems = {
+        slug: item
+        for slug, item in bundle.problems.items()
+        if slug.startswith("js-acm-output-")
+    }
+    chapter_sizes = {
+        collection.slug: len(collection.problems)
+        for collection in bundle.collections
+        if collection.slug.startswith("js-acm-output-")
+    }
+
+    assert len(output_problems) == 63
+    assert sorted(chapter_sizes.values()) == [7, 8, 8, 10, 10, 10, 10]
+    for problem in output_problems.values():
+        document = problem.document
+        assert document.training_category.value == "output-format"
+        assert document.test_set.checker_type.value == "exact"
+        assert "### 正确示例" in document.description
+        assert "### 常见错误示例" in document.description
+        assert "exact checker" in document.description
+        assert "精确输出要求" in document.output_description
+        assert len(problem.cases) == 6
+
+
+@pytest.mark.unit
+def test_output_course_precision_bigint_and_buffering_examples_are_safe() -> None:
+    bundle = load_content_bundle(CONTENT_ROOT / "manifest.yaml")
+
+    rounded = bundle.problems["js-acm-output-decimal-rounding"].document
+    safe_sum = bundle.problems["js-acm-output-floating-error-format"].document
+    bigint = bundle.problems["js-acm-output-bigint-without-suffix"].document
+    assert rounded.sample_output == "3.14\n"
+    assert safe_sum.sample_output == "0.30\n"
+    assert bigint.sample_output == "9007199254740993\n"
+    assert not bigint.sample_output.rstrip().endswith("n")
+
+    performance = [
+        item.document
+        for item in bundle.problems.values()
+        if item.document.chapter == "js-acm-output-performance"
+    ]
+    assert len(performance) == 7
+    for document in performance:
+        node_path = CONTENT_ROOT / document.reference_solutions.nodejs
+        v8_path = CONTENT_ROOT / document.reference_solutions.javascript_v8
+        node_source = node_path.read_text(encoding="utf-8")
+        v8_source = v8_path.read_text(encoding="utf-8")
+        assert "console.log(" not in node_source
+        assert node_source.count("process.stdout.write(") == 1
+        assert v8_source.count("print(") == 1

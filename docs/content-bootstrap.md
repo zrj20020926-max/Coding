@@ -9,9 +9,13 @@ content/
   manifest.yaml
   tags.yaml
   problems/js-acm/*.yaml
+  problems/js-acm-output/*.yaml
   test-data/js-acm/<exercise>/*.in|*.out
+  test-data/js-acm-output/<exercise>/*.in|*.out
   reference-solutions/js-acm/<exercise>/solution-v8.js|solution-nodejs.js
+  reference-solutions/js-acm-output/<exercise>/solution-v8.js|solution-nodejs.js
   tools/build_js_acm_course.py
+  tools/build_js_acm_output_course.py
   tools/run_v8_reference.cjs
   collections.yaml
   daily-challenges.yaml
@@ -19,7 +23,9 @@ content/
 
 练习文件包含学习目标、输入输出格式、数据范围、V8/Node 提示、至少两个公开样例、常见错误、章节与顺序、前置练习、预计时长、资源限制、初始模板、测试集 checker、六类隐藏用例元数据以及两种 JavaScript 引用实现路径。引用实现只用于服务端离线验证，不写入数据库、MinIO 和任何公开 DTO。`checksum` 必须等于 `sha256(input + NUL + output)`；Bootstrap 会重新计算 input/output SHA-256，并生成只保存在数据库内部的内容寻址对象键。
 
-正式初始库含 105 道原创 JavaScript ACM 输入练习、630 个隐藏用例、11 个公开课程章节和从服务端当天起连续 14 天的每日练习。每题六个用例分别覆盖最小边界、普通输入、重复值、特殊格式、固定规模压力和错误读取反例，分值总和为 100。课程前置关系必须无环，章节顺序必须连续并与题单顺序一致。
+正式初始库含 105 道输入练习和 63 道输出格式练习，共 168 道原创 JavaScript ACM 练习、1008 个隐藏用例、18 个公开课程章节，并保留从服务端当天起连续 14 天的每日练习。每题六个用例分别覆盖最小边界、普通输入、重复值、特殊格式、固定规模压力和错误反例，分值总和为 100。课程前置关系必须无环，章节顺序必须连续并与题单顺序一致。
+
+输出课程使用 `exact` checker：CRLF/LF 等价，每行行尾空白与最终空白被忽略；行内多余空格、内部空行、TAB/空格混用和额外调试输出仍会 Wrong Answer。因此缺少最后一个换行符可接受，而需要训练空行或左对齐时，内容会使用内部空行或边界符提供可判定结构。
 
 ## 命令
 
@@ -37,11 +43,12 @@ python -m app.bootstrap.content --manifest ../content/manifest.yaml --collection
 
 ```powershell
 python ../content/tools/build_js_acm_course.py
+python ../content/tools/build_js_acm_output_course.py
 python -m app.bootstrap.validate_catalog --manifest ../content/manifest.yaml
 docker compose -f ../docker-compose.content-test.yml run --build --rm catalog-validator-test
 ```
 
-所有期望输出由 Node.js 参考实现实际运行生成。验证器再以 Node.js 22 和与 Judge 一致的受控 V8 `readline()/print()` 兼容上下文重跑 210 个公开样例与 630 个隐藏用例，要求输出完全一致；同时注入无条件 `trim()` 和 `split(' ')` 错误读取变体，确保每章至少有隐藏反例可以识别。大输入固定生成，不依赖随机状态，百万 token 用例可重复构建。
+所有期望输出由 Node.js 参考实现实际运行生成。验证器再以 Node.js 22 和与 Judge 一致的受控 V8 `readline()/print()` 兼容上下文重跑 336 个公开样例与 1008 个隐藏用例，要求输出完全一致；输入课程注入无条件 `trim()` 和 `split(' ')` 错误读取变体，输出课程为每题注入额外 debug stdout，确保每章至少有隐藏反例可以识别。大输入固定生成，不依赖随机状态，百万 token 与大批量输出用例均可重复构建。
 
 `--validate-only` 只读取并校验本地文件，不连接数据库/MinIO。`--dry-run` 会读取数据库和检查 MinIO 对象，但事务回滚且不上传。`--problem` 只处理单题，不改题单和每日一题；`--collection` 处理该题单及其题目。输出是结构化 JSON，按标签、题目、测试集、用例、对象、题单和每日一题统计 created/updated/skipped/failed；输出和错误不含隐藏数据、对象键、checksum 或底层异常。
 

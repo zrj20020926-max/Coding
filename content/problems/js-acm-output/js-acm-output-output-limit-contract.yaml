@@ -1,0 +1,201 @@
+slug: js-acm-output-output-limit-contract
+title: 输出限制处理
+description: '本练习专门训练 **输出限制处理**，计算本身保持简单，重点是 stdout 格式。
+
+
+  ### 正确示例
+
+
+  使用可见空白符表示为：`1↵
+
+  2↵
+
+  3↵
+
+  4↵
+
+  5↵
+
+  `。
+
+
+  ### 常见错误示例
+
+
+  `debug:␠1↵
+
+  2↵
+
+  3↵
+
+  4↵
+
+  5↵
+
+  ` 会因为包含额外调试前缀而得到 Wrong Answer。
+
+
+  ### exact checker 规则
+
+
+  CRLF 与 LF 等价；每行行尾空格和最终空白会被忽略。行内多余空格、内部空行、TAB/空格混用和额外调试行仍会被识别。缺少最后一个换行符可以通过。'
+difficulty: hard
+training_category: output-format
+tags:
+- stdout
+- output-format
+- javascript-v8
+- nodejs
+input_description: 输入一个非负整数 n，表示需要产生的结果数量。
+output_description: 精确输出要求：n 不超过 10000 时逐行输出；超过时输出 OUTPUT_TOO_LARGE。
+data_constraints: 输入为 UTF-8 文本；单个隐藏输入不超过 2 MB；单次标准输出必须低于平台 1 MB 上限。
+sample_input: '5
+
+  '
+sample_output: '1
+
+  2
+
+  3
+
+  4
+
+  5
+
+  '
+sample_explanation: '输出可视化为 `1↵
+
+  2↵
+
+  3↵
+
+  4↵
+
+  5↵
+
+  `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+samples:
+- input: '5
+
+    '
+  output: '1
+
+    2
+
+    3
+
+    4
+
+    5
+
+    '
+  explanation: '输出可视化为 `1↵
+
+    2↵
+
+    3↵
+
+    4↵
+
+    5↵
+
+    `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+- input: '3
+
+    '
+  output: '1
+
+    2
+
+    3
+
+    '
+  explanation: '输出可视化为 `1↵
+
+    2↵
+
+    3↵
+
+    `。↵ 表示换行，␠ 表示空格，⇥ 表示 TAB。'
+learning_objective: 根据题面上限避免制造失控输出。
+v8_hint: 把所有结果先放入数组，使用 join 组成字符串后只调用一次 print(output)。print 会自动追加最终换行。
+nodejs_hint: 少量结果可用 console.log；批量结果优先数组加 join，最后调用一次 process.stdout.write。
+common_errors:
+- 输出 result:、debug 等题目未要求的提示语。
+- 把一个空格写成多个空格，或把换行写成空格。
+- 在循环中逐次 console.log，造成大量系统调用和不合理超时。
+- 直接调试打印 BigInt，出现不符合题意的 n 后缀。
+- 混淆 TAB、反斜杠、引号等转义后的实际输出。
+chapter: js-acm-output-performance
+chapter_order: 7
+prerequisites:
+- js-acm-output-large-output-memory-tradeoff
+estimated_minutes: 15
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 输出限制处理\nconst output = '';\nprint(output);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+
+  // TODO: 输出限制处理
+
+  const output = '''';
+
+  process.stdout.write(`${output}\n`);
+
+  '
+time_limit_ms: 5000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创输出课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm-output/js-acm-output-output-limit-contract/solution-v8.js
+  nodejs: reference-solutions/js-acm-output/js-acm-output-output-limit-contract/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：检查“输出限制处理”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-output-limit-contract/01.in
+    output_file: js-acm-output/js-acm-output-output-limit-contract/01.out
+    checksum: 99bbe759a1624c1a3155652a7b761dba85d5b1022ecaf79f49c722fc74f3ca7a
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输出：检查“输出限制处理”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-output-limit-contract/02.in
+    output_file: js-acm-output/js-acm-output-output-limit-contract/02.out
+    checksum: 983c986d9875966695798ee9efc0a0380df9b3b7d1e44eca67f87826aaf589e0
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值下的空格与换行边界：检查“输出限制处理”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-output-limit-contract/03.in
+    output_file: js-acm-output/js-acm-output-output-limit-contract/03.out
+    checksum: 53e9bc167423870a0eb8560965b0e60a190fd41e375ae9876d8801512e2589ce
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 特殊字符或格式结构：检查“输出限制处理”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-output-limit-contract/04.in
+    output_file: js-acm-output/js-acm-output-output-limit-contract/04.out
+    checksum: 850901fa78e86b372decca6627641f95cd61b7b0dcb7d25c1d9a45ef24ca11c1
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定规模批量输出：检查“输出限制处理”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-output-limit-contract/05.in
+    output_file: js-acm-output/js-acm-output-output-limit-contract/05.out
+    checksum: ba05c119df7e83e41a1c46a37eb2ce49fb90e204b784f160e8ea8ea22afddae3
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见 Wrong Answer 反例：检查“输出限制处理”的 stdout 字节结构。
+    input_file: js-acm-output/js-acm-output-output-limit-contract/06.in
+    output_file: js-acm-output/js-acm-output-output-limit-contract/06.out
+    checksum: 8e5f061672fb39d59f20bc88416b99a908ab6c39952045183be67154414cc8c2

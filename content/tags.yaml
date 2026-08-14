@@ -29,3 +29,5 @@ tags:
   name: 混合和嵌套格式
 - slug: large-input
   name: 大输入性能
+- slug: output-format
+  name: 常见输出格式
