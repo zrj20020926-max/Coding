@@ -79,13 +79,17 @@ Pending -> Compiling -> Running -> Accepted
 - `easy/medium/hard` 仅作为兼容存储值，界面显示“基础/组合/综合”，描述输入输出结构层级而非算法复杂度。
 - 收藏、讨论、认证、题单、每日一题、提交历史和 AI 建议继续复用；排行榜、企业高频和复杂算法能力画像不作为用户侧主入口。
 
+训练内容不再只是一组平铺 Problem，而使用 `Course -> Chapter -> Exercise -> Problem` 组织。Course 定义输入、输出、混合或性能主线，Chapter 定义局部目标和预计时长，Exercise 保存 V8/Node.js 两套指导、初始代码、常见错误以及有向无环前置关系。Problem 继续作为公开题面和判题身份，隐藏测试与参考实现仍留在原有安全边界内。
+
+默认目录按顺序提供 V8 快速入门、Node.js stdin 快速入门、单值和单行、多行、T 组、EOF 与哨兵、数组和矩阵、字符串与空行、混合格式、输出格式、大输入性能和综合训练，共 12 门课程。推荐服务遍历公开有序目录，跳过已完成练习，并只返回所有前置练习已完成的第一项。
+
 当前阶段已实现工程基线、认证、训练目录、提交控制平面、完整前端训练闭环，以及支持 JavaScript V8/Node.js 的 Judge Worker 与 Docker 沙箱执行。
 
 内容运营按“题单 → 每日一题 → 讨论区”分层：题单映射保存稳定顺序，查询时再过滤已下线题目并关联当前用户进度；每日一题以 API 进程配置的 IANA 时区确定业务日期；讨论和评论使用平铺分页与 `parent_id/depth` 表示有限深度回复，避免一次响应递归展开无界评论树。敏感内容先进入待审状态，锁帖/置顶/审核/举报处理均由管理员权限依赖控制，审核动作写入独立审计表。
 
 ## 7. 训练统计一致性
 
-正式提交进入终态时，Judge 先以条件更新锁定唯一状态流转，再向 `submission_stat_events` 写入以 `submission_id` 为主键的台账。只有台账首次写入成功时才增加 `user_problem_progress.attempt_count`、用户提交/通过计数和题目提交/通过计数。进度表的联合主键串行化同一用户与题目的首次通过，因此并发 Accepted 只会让 `users.solved_count` 增加一次；公开样例不进入台账。
+正式提交进入终态时，Judge 先以条件更新锁定唯一状态流转，再向 `submission_stat_events` 写入以 `submission_id` 为主键的台账。台账驱动 `user_problem_progress`、用户/题目计数和 `user_exercise_progress` 的确定性聚合；重复终态或重判只更新同一事件，不会新增尝试。进度按 `javascript-v8` 与 `nodejs` 分别统计尝试和首次 Accepted，并派生任一模式完成、双模式完成两个维度。公开样例和 `System Error` 都不进入台账，也不改变课程进度。
 
 统计重建任务获取独占 advisory lock，在线 Judge 终态事务获取共享 lock，避免重建与实时增量相互覆盖。重建以正式终态提交为事实来源，在一个事务内替换进度、台账和派生计数，可安全重复执行。
 

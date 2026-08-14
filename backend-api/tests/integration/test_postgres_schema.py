@@ -30,7 +30,7 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260814_0015"
+            assert revision == "20260814_0016"
 
             problem_columns = set(
                 (
@@ -122,6 +122,13 @@ async def test_migrations_preserve_postgresql_features(
             assert "ai_usage_records" in tables
             assert "audit_logs" in tables
             assert "test_sets" in tables
+            assert {
+                "courses",
+                "chapters",
+                "exercises",
+                "exercise_prerequisites",
+                "user_exercise_progress",
+            } <= tables
 
             citext_columns = set(
                 (
@@ -151,6 +158,7 @@ async def test_migrations_preserve_postgresql_features(
             assert "content_review_status" in enum_names
             assert {"test_set_status", "checker_type"} <= enum_names
             assert "training_category" in enum_names
+            assert {"course_type", "exercise_progress_status"} <= enum_names
 
             indexes = set(
                 (
@@ -179,6 +187,8 @@ async def test_migrations_preserve_postgresql_features(
             assert "uq_test_sets_active_problem" in indexes
             assert "idx_test_cases_test_set_sequence" in indexes
             assert "idx_problems_public_training_category" in indexes
+            assert "idx_courses_public_sort" in indexes
+            assert "idx_user_exercise_progress_user_status" in indexes
 
             triggers = set(
                 (
@@ -198,6 +208,7 @@ async def test_migrations_preserve_postgresql_features(
                 "trg_submissions_snapshot_immutable",
                 "trg_problems_version",
             } <= triggers
+            assert "trg_exercise_prerequisite_acyclic" in triggers
     finally:
         await engine.dispose()
 

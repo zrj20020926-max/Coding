@@ -609,6 +609,52 @@ class JudgeRepository:
             ),
             {"problem_id": problem_id},
         )
+        await connection.execute(
+            text(
+                """
+                INSERT INTO user_exercise_progress (
+                    user_id, exercise_id, status, selected_runtime, attempt_count,
+                    v8_attempt_count, nodejs_attempt_count, v8_completed_at,
+                    nodejs_completed_at, first_completed_at, last_attempted_at, updated_at
+                )
+                SELECT :user_id, exercises.id,
+                       CAST(CASE WHEN bool_or(events.accepted) THEN 'completed'
+                                 ELSE 'attempted' END AS exercise_progress_status),
+                       (array_agg(languages.slug ORDER BY events.applied_at DESC,
+                                  events.submission_id DESC))[1],
+                       count(*)::integer,
+                       count(*) FILTER (
+                           WHERE languages.slug = 'javascript-v8')::integer,
+                       count(*) FILTER (WHERE languages.slug = 'nodejs')::integer,
+                       min(events.applied_at) FILTER (
+                           WHERE events.accepted AND languages.slug = 'javascript-v8'),
+                       min(events.applied_at) FILTER (
+                           WHERE events.accepted AND languages.slug = 'nodejs'),
+                       min(events.applied_at) FILTER (WHERE events.accepted),
+                       max(events.applied_at), now()
+                  FROM submission_stat_events events
+                  JOIN submissions ON submissions.id = events.submission_id
+                  JOIN languages ON languages.id = submissions.language_id
+                  JOIN exercises ON exercises.problem_id = events.problem_id
+                 WHERE events.user_id = :user_id
+                   AND events.problem_id = :problem_id
+                   AND languages.slug IN ('javascript-v8', 'nodejs')
+                 GROUP BY exercises.id
+                ON CONFLICT (user_id, exercise_id) DO UPDATE SET
+                    status = EXCLUDED.status,
+                    selected_runtime = EXCLUDED.selected_runtime,
+                    attempt_count = EXCLUDED.attempt_count,
+                    v8_attempt_count = EXCLUDED.v8_attempt_count,
+                    nodejs_attempt_count = EXCLUDED.nodejs_attempt_count,
+                    v8_completed_at = EXCLUDED.v8_completed_at,
+                    nodejs_completed_at = EXCLUDED.nodejs_completed_at,
+                    first_completed_at = EXCLUDED.first_completed_at,
+                    last_attempted_at = EXCLUDED.last_attempted_at,
+                    updated_at = now()
+                """
+            ),
+            {"user_id": user_id, "problem_id": problem_id},
+        )
 
 
 def create_repository(database_url: str) -> JudgeRepository:

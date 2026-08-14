@@ -486,3 +486,215 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
                 )
         await repository.close()
         await engine.dispose()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_learning_progress_tracks_runtimes_and_excludes_sample_and_system_error() -> None:
+    database_url = os.getenv("TEST_DATABASE_URL")
+    if not database_url:
+        pytest.skip("TEST_DATABASE_URL is not configured")
+    if not (make_url(database_url).database or "").endswith("_test"):
+        pytest.fail("Integration tests require a database whose name ends with '_test'")
+
+    engine = create_async_engine(database_url)
+    repository = JudgeRepository(database_url)
+    suffix = uuid4().hex[:10]
+    user_id: UUID | None = None
+    problem_id: int | None = None
+    test_set_id: UUID | None = None
+    course_id: int | None = None
+    exercise_id: int | None = None
+    submission_ids: list[UUID] = []
+    try:
+        async with engine.begin() as connection:
+            user_id = await connection.scalar(
+                text(
+                    "INSERT INTO users (username, email, password_hash, nickname) "
+                    "VALUES (:username, :email, 'hash', 'learning progress') RETURNING id"
+                ),
+                {
+                    "username": f"learning_{suffix}",
+                    "email": f"learning-{suffix}@example.com",
+                },
+            )
+            problem_id = await connection.scalar(
+                text(
+                    "INSERT INTO problems (slug, title, description, difficulty, "
+                    "input_description, output_description, visibility) VALUES "
+                    "(:slug, 'Learning progress', 'd', 'easy', 'i', 'o', 'public') "
+                    "RETURNING id"
+                ),
+                {"slug": f"learning-progress-{suffix}"},
+            )
+            test_set_id = await connection.scalar(
+                text(
+                    "INSERT INTO test_sets (problem_id, version, status, case_count, "
+                    "total_score) VALUES (:problem_id, 1, 'active', 0, 0) RETURNING id"
+                ),
+                {"problem_id": problem_id},
+            )
+            course_id = await connection.scalar(
+                text(
+                    "INSERT INTO courses (slug, title, description, type, sort_order, "
+                    "is_public) VALUES (:slug, 'learning', 'learning', 'input', 9000, true) "
+                    "RETURNING id"
+                ),
+                {"slug": f"learning-course-{suffix}"},
+            )
+            chapter_id = await connection.scalar(
+                text(
+                    "INSERT INTO chapters (course_id, slug, title, description, sort_order, "
+                    "estimated_minutes, is_public) VALUES (:course_id, :slug, 'learning', "
+                    "'learning', 1, 10, true) RETURNING id"
+                ),
+                {"course_id": course_id, "slug": f"learning-chapter-{suffix}"},
+            )
+            exercise_id = await connection.scalar(
+                text(
+                    "INSERT INTO exercises (problem_id, chapter_id, sort_order, "
+                    "learning_objectives, v8_notes, nodejs_notes, common_mistakes, "
+                    "starter_code_v8, starter_code_nodejs, estimated_minutes) VALUES "
+                    "(:problem_id, :chapter_id, 1, 'learn', 'v8', 'node', '[]'::jsonb, "
+                    "'print(1)', 'console.log(1)', 10) RETURNING id"
+                ),
+                {"problem_id": problem_id, "chapter_id": chapter_id},
+            )
+            language_ids = dict(
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT slug, id FROM languages "
+                            "WHERE slug IN ('javascript-v8', 'nodejs')"
+                        )
+                    )
+                ).all()
+            )
+
+            async def create_submission(language: str, mode: str = "judge") -> UUID:
+                submission_id = await connection.scalar(
+                    text(
+                        "INSERT INTO submissions (user_id, problem_id, language_id, status, "
+                        "mode, source_object_key, source_checksum, test_set_id, problem_version, "
+                        "time_limit_ms_snapshot, memory_limit_mb_snapshot) VALUES (:user_id, "
+                        ":problem_id, :language_id, 'Pending', CAST(:mode AS submission_mode), "
+                        ":object_key, :checksum, :test_set_id, 1, 1000, 256) RETURNING id"
+                    ),
+                    {
+                        "user_id": user_id,
+                        "problem_id": problem_id,
+                        "language_id": language_ids[language],
+                        "mode": mode,
+                        "object_key": f"source/{uuid4()}",
+                        "checksum": uuid4().hex * 2,
+                        "test_set_id": test_set_id if mode == "judge" else None,
+                    },
+                )
+                await create_initial_attempt(connection, submission_id)
+                submission_ids.append(submission_id)
+                return submission_id
+
+            v8_accepted = await create_submission("javascript-v8")
+            node_wrong = await create_submission("nodejs")
+            node_accepted = await create_submission("nodejs")
+            v8_system_error = await create_submission("javascript-v8")
+            sample_accepted = await create_submission("nodejs", "sample")
+
+        async def finalize(submission_id: UUID, status: SubmissionStatus) -> bool:
+            owner = f"learning-{submission_id}"
+            job = await claim_running(repository, submission_id, owner)
+            return await repository.finalize(
+                job,
+                SubmissionStatus.RUNNING,
+                JudgeResult(status=status, total_case_count=0),
+                owner,
+            )
+
+        assert await finalize(v8_accepted, SubmissionStatus.ACCEPTED)
+        assert not await repository.finalize(
+            await repository.load_submission(v8_accepted),
+            SubmissionStatus.RUNNING,
+            JudgeResult(status=SubmissionStatus.ACCEPTED),
+            "duplicate-owner",
+        )
+        assert await finalize(node_wrong, SubmissionStatus.WRONG_ANSWER)
+        assert await finalize(node_accepted, SubmissionStatus.ACCEPTED)
+        assert await finalize(v8_system_error, SubmissionStatus.SYSTEM_ERROR)
+        assert await finalize(sample_accepted, SubmissionStatus.ACCEPTED)
+
+        async with engine.connect() as connection:
+            progress = (
+                await connection.execute(
+                    text(
+                        "SELECT status::text AS status, selected_runtime, attempt_count, "
+                        "v8_attempt_count, nodejs_attempt_count, v8_completed_at IS NOT NULL "
+                        "AS v8_completed, nodejs_completed_at IS NOT NULL AS nodejs_completed "
+                        "FROM user_exercise_progress WHERE user_id=:user_id "
+                        "AND exercise_id=:exercise_id"
+                    ),
+                    {"user_id": user_id, "exercise_id": exercise_id},
+                )
+            ).mappings().one()
+            event_count = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM submission_stat_events "
+                    "WHERE user_id=:user_id AND problem_id=:problem_id"
+                ),
+                {"user_id": user_id, "problem_id": problem_id},
+            )
+        assert progress == {
+            "status": "completed",
+            "selected_runtime": "nodejs",
+            "attempt_count": 3,
+            "v8_attempt_count": 1,
+            "nodejs_attempt_count": 2,
+            "v8_completed": True,
+            "nodejs_completed": True,
+        }
+        assert event_count == 3
+    finally:
+        async with engine.begin() as connection:
+            if user_id is not None and exercise_id is not None:
+                await connection.execute(
+                    text(
+                        "DELETE FROM user_exercise_progress WHERE user_id=:user_id "
+                        "AND exercise_id=:exercise_id"
+                    ),
+                    {"user_id": user_id, "exercise_id": exercise_id},
+                )
+            for submission_id in submission_ids:
+                await connection.execute(
+                    text("DELETE FROM submissions WHERE id=:submission_id"),
+                    {"submission_id": submission_id},
+                )
+            if exercise_id is not None:
+                await connection.execute(
+                    text("DELETE FROM exercises WHERE id=:exercise_id"),
+                    {"exercise_id": exercise_id},
+                )
+            if course_id is not None:
+                await connection.execute(
+                    text("DELETE FROM courses WHERE id=:course_id"),
+                    {"course_id": course_id},
+                )
+            if test_set_id is not None:
+                await connection.execute(
+                    text("UPDATE test_sets SET status='draft' WHERE id=:test_set_id"),
+                    {"test_set_id": test_set_id},
+                )
+                await connection.execute(
+                    text("DELETE FROM test_sets WHERE id=:test_set_id"),
+                    {"test_set_id": test_set_id},
+                )
+            if problem_id is not None:
+                await connection.execute(
+                    text("DELETE FROM problems WHERE id=:problem_id"),
+                    {"problem_id": problem_id},
+                )
+            if user_id is not None:
+                await connection.execute(
+                    text("DELETE FROM users WHERE id=:user_id"),
+                    {"user_id": user_id},
+                )
+        await repository.close()
+        await engine.dispose()

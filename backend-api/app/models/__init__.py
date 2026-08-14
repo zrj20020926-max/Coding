@@ -9,6 +9,15 @@ from app.models.content import (
     Discussion,
     DiscussionComment,
 )
+from app.models.course import (
+    Chapter,
+    Course,
+    CourseType,
+    Exercise,
+    ExercisePrerequisite,
+    ExerciseProgressStatus,
+    UserExerciseProgress,
+)
 from app.models.problem import (
     CheckerType,
     Favorite,
@@ -52,6 +61,13 @@ __all__ = [
     "DailyChallenge",
     "Discussion",
     "DiscussionComment",
+    "Course",
+    "CourseType",
+    "Chapter",
+    "Exercise",
+    "ExercisePrerequisite",
+    "ExerciseProgressStatus",
+    "UserExerciseProgress",
     "Favorite",
     "Language",
     "Outbox",

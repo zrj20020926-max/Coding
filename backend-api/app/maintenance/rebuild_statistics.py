@@ -18,6 +18,7 @@ TERMINAL_SQL = (
 @dataclass(frozen=True)
 class RebuildResult:
     progress_rows: int
+    exercise_progress_rows: int
     stat_event_rows: int
     user_submission_count: int
     problem_submission_count: int
@@ -30,12 +31,10 @@ async def rebuild_statistics(database_url: str) -> RebuildResult:
     try:
         async with engine.begin() as connection:
             await connection.execute(
-                text(
-                    "SELECT pg_advisory_xact_lock("
-                    "hashtext('codearena:training-statistics'))"
-                )
+                text("SELECT pg_advisory_xact_lock(hashtext('codearena:training-statistics'))")
             )
             await connection.execute(text("DELETE FROM user_problem_progress"))
+            await connection.execute(text("DELETE FROM user_exercise_progress"))
             await connection.execute(text("DELETE FROM submission_stat_events"))
             await connection.execute(
                 text(
@@ -80,9 +79,39 @@ async def rebuild_statistics(database_url: str) -> RebuildResult:
             )
             await connection.execute(
                 text(
-                    "UPDATE users SET solved_count = 0, submission_count = 0, "
-                    "accepted_count = 0"
+                    """
+                    INSERT INTO user_exercise_progress (
+                        user_id, exercise_id, status, selected_runtime, attempt_count,
+                        v8_attempt_count, nodejs_attempt_count, v8_completed_at,
+                        nodejs_completed_at, first_completed_at, last_attempted_at, updated_at
+                    )
+                    SELECT events.user_id, exercises.id,
+                           CAST(CASE WHEN bool_or(events.accepted) THEN 'completed'
+                                     ELSE 'attempted' END AS exercise_progress_status),
+                           (array_agg(languages.slug ORDER BY events.applied_at DESC,
+                                      events.submission_id DESC))[1],
+                           count(*)::integer,
+                           count(*) FILTER (
+                               WHERE languages.slug = 'javascript-v8')::integer,
+                           count(*) FILTER (WHERE languages.slug = 'nodejs')::integer,
+                           min(events.applied_at) FILTER (
+                               WHERE events.accepted
+                                 AND languages.slug = 'javascript-v8'),
+                           min(events.applied_at) FILTER (
+                               WHERE events.accepted AND languages.slug = 'nodejs'),
+                           min(events.applied_at) FILTER (WHERE events.accepted),
+                           max(events.applied_at), now()
+                      FROM submission_stat_events events
+                      JOIN submissions ON submissions.id = events.submission_id
+                      JOIN languages ON languages.id = submissions.language_id
+                      JOIN exercises ON exercises.problem_id = events.problem_id
+                     WHERE languages.slug IN ('javascript-v8', 'nodejs')
+                     GROUP BY events.user_id, exercises.id
+                    """
                 )
+            )
+            await connection.execute(
+                text("UPDATE users SET solved_count = 0, submission_count = 0, accepted_count = 0")
             )
             await connection.execute(
                 text(
@@ -132,12 +161,13 @@ async def rebuild_statistics(database_url: str) -> RebuildResult:
                 )
             )
             progress_rows = int(
-                await connection.scalar(text("SELECT count(*) FROM user_problem_progress"))
-                or 0
+                await connection.scalar(text("SELECT count(*) FROM user_problem_progress")) or 0
             )
             stat_event_rows = int(
-                await connection.scalar(text("SELECT count(*) FROM submission_stat_events"))
-                or 0
+                await connection.scalar(text("SELECT count(*) FROM submission_stat_events")) or 0
+            )
+            exercise_progress_rows = int(
+                await connection.scalar(text("SELECT count(*) FROM user_exercise_progress")) or 0
             )
             user_submission_count = int(
                 await connection.scalar(
@@ -153,6 +183,7 @@ async def rebuild_statistics(database_url: str) -> RebuildResult:
             )
             return RebuildResult(
                 progress_rows=progress_rows,
+                exercise_progress_rows=exercise_progress_rows,
                 stat_event_rows=stat_event_rows,
                 user_submission_count=user_submission_count,
                 problem_submission_count=problem_submission_count,
@@ -174,7 +205,9 @@ def main() -> None:
     result = asyncio.run(rebuild_statistics(settings.database_url))
     print(
         "statistics rebuilt: "
-        f"progress={result.progress_rows}, events={result.stat_event_rows}, "
+        f"problem_progress={result.progress_rows}, "
+        f"exercise_progress={result.exercise_progress_rows}, "
+        f"events={result.stat_event_rows}, "
         f"users={result.user_submission_count}, problems={result.problem_submission_count}"
     )
 

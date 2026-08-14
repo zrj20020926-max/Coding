@@ -18,6 +18,7 @@ from app.bootstrap.content import (
     run_content_bootstrap,
 )
 from app.models.content import Collection, CollectionProblem, DailyChallenge
+from app.models.course import Chapter, Course, Exercise, ExercisePrerequisite
 from app.models.problem import Language, Problem, ProblemVisibility
 from app.models.problem import TestSet as ProblemTestSet
 from app.models.problem import TestSetStatus as ProblemTestSetStatus
@@ -126,11 +127,21 @@ async def test_empty_bootstrap_is_idempotent_and_populates_all_content(
     assert second.problems.skipped == 168
     assert second.test_sets.skipped == 168
     assert second.collections.skipped == 18
+    assert first.courses.created == 12
+    assert first.chapters.created == 20
+    assert first.exercises.created == 168
+    assert second.courses.skipped == 12
+    assert second.chapters.skipped == 20
+    assert second.exercises.skipped == 168
     assert second.daily_challenges.skipped == 14
     assert await db_session.scalar(select(func.count(Problem.id))) == 168
     assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 168
     assert await db_session.scalar(select(func.count(Collection.id))) == 18
     assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 168
+    assert await db_session.scalar(select(func.count(Course.id))) == 12
+    assert await db_session.scalar(select(func.count(Chapter.id))) == 20
+    assert await db_session.scalar(select(func.count(Exercise.id))) == 168
+    assert await db_session.scalar(select(func.count(ExercisePrerequisite.exercise_id))) == 166
     assert await db_session.scalar(select(func.count(DailyChallenge.problem_id))) == 14
     challenge = await db_session.scalar(select(DailyChallenge))
     assert challenge is not None

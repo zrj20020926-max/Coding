@@ -48,6 +48,27 @@ def test_catalog_collections_and_relative_challenges_are_complete() -> None:
     assert all(collection.is_public and collection.problems for collection in bundle.collections)
     assert sum(len(collection.problems) for collection in bundle.collections) == 168
     assert len(bundle.daily_challenges) == 14
+    assert [item.title for item in bundle.courses] == [
+        "JavaScript V8 快速入门",
+        "Node.js stdin 快速入门",
+        "单值和单行输入",
+        "多行输入",
+        "T 组测试",
+        "EOF 与哨兵",
+        "数组和矩阵",
+        "字符串与空行",
+        "混合格式",
+        "输出格式",
+        "大输入与高性能解析",
+        "综合训练",
+    ]
+    assert [item.sort_order for item in bundle.courses] == list(range(1, 13))
+    assert sum(len(item.chapters) for item in bundle.courses) == 20
+    assert sum(
+        len(chapter.problems)
+        for item in bundle.courses
+        for chapter in item.chapters
+    ) == 168
     today = datetime.now(ZoneInfo(bundle.manifest.timezone)).date()
     actual = []
     for challenge in bundle.daily_challenges:

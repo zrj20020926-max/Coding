@@ -86,6 +86,12 @@ async def test_fresh_postgres_and_minio_initialize_and_remain_idempotent(
         assert first.test_sets.created == 168
         assert second.problems.skipped == 168
         assert second.test_sets.skipped == 168
+        assert first.courses.created == 12
+        assert first.chapters.created == 20
+        assert first.exercises.created == 168
+        assert second.courses.skipped == 12
+        assert second.chapters.skipped == 20
+        assert second.exercises.skipped == 168
         async with engine.connect() as connection:
             counts = (
                 await connection.execute(
@@ -98,6 +104,9 @@ async def test_fresh_postgres_and_minio_initialize_and_remain_idempotent(
                         "(SELECT count(*) FROM collections WHERE is_public) "
                         "AS collections, "
                         "(SELECT count(*) FROM collection_problems) AS collection_items, "
+                        "(SELECT count(*) FROM courses WHERE is_public) AS courses, "
+                        "(SELECT count(*) FROM chapters WHERE is_public) AS chapters, "
+                        "(SELECT count(*) FROM exercises WHERE is_public) AS exercises, "
                         "(SELECT count(*) FROM daily_challenges WHERE challenge_date = :today) "
                         "AS daily"
                     ),
@@ -109,6 +118,9 @@ async def test_fresh_postgres_and_minio_initialize_and_remain_idempotent(
             "active_sets": 168,
             "collections": 18,
             "collection_items": 168,
+            "courses": 12,
+            "chapters": 20,
+            "exercises": 168,
             "daily": 1,
         }
         objects = [item.object_name for item in minio.list_objects(bucket, recursive=True)]

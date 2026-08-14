@@ -24,6 +24,13 @@ from sqlalchemy.orm import selectinload
 from app.core.config import settings
 from app.db.session import SessionLocal, engine
 from app.models.content import Collection, CollectionProblem, DailyChallenge
+from app.models.course import (
+    Chapter,
+    Course,
+    CourseType,
+    Exercise,
+    ExercisePrerequisite,
+)
 from app.models.problem import (
     CheckerType,
     Language,
@@ -62,6 +69,7 @@ class ContentManifest(StrictModel):
     tags: str
     problems: list[str] = Field(min_length=1)
     collections: str
+    courses: Optional[str] = None
     daily_challenges: str
     test_data_directory: str = "test-data"
 
@@ -69,6 +77,11 @@ class ContentManifest(StrictModel):
     @classmethod
     def validate_path(cls, value: str) -> str:
         return _safe_relative_path(value)
+
+    @field_validator("courses")
+    @classmethod
+    def validate_optional_path(cls, value: str | None) -> str | None:
+        return _safe_relative_path(value) if value is not None else None
 
     @field_validator("problems")
     @classmethod
@@ -295,6 +308,64 @@ class CollectionsDocument(StrictModel):
         return self
 
 
+class CourseChapterContent(StrictModel):
+    slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=100)
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=10_000)
+    sort_order: int = Field(ge=0, le=500)
+    estimated_minutes: int = Field(ge=1, le=100_000)
+    is_public: bool = True
+    problems: list[str] = Field(min_length=1, max_length=500)
+
+    @field_validator("problems")
+    @classmethod
+    def validate_unique_problems(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("course chapter problems must be unique")
+        return value
+
+
+class CourseContent(StrictModel):
+    slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=100)
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=10_000)
+    type: CourseType
+    sort_order: int = Field(ge=0, le=500)
+    is_public: bool = True
+    chapters: list[CourseChapterContent] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_chapter_order(self) -> CourseContent:
+        slugs = [item.slug for item in self.chapters]
+        orders = [item.sort_order for item in self.chapters]
+        if len(slugs) != len(set(slugs)) or len(orders) != len(set(orders)):
+            raise ValueError("course chapter slugs and sort orders must be unique")
+        return self
+
+
+class CoursesDocument(StrictModel):
+    courses: list[CourseContent] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_course_order(self) -> CoursesDocument:
+        slugs = [item.slug for item in self.courses]
+        orders = [item.sort_order for item in self.courses]
+        chapter_slugs = [chapter.slug for item in self.courses for chapter in item.chapters]
+        problem_slugs = [
+            problem
+            for item in self.courses
+            for chapter in item.chapters
+            for problem in chapter.problems
+        ]
+        if len(slugs) != len(set(slugs)) or len(orders) != len(set(orders)):
+            raise ValueError("course slugs and sort orders must be unique")
+        if len(chapter_slugs) != len(set(chapter_slugs)):
+            raise ValueError("chapter slugs must be globally unique")
+        if len(problem_slugs) != len(set(problem_slugs)):
+            raise ValueError("a problem can belong to only one exercise")
+        return self
+
+
 class DailyChallengeContent(StrictModel):
     date: Union[Date, str]
     problem: str
@@ -332,6 +403,9 @@ class ContentImportReport(StrictModel):
     test_cases: EntityReport = Field(default_factory=EntityReport)
     objects: EntityReport = Field(default_factory=EntityReport)
     collections: EntityReport = Field(default_factory=EntityReport)
+    courses: EntityReport = Field(default_factory=EntityReport)
+    chapters: EntityReport = Field(default_factory=EntityReport)
+    exercises: EntityReport = Field(default_factory=EntityReport)
     daily_challenges: EntityReport = Field(default_factory=EntityReport)
     failures: int = 0
     cleanup_failures: int = 0
@@ -378,6 +452,7 @@ class ContentBundle:
     tags: tuple[ContentTag, ...]
     problems: dict[str, MaterializedProblem]
     collections: tuple[CollectionContent, ...]
+    courses: tuple[CourseContent, ...]
     daily_challenges: tuple[DailyChallengeContent, ...]
 
 
@@ -493,6 +568,15 @@ def load_content_bundle(
         CollectionsDocument,
         "题单文件",
     )
+    courses_doc: CoursesDocument | None = None
+    if manifest.courses is not None:
+        loaded_courses = _load_yaml(
+            _resolve_inside(root, manifest.courses, "课程文件"),
+            CoursesDocument,
+            "课程文件",
+        )
+        assert isinstance(loaded_courses, CoursesDocument)
+        courses_doc = loaded_courses
     daily_doc = _load_yaml(
         _resolve_inside(root, manifest.daily_challenges, "每日一题文件"),
         DailyChallengesDocument,
@@ -537,12 +621,12 @@ def load_content_bundle(
     for materialized in problems.values():
         if not set(materialized.document.tags) <= tag_slugs:
             raise ContentBootstrapError("CONTENT_INVALID", "题目引用了不存在的标签")
-    referenced = {
-        slug for collection in selected_collections for slug in collection.problems
-    }
+    referenced = {slug for collection in selected_collections for slug in collection.problems}
     if not referenced <= all_problem_slugs:
         raise ContentBootstrapError("CONTENT_INVALID", "题单引用了不存在的题目")
     _validate_course_structure(all_documents, collections_doc.collections)
+    if courses_doc is not None:
+        _validate_learning_catalog(all_documents, courses_doc.courses)
     daily = (
         tuple(daily_doc.daily_challenges)
         if problem_slug is None and collection_slug is None
@@ -560,6 +644,11 @@ def load_content_bundle(
         tags=tuple(tags_doc.tags),
         problems=problems,
         collections=selected_collections if problem_slug is None else (),
+        courses=(
+            tuple(courses_doc.courses)
+            if courses_doc is not None and problem_slug is None and collection_slug is None
+            else ()
+        ),
         daily_challenges=daily,
     )
 
@@ -584,8 +673,7 @@ def _render_problem_description(document: ProblemContent) -> str:
             )
         sections.append("## 公开样例\n\n" + "\n\n".join(sample_sections))
     sections.append(
-        "## 常见错误\n\n"
-        + "\n".join(f"- {message}" for message in document.common_errors)
+        "## 常见错误\n\n" + "\n".join(f"- {message}" for message in document.common_errors)
     )
     prerequisites = "、".join(document.prerequisites) if document.prerequisites else "无"
     sections.append(
@@ -644,6 +732,42 @@ def _validate_course_structure(
 
     for slug in course_documents:
         visit(slug)
+
+
+def _validate_learning_catalog(
+    documents: dict[str, ProblemContent], courses: list[CourseContent]
+) -> None:
+    exercise_slugs = {
+        slug for course in courses for chapter in course.chapters for slug in chapter.problems
+    }
+    course_documents = {
+        slug: document for slug, document in documents.items() if document.chapter is not None
+    }
+    if exercise_slugs != set(course_documents):
+        raise ContentBootstrapError(
+            "CONTENT_INVALID",
+            "课程练习必须完整且唯一地覆盖全部训练内容",
+        )
+    for slug in exercise_slugs:
+        document = course_documents[slug]
+        if (
+            any(
+                value is None
+                for value in (
+                    document.learning_objective,
+                    document.v8_hint,
+                    document.nodejs_hint,
+                    document.starter_code_v8,
+                    document.starter_code_nodejs,
+                    document.estimated_minutes,
+                )
+            )
+            or not document.common_errors
+        ):
+            raise ContentBootstrapError(
+                "CONTENT_INVALID",
+                f"课程练习 {slug} 缺少完整学习元数据",
+            )
 
 
 def _problem_values(document: ProblemContent) -> dict[str, object]:
@@ -715,9 +839,7 @@ async def _ensure_test_object(
         if exists:
             stored = await store.get_test_data(object_key)
             if hashlib.sha256(stored).hexdigest() != expected_hash:
-                raise ContentBootstrapError(
-                    "STORED_OBJECT_CORRUPT", "已存在的测试数据对象校验失败"
-                )
+                raise ContentBootstrapError("STORED_OBJECT_CORRUPT", "已存在的测试数据对象校验失败")
             report.skipped += 1
             return
         if dry_run:
@@ -729,14 +851,10 @@ async def _ensure_test_object(
     except ContentBootstrapError:
         raise
     except Exception as exc:
-        raise ContentBootstrapError(
-            "TEST_DATA_STORAGE_FAILED", "测试数据存储暂时不可用"
-        ) from exc
+        raise ContentBootstrapError("TEST_DATA_STORAGE_FAILED", "测试数据存储暂时不可用") from exc
 
 
-async def _cleanup_objects(
-    db: AsyncSession, store: SourceObjectStore, uploaded: list[str]
-) -> int:
+async def _cleanup_objects(db: AsyncSession, store: SourceObjectStore, uploaded: list[str]) -> int:
     failures = 0
     for object_key in reversed(uploaded):
         try:
@@ -782,6 +900,305 @@ async def _ensure_languages(db: AsyncSession) -> None:
         )
 
 
+def _exercise_values(document: ProblemContent) -> dict[str, object]:
+    if any(
+        value is None
+        for value in (
+            document.learning_objective,
+            document.v8_hint,
+            document.nodejs_hint,
+            document.starter_code_v8,
+            document.starter_code_nodejs,
+            document.estimated_minutes,
+        )
+    ):
+        raise ContentBootstrapError("CONTENT_INVALID", "课程练习缺少学习元数据")
+    return {
+        "learning_objectives": document.learning_objective,
+        "v8_notes": document.v8_hint,
+        "nodejs_notes": document.nodejs_hint,
+        "common_mistakes": list(document.common_errors),
+        "starter_code_v8": document.starter_code_v8,
+        "starter_code_nodejs": document.starter_code_nodejs,
+        "estimated_minutes": document.estimated_minutes,
+        "is_public": document.publish,
+    }
+
+
+async def _rebuild_all_learning_progress(db: AsyncSession) -> None:
+    if db.get_bind().dialect.name != "postgresql":
+        return
+    await db.execute(
+        text(
+            """
+            INSERT INTO user_exercise_progress (
+                user_id, exercise_id, status, selected_runtime, attempt_count,
+                v8_attempt_count, nodejs_attempt_count, v8_completed_at,
+                nodejs_completed_at, first_completed_at, last_attempted_at, updated_at
+            )
+            SELECT events.user_id, exercises.id,
+                   CAST(CASE WHEN bool_or(events.accepted) THEN 'completed'
+                             ELSE 'attempted' END AS exercise_progress_status),
+                   (array_agg(languages.slug ORDER BY events.applied_at DESC,
+                              events.submission_id DESC))[1],
+                   count(*)::integer,
+                   count(*) FILTER (WHERE languages.slug = 'javascript-v8')::integer,
+                   count(*) FILTER (WHERE languages.slug = 'nodejs')::integer,
+                   min(events.applied_at) FILTER (
+                       WHERE events.accepted AND languages.slug = 'javascript-v8'),
+                   min(events.applied_at) FILTER (
+                       WHERE events.accepted AND languages.slug = 'nodejs'),
+                   min(events.applied_at) FILTER (WHERE events.accepted),
+                   max(events.applied_at), now()
+              FROM submission_stat_events events
+              JOIN submissions ON submissions.id = events.submission_id
+              JOIN languages ON languages.id = submissions.language_id
+              JOIN exercises ON exercises.problem_id = events.problem_id
+             WHERE languages.slug IN ('javascript-v8', 'nodejs')
+             GROUP BY events.user_id, exercises.id
+            ON CONFLICT (user_id, exercise_id) DO UPDATE SET
+                status = EXCLUDED.status,
+                selected_runtime = EXCLUDED.selected_runtime,
+                attempt_count = EXCLUDED.attempt_count,
+                v8_attempt_count = EXCLUDED.v8_attempt_count,
+                nodejs_attempt_count = EXCLUDED.nodejs_attempt_count,
+                v8_completed_at = EXCLUDED.v8_completed_at,
+                nodejs_completed_at = EXCLUDED.nodejs_completed_at,
+                first_completed_at = EXCLUDED.first_completed_at,
+                last_attempted_at = EXCLUDED.last_attempted_at,
+                updated_at = now()
+            """
+        )
+    )
+
+
+async def _sync_learning_courses(
+    db: AsyncSession,
+    bundle: ContentBundle,
+    problems: dict[str, Problem],
+    resolved: dict[str, Problem],
+    report: ContentImportReport,
+    *,
+    dry_run: bool,
+    allow_published_updates: bool,
+) -> None:
+    if not bundle.courses:
+        return
+    courses = {
+        item.slug: item
+        for item in (
+            await db.scalars(
+                select(Course)
+                .options(selectinload(Course.chapters).selectinload(Chapter.exercises))
+                .execution_options(populate_existing=True)
+            )
+        )
+        .unique()
+        .all()
+    }
+    chapters = {
+        item.slug: item
+        for item in (
+            await db.scalars(
+                select(Chapter)
+                .options(selectinload(Chapter.exercises))
+                .execution_options(populate_existing=True)
+            )
+        )
+        .unique()
+        .all()
+    }
+    exercises = {
+        item.problem_id: item
+        for item in (
+            await db.scalars(
+                select(Exercise)
+                .options(selectinload(Exercise.prerequisite_links))
+                .execution_options(populate_existing=True)
+            )
+        )
+        .unique()
+        .all()
+    }
+    if dry_run:
+        desired_chapters = [chapter for course in bundle.courses for chapter in course.chapters]
+        desired_problem_slugs = [slug for chapter in desired_chapters for slug in chapter.problems]
+        report.courses.created = sum(item.slug not in courses for item in bundle.courses)
+        report.courses.updated = len(bundle.courses) - report.courses.created
+        report.chapters.created = sum(item.slug not in chapters for item in desired_chapters)
+        report.chapters.updated = len(desired_chapters) - report.chapters.created
+        existing_exercise_slugs = {exercise.problem.slug for exercise in exercises.values()}
+        report.exercises.created = sum(
+            slug not in existing_exercise_slugs for slug in desired_problem_slugs
+        )
+        report.exercises.updated = len(desired_problem_slugs) - report.exercises.created
+        return
+
+    desired_course_slugs = {item.slug for item in bundle.courses}
+    desired_chapter_slugs = {chapter.slug for item in bundle.courses for chapter in item.chapters}
+    desired_problem_slugs = {
+        slug for item in bundle.courses for chapter in item.chapters for slug in chapter.problems
+    }
+    desired_problem_ids = {
+        problem.id
+        for slug in desired_problem_slugs
+        if (problem := resolved.get(slug) or problems.get(slug)) is not None
+    }
+    course_slug_by_id = {item.id: item.slug for item in courses.values()}
+    managed_chapters = [
+        chapter
+        for chapter in chapters.values()
+        if chapter.slug in desired_chapter_slugs
+        or course_slug_by_id.get(chapter.course_id) in desired_course_slugs
+    ]
+    managed_exercises = [
+        exercise for exercise in exercises.values() if exercise.problem_id in desired_problem_ids
+    ]
+    original_chapter_sort = {item.id: item.sort_order for item in managed_chapters}
+    original_exercise_sort = {item.id: item.sort_order for item in managed_exercises}
+    # Move managed rows out of the configured sort range before applying a
+    # potentially reordered catalog. This preserves exercise ids and progress.
+    for index, chapter in enumerate(managed_chapters, start=1):
+        chapter.sort_order = 100_000 + index
+    for index, exercise in enumerate(managed_exercises, start=1):
+        exercise.sort_order = 100_000 + index
+    await db.flush()
+
+    desired_exercises: dict[str, Exercise] = {}
+    for desired_course in bundle.courses:
+        course = courses.get(desired_course.slug)
+        course_values = {
+            "title": desired_course.title,
+            "description": desired_course.description,
+            "type": desired_course.type,
+            "sort_order": desired_course.sort_order,
+            "is_public": desired_course.is_public,
+        }
+        if course is None:
+            course = Course(slug=desired_course.slug, **course_values)
+            db.add(course)
+            courses[desired_course.slug] = course
+            report.courses.created += 1
+            await db.flush()
+        else:
+            changed = any(getattr(course, key) != value for key, value in course_values.items())
+            if changed and settings.app_env.lower() == "production" and course.is_public:
+                if not allow_published_updates:
+                    raise ContentBootstrapError(
+                        "PUBLISHED_CONTENT_PROTECTED",
+                        "生产环境禁止自动覆盖已发布课程",
+                    )
+            for key, value in course_values.items():
+                setattr(course, key, value)
+            if changed:
+                report.courses.updated += 1
+            else:
+                report.courses.skipped += 1
+
+        desired_chapter_slugs = {item.slug for item in desired_course.chapters}
+        for existing_chapter in chapters.values():
+            if existing_chapter.course_id != course.id:
+                continue
+            if existing_chapter.slug not in desired_chapter_slugs:
+                existing_chapter.is_public = False
+        for desired_chapter in desired_course.chapters:
+            chapter = chapters.get(desired_chapter.slug)
+            chapter_values = {
+                "course_id": course.id,
+                "title": desired_chapter.title,
+                "description": desired_chapter.description,
+                "sort_order": desired_chapter.sort_order,
+                "estimated_minutes": desired_chapter.estimated_minutes,
+                "is_public": desired_chapter.is_public,
+            }
+            if chapter is None:
+                chapter = Chapter(slug=desired_chapter.slug, **chapter_values)
+                db.add(chapter)
+                chapters[desired_chapter.slug] = chapter
+                report.chapters.created += 1
+                await db.flush()
+            else:
+                changed = any(
+                    (
+                        original_chapter_sort.get(chapter.id, chapter.sort_order)
+                        if key == "sort_order"
+                        else getattr(chapter, key)
+                    )
+                    != value
+                    for key, value in chapter_values.items()
+                )
+                for key, value in chapter_values.items():
+                    setattr(chapter, key, value)
+                if changed:
+                    report.chapters.updated += 1
+                else:
+                    report.chapters.skipped += 1
+
+            desired_problem_ids: set[int] = set()
+            for sort_order, slug in enumerate(desired_chapter.problems, start=1):
+                problem = resolved.get(slug) or problems.get(slug)
+                if problem is None:
+                    raise ContentBootstrapError("CONTENT_INVALID", f"课程引用了不存在的练习 {slug}")
+                desired_problem_ids.add(problem.id)
+                document = bundle.problems[slug].document
+                exercise_values = _exercise_values(document)
+                exercise = exercises.get(problem.id)
+                if exercise is None:
+                    exercise = Exercise(
+                        problem_id=problem.id,
+                        chapter_id=chapter.id,
+                        sort_order=sort_order,
+                        prerequisite_links=[],
+                        **exercise_values,
+                    )
+                    db.add(exercise)
+                    exercises[problem.id] = exercise
+                    report.exercises.created += 1
+                    await db.flush()
+                else:
+                    values = {
+                        "chapter_id": chapter.id,
+                        "sort_order": sort_order,
+                        **exercise_values,
+                    }
+                    changed = any(
+                        (
+                            original_exercise_sort.get(exercise.id, exercise.sort_order)
+                            if key == "sort_order"
+                            else getattr(exercise, key)
+                        )
+                        != value
+                        for key, value in values.items()
+                    )
+                    for key, value in values.items():
+                        setattr(exercise, key, value)
+                    if changed:
+                        report.exercises.updated += 1
+                    else:
+                        report.exercises.skipped += 1
+                desired_exercises[slug] = exercise
+            for existing_exercise in exercises.values():
+                if existing_exercise.chapter_id != chapter.id:
+                    continue
+                if existing_exercise.problem_id not in desired_problem_ids:
+                    existing_exercise.is_public = False
+
+    await db.flush()
+    for slug, exercise in desired_exercises.items():
+        desired_ids = {
+            desired_exercises[prerequisite].id
+            for prerequisite in bundle.problems[slug].document.prerequisites
+        }
+        actual_ids = {item.prerequisite_id for item in exercise.prerequisite_links}
+        if actual_ids != desired_ids:
+            exercise.prerequisite_links = [
+                ExercisePrerequisite(prerequisite_id=prerequisite_id)
+                for prerequisite_id in sorted(desired_ids)
+            ]
+    await db.flush()
+    await _rebuild_all_learning_progress(db)
+
+
 async def import_content_bundle(
     db: AsyncSession,
     store: SourceObjectStore,
@@ -822,12 +1239,16 @@ async def import_content_bundle(
             item.slug: item
             for item in (
                 await db.scalars(
-                    select(Problem).options(
+                    select(Problem)
+                    .options(
                         selectinload(Problem.tag_links).selectinload(ProblemTag.tag),
                         selectinload(Problem.test_sets).selectinload(TestSet.cases),
-                    ).execution_options(populate_existing=True)
+                    )
+                    .execution_options(populate_existing=True)
                 )
-            ).unique().all()
+            )
+            .unique()
+            .all()
         }
         resolved: dict[str, Problem] = {}
         for slug, desired in bundle.problems.items():
@@ -896,11 +1317,7 @@ async def import_content_bundle(
                     report.problems.skipped += 1
             if dry_run:
                 active = next(
-                    (
-                        item
-                        for item in problem.test_sets
-                            if item.status == TestSetStatus.ACTIVE
-                    ),
+                    (item for item in problem.test_sets if item.status == TestSetStatus.ACTIVE),
                     None,
                 )
                 if active is not None and _test_set_matches(active, desired):
@@ -930,17 +1347,11 @@ async def import_content_bundle(
                     )
                 continue
 
-            problem.tag_links = [
-                ProblemTag(tag_id=tags[tag_slug].id) for tag_slug in document.tags
-            ]
+            problem.tag_links = [ProblemTag(tag_id=tags[tag_slug].id) for tag_slug in document.tags]
             await db.flush()
             resolved[slug] = problem
             active = next(
-                (
-                        item
-                        for item in problem.test_sets
-                        if item.status == TestSetStatus.ACTIVE
-                ),
+                (item for item in problem.test_sets if item.status == TestSetStatus.ACTIVE),
                 None,
             )
             for case in desired.cases:
@@ -980,11 +1391,9 @@ async def import_content_bundle(
                         "PUBLISHED_CONTENT_PROTECTED",
                         "生产环境禁止自动替换已发布题目的活动测试集",
                     )
-                next_version = (
-                    await db.scalar(
-                        select(func.coalesce(func.max(TestSet.version), 0) + 1).where(
-                            TestSet.problem_id == problem.id
-                        )
+                next_version = await db.scalar(
+                    select(func.coalesce(func.max(TestSet.version), 0) + 1).where(
+                        TestSet.problem_id == problem.id
                     )
                 )
                 config = document.test_set
@@ -1025,9 +1434,7 @@ async def import_content_bundle(
                 await db.flush()
                 issues = await validate_test_set(db, new_set, store)
                 if issues:
-                    raise ContentBootstrapError(
-                        "TEST_SET_INVALID", "新测试集未通过完整性校验"
-                    )
+                    raise ContentBootstrapError("TEST_SET_INVALID", "新测试集未通过完整性校验")
                 new_set.status = TestSetStatus.READY
                 await db.flush()
                 if active is not None:
@@ -1040,6 +1447,16 @@ async def import_content_bundle(
             problem.visibility = (
                 ProblemVisibility.PUBLIC if document.publish else ProblemVisibility.DRAFT
             )
+
+        await _sync_learning_courses(
+            db,
+            bundle,
+            problems,
+            resolved,
+            report,
+            dry_run=dry_run,
+            allow_published_updates=allow_published_updates,
+        )
 
         if dry_run:
             existing_collections = {
@@ -1121,22 +1538,13 @@ async def import_content_bundle(
             challenge_date = _challenge_date(desired, bundle.manifest.timezone)
             problem = resolved.get(desired.problem) or problems.get(desired.problem)
             if problem is None or problem.visibility is not ProblemVisibility.PUBLIC:
-                raise ContentBootstrapError(
-                    "DAILY_CHALLENGE_INVALID", "每日一题必须引用已发布题目"
-                )
+                raise ContentBootstrapError("DAILY_CHALLENGE_INVALID", "每日一题必须引用已发布题目")
             challenge = await db.get(DailyChallenge, challenge_date)
             if challenge is None:
-                db.add(
-                    DailyChallenge(
-                        challenge_date=challenge_date, problem_id=problem.id
-                    )
-                )
+                db.add(DailyChallenge(challenge_date=challenge_date, problem_id=problem.id))
                 report.daily_challenges.created += 1
             elif challenge.problem_id != problem.id:
-                if (
-                    settings.app_env.lower() == "production"
-                    and not allow_published_updates
-                ):
+                if settings.app_env.lower() == "production" and not allow_published_updates:
                     raise ContentBootstrapError(
                         "PUBLISHED_CONTENT_PROTECTED",
                         "生产环境禁止自动替换已有每日一题",

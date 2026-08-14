@@ -1,6 +1,7 @@
 schema_version: 1
 timezone: Asia/Shanghai
 tags: tags.yaml
+courses: courses.yaml
 problems:
 - problems/js-acm/js-acm-read-one-integer.yaml
 - problems/js-acm/js-acm-read-one-float.yaml

@@ -16,6 +16,7 @@ from app.api.routes import (
     ai_analyses,
     auth,
     collections,
+    courses,
     discussions,
     health,
     metrics,
@@ -91,6 +92,7 @@ app.include_router(submissions.router, prefix=settings.api_prefix)
 app.include_router(ai_analyses.router, prefix=settings.api_prefix)
 app.include_router(training.router, prefix=settings.api_prefix)
 app.include_router(collections.router, prefix=settings.api_prefix)
+app.include_router(courses.router, prefix=settings.api_prefix)
 app.include_router(discussions.router, prefix=settings.api_prefix)
 app.include_router(admin_content.router, prefix=settings.api_prefix)
 app.include_router(admin_discussions.router, prefix=settings.api_prefix)

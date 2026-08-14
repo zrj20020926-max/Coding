@@ -10,6 +10,7 @@ erDiagram
   USERS ||--o{ CONTENT_REPORTS : reports
   USERS ||--o{ FAVORITES : owns
   USERS ||--o{ USER_PROBLEM_PROGRESS : tracks
+  USERS ||--o{ USER_EXERCISE_PROGRESS : learns
   USERS ||--o{ SUBMISSION_STAT_EVENTS : owns
   PROBLEMS ||--o{ TEST_SETS : versions
   TEST_SETS ||--o{ TEST_CASES : contains
@@ -21,6 +22,11 @@ erDiagram
   TAGS ||--o{ PROBLEM_TAGS : maps
   PROBLEMS ||--o{ USER_PROBLEM_PROGRESS : tracked_by
   PROBLEMS ||--o{ SUBMISSION_STAT_EVENTS : aggregates
+  PROBLEMS ||--o| EXERCISES : presents_as
+  COURSES ||--o{ CHAPTERS : contains
+  CHAPTERS ||--o{ EXERCISES : contains
+  EXERCISES ||--o{ EXERCISE_PREREQUISITES : requires
+  EXERCISES ||--o{ USER_EXERCISE_PROGRESS : tracked_by
   LANGUAGES ||--o{ SUBMISSIONS : compiles
   SUBMISSIONS ||--o{ SUBMISSION_CASE_RESULTS : produces
   SUBMISSIONS ||--o| SUBMISSION_STAT_EVENTS : counted_once
@@ -112,9 +118,21 @@ erDiagram
 
 ## 训练统计与重建
 
+`20260814_0016` 新增课程学习域：
+
+| ORM | 表 | 关键关系/约束 |
+| --- | --- | --- |
+| `Course` | `courses` | slug 唯一；类型为 `input/output/mixed/performance`；公开课程按 `sort_order,id` 稳定排序 |
+| `Chapter` | `chapters` | 属于 Course；全局 slug 唯一；同一 Course 内 sort_order 唯一 |
+| `Exercise` | `exercises` | 一对一关联现有 Problem；属于 Chapter；保存公开学习目标、双运行时提示/模板和预计时长 |
+| `ExercisePrerequisite` | `exercise_prerequisites` | 联合主键防重复与自依赖 CHECK；PostgreSQL 递归 constraint trigger 拒绝任何环 |
+| `UserExerciseProgress` | `user_exercise_progress` | 用户与练习联合主键；V8/Node.js 尝试数和首次完成时间分开保存 |
+
+公开课程查询只连接公开 Course、Chapter、Exercise 和 `visibility=public` 的 Problem。DTO 不加载 TestSet/TestCase、对象键、checksum、语言镜像/命令或引用实现；Exercise 中的 starter code 是面向学习者的公开初始模板，不是参考答案。
+
 `20260809_0006` 新增 `submission_stat_events`。该表以 `submission_id` 为主键，并保存用户、题目、终态、是否 Accepted 和应用时间；约束拒绝非终态。Judge 的终态条件更新、用例结果、台账插入、进度 upsert、用户计数和题目计数处于同一事务。重复消息无法再次插入台账，不会重复计数；同一道题后续 Accepted 只增加 Accepted 次数，不再增加 solved 数。
 
-`python -m app.maintenance.rebuild_statistics --apply` 从 `mode=judge` 的终态提交重建全部派生状态。在线终态事务使用共享 advisory lock，重建使用同名独占锁，因此不会与实时 Judge 写入交错。命令必须连接正确数据库并显式提供 `--apply`，生产执行前仍需备份并核对目标环境。
+`python -m app.maintenance.rebuild_statistics --apply` 从 `mode=judge` 的非 System Error 终态提交重建全部派生状态，包括双运行时课程进度。在线终态事务使用共享 advisory lock，重建使用同名独占锁，因此不会与实时 Judge 写入交错。命令必须连接正确数据库并显式提供 `--apply`，生产执行前仍需备份并核对目标环境。
 
 ## 内容运营与审核
 

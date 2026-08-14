@@ -13,6 +13,7 @@
 - 前端 Vitest、ESLint、类型检查与生产构建
 - GitHub Actions CI
 - SQLAlchemy 2.0 async 练习、输入输出分类、标签、语言与用户进度模型
+- 12 门输入输出课程、20 个有序章节、练习前置关系，以及 V8/Node.js 双维度学习进度
 - 公开训练课程分页、搜索、结构层级/分类/标签/个人状态筛选与排序
 - 公开题目详情、标签和启用语言接口
 - 管理员新增、修改、发布和下线题目
@@ -37,6 +38,7 @@
 │  ├─ migrations/                       # PostgreSQL 版本迁移
 │  ├─ seeds/                            # 可审阅的题目种子示例
 │  ├─ app/db/migration_bootstrap.py     # 旧库校验、stamp、upgrade
+│  ├─ app/models/course.py              # 课程、章节、练习与学习进度 ORM
 │  ├─ app/models/problem.py             # 题库 async ORM
 │  ├─ app/services/problem_import.py    # 幂等种子导入
 │  └─ tests/
@@ -85,6 +87,11 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 
 公开接口：
 
+- `GET /api/v1/courses`：按课程顺序返回公开课程及当前用户聚合进度。
+- `GET /api/v1/courses/{slug}`：返回有序章节、练习、前置关系、完成比例和下一推荐练习。
+- `GET /api/v1/chapters/{slug}`、`GET /api/v1/exercises/{slug}`：公开章节与练习学习详情。
+- `GET /api/v1/users/me/learning-progress`：当前用户所有课程的 V8、Node.js、任一模式和双模式进度。
+- `GET /api/v1/users/me/recommended-exercise`：推荐第一道未完成且前置条件已满足的公开练习。
 - `GET /api/v1/problems`：支持 `q`、`difficulty`、`category`、`tag`、`status`、`page`、`page_size`、`sort`。
 - `GET /api/v1/problems/{id}`：公开练习详情。
 - `GET /api/v1/tags`：标签列表。
@@ -98,6 +105,8 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 两种模式使用不同镜像、命令和沙箱文件集合。题目可分别配置 `starter_code_v8` 与 `starter_code_nodejs`；未配置时才使用平台通用模板。Node 通用模板不会无条件调用 `trim()`，避免破坏空行和末尾换行训练。
 
 `status=solved|attempted|unattempted|favorited` 需要登录；其中 `attempted` 表示尝试过但尚未通过。登录后的列表和详情会增加 `solved`、`attempted`、`attempt_count`、`favorited`，匿名响应不包含这些字段。普通用户和匿名用户始终只能读取 `visibility=public` 的题目。
+
+匿名课程响应只提供目录和零值聚合，不返回单题个人状态；登录响应才包含尝试次数、所选运行时及两种运行时的完成状态。公开样例运行不计入课程进度，正式提交的非 `System Error` 终态才计一次尝试；JavaScript V8 或 Node.js 任一模式 Accepted 即完成“任一模式”维度，两种模式都 Accepted 才完成“双模式”维度。重复终态消息和重复 Accepted 由 submission 事件台账幂等重建，不会重复计数。
 
 训练与收藏接口：
 
@@ -143,7 +152,7 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 
 ## 完整内容初始化
 
-正式内容位于 `content/`。全新 PostgreSQL 与 MinIO 启动时，Compose 会按 migration、bucket、content-bootstrap、API/Judge/前端的顺序执行；导入失败会阻止 API 假启动。默认 manifest 包含 18 章、168 道 JavaScript ACM 专项练习：105 道输入训练和 63 道输出格式训练，共 336 个公开样例与 1008 个隐藏用例。每题都有 V8/Node.js 独立参考实现、初始模板、前置关系和预计时长；引用实现与隐藏数据不会进入数据库公开字段、前端资源或公开响应。
+正式内容位于 `content/`。全新 PostgreSQL 与 MinIO 启动时，Compose 会按 migration、bucket、content-bootstrap、API/Judge/前端的顺序执行；导入失败会阻止 API 假启动。默认 manifest 包含 12 门课程、20 章、168 道 JavaScript ACM 专项练习：105 道输入训练和 63 道输出格式训练，共 336 个公开样例与 1008 个隐藏用例。每题都有 V8/Node.js 独立参考实现、初始模板、前置关系和预计时长；引用实现与隐藏数据不会进入数据库公开字段、前端资源或公开响应。
 
 ```powershell
 cd backend-api
@@ -294,7 +303,7 @@ alembic upgrade head
 alembic current
 ```
 
-`20260812_0009` 会为历史隐藏用例创建 legacy v1 测试集并回填提交快照；`20260813_0013` 增加训练分类并把用户判题语言切换为 JavaScript V8/Node.js；`20260813_0014` 固化两种独立运行契约和题目级模板；`20260814_0015` 修复 submission/attempt 共用状态触发器。由于迁移进程不读取 MinIO，历史用例大小元数据为 0，重新发布前应创建并验证新测试集版本。
+`20260812_0009` 会为历史隐藏用例创建 legacy v1 测试集并回填提交快照；`20260813_0013` 增加训练分类并把用户判题语言切换为 JavaScript V8/Node.js；`20260813_0014` 固化两种独立运行契约和题目级模板；`20260814_0015` 修复 submission/attempt 共用状态触发器；`20260814_0016` 建立课程、章节、练习、无环前置关系和双运行时学习进度。由于迁移进程不读取 MinIO，历史用例大小元数据为 0，重新发布前应创建并验证新测试集版本。
 
 若缓存计数因历史数据、运维修复或事件补偿需要校正，可在暂停/排空 Judge 写入后执行幂等重建。命令会获取与 Judge 终态事务互斥的 PostgreSQL advisory lock，并在单事务中重建进度、事件台账和计数：
 

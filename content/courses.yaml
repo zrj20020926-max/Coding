@@ -1,0 +1,393 @@
+courses:
+- slug: javascript-v8-quickstart
+  title: JavaScript V8 快速入门
+  description: 掌握 readline()、print() 与 V8 兼容模式的 EOF 语义。
+  type: input
+  sort_order: 1
+  is_public: true
+  chapters:
+  - slug: v8-readline-print
+    title: readline 与 print
+    description: 从最小输入开始熟悉 V8 ACM 运行时。
+    sort_order: 1
+    estimated_minutes: 32
+    is_public: true
+    problems:
+    - js-acm-read-one-integer
+    - js-acm-read-one-float
+    - js-acm-read-one-word
+    - js-acm-read-whole-line
+- slug: nodejs-stdin-quickstart
+  title: Node.js stdin 快速入门
+  description: 掌握 fs.readFileSync(0, 'utf8') 与标准输出缓冲。
+  type: input
+  sort_order: 2
+  is_public: true
+  chapters:
+  - slug: nodejs-stdin-basics
+    title: stdin 原始文本
+    description: 练习空白、BigInt 与空输入的 Node.js 处理方式。
+    sort_order: 1
+    estimated_minutes: 32
+    is_public: true
+    problems:
+    - js-acm-read-spaced-string
+    - js-acm-read-negative-number
+    - js-acm-read-bigint
+    - js-acm-handle-empty-input
+- slug: single-value-and-line-input
+  title: 单值和单行输入
+  description: 系统训练一行内定长、变长和混合分隔字段。
+  type: input
+  sort_order: 3
+  is_public: true
+  chapters:
+  - slug: single-line-tokenization
+    title: 单行拆分与转换
+    description: 正确处理空格、TAB 和自定义分隔符。
+    sort_order: 1
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-two-integers
+    - js-acm-many-integers
+    - js-acm-integer-and-string
+    - js-acm-many-floats
+    - js-acm-multiple-spaces
+    - js-acm-tab-separated
+    - js-acm-outer-whitespace
+    - js-acm-comma-separated
+    - js-acm-colon-pipe-separated
+    - js-acm-unknown-token-count
+- slug: multi-line-input
+  title: 多行输入
+  description: 使用行数组或游标读取固定与变长多行结构。
+  type: input
+  sort_order: 4
+  is_public: true
+  chapters:
+  - slug: multi-line-cursor
+    title: 多行游标
+    description: 处理固定行数、空行、CRLF 与原始空格。
+    sort_order: 1
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-fixed-two-lines
+    - js-acm-fixed-three-lines
+    - js-acm-count-then-array
+    - js-acm-n-following-lines
+    - js-acm-pair-per-line
+    - js-acm-variable-fields-per-line
+    - js-acm-multi-line-strings
+    - js-acm-multi-line-with-empty
+    - js-acm-preserve-line-spaces
+    - js-acm-crlf-lf-compatible
+- slug: test-case-groups
+  title: T 组测试
+  description: 掌握组数、组内变长记录和 Case 输出格式。
+  type: mixed
+  sort_order: 5
+  is_public: true
+  chapters:
+  - slug: test-case-parsing
+    title: 测试组解析
+    description: 从固定结构逐步过渡到大量变长测试组。
+    sort_order: 1
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-t-one-line
+    - js-acm-t-fixed-two-lines
+    - js-acm-t-count-array
+    - js-acm-t-n-records
+    - js-acm-t-variable-length
+    - js-acm-t-blank-separator
+    - js-acm-t-one-result
+    - js-acm-t-case-format
+    - js-acm-t-output-blank-line
+    - js-acm-many-test-cases
+- slug: eof-and-sentinel
+  title: EOF 与哨兵
+  description: 区分文件结束、空行和业务哨兵，避免丢失最后一组数据。
+  type: input
+  sort_order: 6
+  is_public: true
+  chapters:
+  - slug: read-until-eof
+    title: 读取到 EOF
+    description: 使用安全游标持续读取完整数据流。
+    sort_order: 1
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-line-until-eof
+    - js-acm-pairs-until-eof
+    - js-acm-two-lines-until-eof
+    - js-acm-blocks-until-eof
+    - js-acm-blank-before-eof
+    - js-acm-eof-without-newline
+    - js-acm-eof-many-newlines
+    - js-acm-v8-readline-eof
+    - js-acm-node-line-cursor-eof
+    - js-acm-large-eof-data
+  - slug: sentinel-termination
+    title: 哨兵结束
+    description: 正确停止且不把哨兵计入输出。
+    sort_order: 2
+    estimated_minutes: 56
+    is_public: true
+    problems:
+    - js-acm-sentinel-zero
+    - js-acm-sentinel-minus-one
+    - js-acm-sentinel-zero-pair
+    - js-acm-sentinel-end-word
+    - js-acm-sentinel-multi-line-group
+    - js-acm-sentinel-not-output
+    - js-acm-eof-or-sentinel
+- slug: arrays-and-matrices
+  title: 数组和矩阵
+  description: 组织一维、二维、规则和不规则数值输入。
+  type: input
+  sort_order: 7
+  is_public: true
+  chapters:
+  - slug: array-input-structures
+    title: 数组输入
+    description: 处理定长、变长、BigInt 和空数组。
+    sort_order: 1
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-integer-array-line
+    - js-acm-string-array-line
+    - js-acm-multi-line-arrays
+    - js-acm-known-length-array
+    - js-acm-unknown-length-array
+    - js-acm-flattened-two-dimensional-array
+    - js-acm-bigint-array
+    - js-acm-float-array
+    - js-acm-negative-array
+    - js-acm-zero-length-array
+  - slug: matrix-input-structures
+    title: 矩阵输入
+    description: 处理字符网格、矩阵尾字段和多组矩阵。
+    sort_order: 2
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-integer-matrix-nm
+    - js-acm-square-matrix
+    - js-acm-character-matrix
+    - js-acm-compact-character-grid
+    - js-acm-matrix-followed-by-field
+    - js-acm-t-matrices
+    - js-acm-ragged-two-dimensional-data
+    - js-acm-large-matrix
+    - js-acm-negative-matrix
+    - js-acm-float-matrix
+- slug: strings-and-empty-lines
+  title: 字符串与空行
+  description: 保留字符串原始结构并理解 Unicode 字符与字节差异。
+  type: input
+  sort_order: 8
+  is_public: true
+  chapters:
+  - slug: string-input-details
+    title: 字符串细节
+    description: 覆盖空字符串、Unicode、JSON 文本和多行内容。
+    sort_order: 1
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-string-word
+    - js-acm-string-sentence
+    - js-acm-string-multiple-lines
+    - js-acm-string-preserve-spaces
+    - js-acm-string-empty
+    - js-acm-string-chinese-unicode
+    - js-acm-string-emoji-surrogate
+    - js-acm-string-character-byte
+    - js-acm-string-comma-separated
+    - js-acm-string-json-safe
+- slug: mixed-formats
+  title: 混合格式
+  description: 解析记录、图、区间与命令流等嵌套格式。
+  type: mixed
+  sort_order: 9
+  is_public: true
+  chapters:
+  - slug: mixed-records
+    title: 混合记录
+    description: 组合字符串、数字、数组和矩阵字段。
+    sort_order: 1
+    estimated_minutes: 64
+    is_public: true
+    problems:
+    - js-acm-student-records
+    - js-acm-name-and-score
+    - js-acm-string-followed-array
+    - js-acm-matrix-followed-queries
+    - js-acm-variable-record-groups
+    - js-acm-graph-edge-list
+    - js-acm-adjacency-list-input
+    - js-acm-interval-records
+- slug: stdout-formats
+  title: 输出格式
+  description: 精确控制 stdout 的空格、换行、精度、拼接与对齐。
+  type: output
+  sort_order: 10
+  is_public: true
+  chapters:
+  - slug: stdout-basics
+    title: 基础输出
+    description: 训练单值、固定文本和末尾换行。
+    sort_order: 1
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-output-one-integer
+    - js-acm-output-one-string
+    - js-acm-output-values-single-space
+    - js-acm-output-value-per-line
+    - js-acm-output-fixed-text
+    - js-acm-output-no-extra-prompt
+    - js-acm-output-negative-number
+    - js-acm-output-bigint-without-suffix
+    - js-acm-output-internal-empty-line
+    - js-acm-output-terminal-newline
+  - slug: stdout-arrays
+    title: 数组输出
+    description: 训练数组连接、逐行输出和二维结构。
+    sort_order: 2
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-output-array-space-join
+    - js-acm-output-array-comma-join
+    - js-acm-output-array-one-per-line
+    - js-acm-output-array-length-first
+    - js-acm-output-array-reverse
+    - js-acm-output-matrix-row-output
+    - js-acm-output-character-array-compact
+    - js-acm-output-empty-array-rule
+    - js-acm-output-bigint-array-output
+    - js-acm-output-float-array-output
+  - slug: stdout-groups
+    title: 多组结果
+    description: 训练 Case 格式、多行结果和组间空行。
+    sort_order: 3
+    estimated_minutes: 68
+    is_public: true
+    problems:
+    - js-acm-output-group-one-line
+    - js-acm-output-case-hash-format
+    - js-acm-output-case-plain-format
+    - js-acm-output-blank-between-groups
+    - js-acm-output-group-multiple-lines
+    - js-acm-output-group-title-first
+    - js-acm-output-no-blank-after-last-group
+    - js-acm-output-many-results-buffer
+  - slug: stdout-numbers
+    title: 数值格式
+    description: 训练小数、百分比、科学计数法和 BigInt。
+    sort_order: 4
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-output-fixed-two-decimals
+    - js-acm-output-fixed-n-decimals
+    - js-acm-output-percentage-format
+    - js-acm-output-scientific-notation
+    - js-acm-output-leading-zero
+    - js-acm-output-explicit-plus-sign
+    - js-acm-output-decimal-rounding
+    - js-acm-output-floating-error-format
+    - js-acm-output-large-integer-text
+    - js-acm-output-negative-zero
+  - slug: stdout-alignment
+    title: 表格与对齐
+    description: 训练固定宽度、补零和 Unicode 对齐边界。
+    sort_order: 5
+    estimated_minutes: 64
+    is_public: true
+    problems:
+    - js-acm-output-right-align
+    - js-acm-output-left-align
+    - js-acm-output-number-zero-padding
+    - js-acm-output-simple-table
+    - js-acm-output-aligned-matrix
+    - js-acm-output-header-separator
+    - js-acm-output-variable-string-alignment
+    - js-acm-output-unicode-alignment-limit
+  - slug: stdout-strings
+    title: 字符串格式
+    description: 训练转义、多行文本、Unicode 与调试输出约束。
+    sort_order: 6
+    estimated_minutes: 80
+    is_public: true
+    problems:
+    - js-acm-output-string-concatenation
+    - js-acm-output-template-string
+    - js-acm-output-preserve-output-spaces
+    - js-acm-output-output-backslash
+    - js-acm-output-output-quotes
+    - js-acm-output-output-tabs
+    - js-acm-output-output-multiline-text
+    - js-acm-output-output-unicode
+    - js-acm-output-json-stringify-use
+    - js-acm-output-no-debug-output
+- slug: large-input-performance
+  title: 大输入与高性能解析
+  description: 使用索引游标和批量输出处理高数据量，避免重复 split/shift。
+  type: performance
+  sort_order: 11
+  is_public: true
+  chapters:
+  - slug: large-input-parsing
+    title: 高性能输入
+    description: 覆盖十万整数、百万 token 与大字符串。
+    sort_order: 1
+    estimated_minutes: 120
+    is_public: true
+    problems:
+    - js-acm-one-hundred-thousand-integers
+    - js-acm-million-tokens
+    - js-acm-many-lines
+    - js-acm-large-string
+    - js-acm-large-bigint-data
+    - js-acm-avoid-repeated-shift
+    - js-acm-use-index-cursor
+    - js-acm-avoid-repeated-split
+    - js-acm-buffer-output-join
+    - js-acm-efficient-recommended-pattern
+  - slug: large-output-buffering
+    title: 高性能输出
+    description: 缓冲结果并控制输出大小与内存。
+    sort_order: 2
+    estimated_minutes: 90
+    is_public: true
+    problems:
+    - js-acm-output-avoid-loop-console-log
+    - js-acm-output-collect-output-array
+    - js-acm-output-join-newlines-once
+    - js-acm-output-stdout-write-once
+    - js-acm-output-v8-batch-print
+    - js-acm-output-large-output-memory-tradeoff
+    - js-acm-output-output-limit-contract
+- slug: comprehensive-io-training
+  title: 综合训练
+  description: 综合运用不同字段类型与完整解析模板。
+  type: mixed
+  sort_order: 12
+  is_public: true
+  chapters:
+  - slug: comprehensive-records
+    title: 综合记录
+    description: 完成不同类型字段和完整推荐模式练习。
+    sort_order: 1
+    estimated_minutes: 16
+    is_public: true
+    problems:
+    - js-acm-command-stream
+    - js-acm-different-field-types
