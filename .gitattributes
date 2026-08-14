@@ -9,3 +9,7 @@
 *.jpeg binary
 *.gif binary
 *.ico binary
+
+# Input-format exercises intentionally contain CRLF, trailing spaces, tabs,
+# empty lines, and files without a final newline. Preserve their exact bytes.
+content/test-data/js-acm/** -text

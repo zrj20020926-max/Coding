@@ -16,37 +16,36 @@ CONTENT_ROOT = Path(__file__).resolve().parents[3] / "content"
 @pytest.mark.unit
 def test_full_catalog_has_required_coverage_and_six_scenarios() -> None:
     bundle = load_content_bundle(CONTENT_ROOT / "manifest.yaml")
-    difficulties = [item.document.difficulty.value for item in bundle.problems.values()]
     tags = {tag for item in bundle.problems.values() for tag in item.document.tags}
     required_tags = {
-        "basic-io", "array", "string", "hash-table", "two-pointers",
-        "sliding-window", "prefix-sum", "stack", "queue", "binary-search",
-        "sorting", "interval", "matrix", "bfs", "dfs", "graph-connectivity",
-        "union-find", "shortest-path", "minimum-spanning-tree", "greedy",
-        "zero-one-knapsack", "dynamic-programming",
-        "longest-increasing-subsequence", "edit-distance",
+        "stdin", "stdout", "javascript-v8", "nodejs", "single-value",
+        "single-line-values", "multi-line", "test-cases", "read-until-eof",
+        "sentinel", "arrays", "matrices", "strings", "mixed-nested", "large-input",
     }
-    assert len(bundle.problems) == 30
-    assert difficulties.count("easy") >= 10
-    assert difficulties.count("medium") >= 14
-    assert difficulties.count("hard") >= 6
+    assert len(bundle.problems) == 105
     assert required_tags <= tags
     for problem in bundle.problems.values():
         assert len(problem.cases) == 6
         assert problem.document.data_constraints
         assert problem.document.sample_explanation
-        assert problem.document.reference_solutions.python.endswith(".py")
-        assert problem.document.reference_solutions.cpp.endswith(".cpp")
+        assert len(problem.document.samples) >= 2
+        assert problem.document.learning_objective
+        assert problem.document.v8_hint
+        assert problem.document.nodejs_hint
+        assert problem.document.common_errors
+        assert problem.document.chapter
+        assert problem.document.chapter_order
+        assert problem.document.estimated_minutes
+        assert problem.document.reference_solutions.javascript_v8.endswith(".js")
+        assert problem.document.reference_solutions.nodejs.endswith(".js")
 
 
 @pytest.mark.unit
 def test_catalog_collections_and_relative_challenges_are_complete() -> None:
     bundle = load_content_bundle(CONTENT_ROOT / "manifest.yaml")
-    assert len(bundle.collections) == 3
-    assert all(
-        collection.is_public and len(collection.problems) >= 8
-        for collection in bundle.collections
-    )
+    assert len(bundle.collections) == 11
+    assert all(collection.is_public and collection.problems for collection in bundle.collections)
+    assert sum(len(collection.problems) for collection in bundle.collections) == 105
     assert len(bundle.daily_challenges) == 14
     today = datetime.now(ZoneInfo(bundle.manifest.timezone)).date()
     actual = []
@@ -79,3 +78,20 @@ def test_public_problem_dtos_never_expose_reference_or_hidden_fields() -> None:
     _check_public_contracts()
     assert "reference_solutions" in FORBIDDEN_PUBLIC_FIELDS
     assert "test_set" in FORBIDDEN_PUBLIC_FIELDS
+
+
+@pytest.mark.unit
+def test_course_prerequisites_form_a_valid_ordered_dag() -> None:
+    bundle = load_content_bundle(CONTENT_ROOT / "manifest.yaml")
+    positions = {
+        slug: index
+        for index, slug in enumerate(bundle.problems)
+    }
+    for slug, materialized in bundle.problems.items():
+        document = materialized.document
+        assert all(
+            positions[prerequisite] < positions[slug]
+            for prerequisite in document.prerequisites
+        )
+        collection = next(item for item in bundle.collections if item.slug == document.chapter)
+        assert collection.problems[document.chapter_order - 1] == slug

@@ -1,0 +1,118 @@
+slug: js-acm-large-bigint-data
+title: BigInt 大数据
+description: 本练习只训练 **BigInt 大数据** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: hard
+training_category: large-input
+tags:
+- stdin
+- stdout
+- large-input
+- javascript-v8
+- nodejs
+input_description: 输入含最多 10 万个 BigInt 十进制 token。
+output_description: 输出 BigInt 总和。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '9007199254740993 2
+
+  '
+sample_output: '9007199254740995
+
+  '
+sample_explanation: 按“BigInt 大数据”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '9007199254740993 2
+
+    '
+  output: '9007199254740995
+
+    '
+  explanation: 按“BigInt 大数据”的规则解析输入，并得到上述规范化输出。
+- input: '12345678901234567890 -10
+
+    '
+  output: '12345678901234567880
+
+    '
+  explanation: 按“BigInt 大数据”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“BigInt 大数据”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 使用 shift() 反复移动大数组，造成不必要的二次方开销。
+chapter: js-acm-large-input
+chapter_order: 5
+prerequisites:
+- js-acm-large-string
+estimated_minutes: 12
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: BigInt 大数据\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: BigInt 大数据；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 3000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-large-bigint-data/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-large-bigint-data/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“BigInt 大数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-bigint-data/01.in
+    output_file: js-acm/js-acm-large-bigint-data/01.out
+    checksum: 4adf463fdef2da4de4d66daaf9a20b8fe43145c42d972ca273dbcee5833a3bca
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“BigInt 大数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-bigint-data/02.in
+    output_file: js-acm/js-acm-large-bigint-data/02.out
+    checksum: d98379f6ca1c5255e1d4810be42f11bb0036704fb63422d89150f6073a09d6ca
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“BigInt 大数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-bigint-data/03.in
+    output_file: js-acm/js-acm-large-bigint-data/03.out
+    checksum: 1f32ff4eb0a3b53a39584dfd65ef2f9082f8757b6012c76c5b7dd7bd9856f118
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“BigInt 大数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-bigint-data/04.in
+    output_file: js-acm/js-acm-large-bigint-data/04.out
+    checksum: ee3eba06b343a3d9068dcf38d09bf7e1d4ff4a8ad72043cfb8fdfe9918ec1776
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“BigInt 大数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-bigint-data/05.in
+    output_file: js-acm/js-acm-large-bigint-data/05.out
+    checksum: ed35034bca6425f05c0e742ad4efa7b57d3217950faa4f26ac08226be3a0fdd0
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“BigInt 大数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-bigint-data/06.in
+    output_file: js-acm/js-acm-large-bigint-data/06.out
+    checksum: eb6bae444e52778e77fec48de3858bb508b0822004f04a4364c1ac7e038990f1

@@ -1,0 +1,118 @@
+slug: js-acm-tab-separated
+title: 使用制表符分隔
+description: 本练习只训练 **使用制表符分隔** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: single-line-multiple-values
+tags:
+- stdin
+- stdout
+- single-line-values
+- javascript-v8
+- nodejs
+input_description: 一行包含若干由空格或制表符分隔的 token，外侧可有空白。
+output_description: 按顺序用竖线连接 token。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: 'a b c
+
+  '
+sample_output: 'a|b|c
+
+  '
+sample_explanation: 按“使用制表符分隔”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: 'a b c
+
+    '
+  output: 'a|b|c
+
+    '
+  explanation: 按“使用制表符分隔”的规则解析输入，并得到上述规范化输出。
+- input: 'one   two
+
+    '
+  output: 'one|two
+
+    '
+  explanation: 按“使用制表符分隔”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“使用制表符分隔”，并输出规范化结果。
+v8_hint: 调用一次 `readline()`；只有题意允许时才 `trim()`，空白 token 用 `/\s+/` 拆分。
+nodejs_hint: 读取原始 stdin 后按题意处理第一行；不要在模板阶段无条件 `trim()`。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-single-line-values
+chapter_order: 6
+prerequisites:
+- js-acm-multiple-spaces
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 使用制表符分隔\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 使用制表符分隔；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-tab-separated/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-tab-separated/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“使用制表符分隔”的格式边界与游标推进。
+    input_file: js-acm/js-acm-tab-separated/01.in
+    output_file: js-acm/js-acm-tab-separated/01.out
+    checksum: 9fe60193a11a6b4a79acf37754a35434af0ffe94874b0cf1dee4ca5be79dd6bd
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“使用制表符分隔”的格式边界与游标推进。
+    input_file: js-acm/js-acm-tab-separated/02.in
+    output_file: js-acm/js-acm-tab-separated/02.out
+    checksum: 9617aa2ca1b9a9df7fb91e94f3351ba763527c645ab8c6e02a30ea6897744e9c
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“使用制表符分隔”的格式边界与游标推进。
+    input_file: js-acm/js-acm-tab-separated/03.in
+    output_file: js-acm/js-acm-tab-separated/03.out
+    checksum: 8eecb05a375713f976df62acd2bbe2297e43121f148e78e4ccd833772026a270
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“使用制表符分隔”的格式边界与游标推进。
+    input_file: js-acm/js-acm-tab-separated/04.in
+    output_file: js-acm/js-acm-tab-separated/04.out
+    checksum: 20057a962b193baf525492812839173b24b90ee2bee754e48a0ca5fea7c3be6d
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“使用制表符分隔”的格式边界与游标推进。
+    input_file: js-acm/js-acm-tab-separated/05.in
+    output_file: js-acm/js-acm-tab-separated/05.out
+    checksum: 37e6c79e46618321afdd4d1379cdfe654db76ef5d37e4f8a08e0896fb08a34b7
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“使用制表符分隔”的格式边界与游标推进。
+    input_file: js-acm/js-acm-tab-separated/06.in
+    output_file: js-acm/js-acm-tab-separated/06.out
+    checksum: 57fcd6a4239e9d58efa506c9a369982a54759aff65af05cd3058b76220a69f61

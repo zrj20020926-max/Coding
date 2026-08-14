@@ -231,7 +231,12 @@ class JudgeWorker:
                 return await self._finalize_configuration_error(
                     job, current_status, "judge configuration is invalid", lease
                 )
-            except InfrastructureError:
+            except InfrastructureError as exc:
+                logger.warning(
+                    "retryable judge infrastructure failure submission=%s reason=%s",
+                    submission_id,
+                    exc,
+                )
                 return MessageDisposition.RETRY
 
             if lease.lost:

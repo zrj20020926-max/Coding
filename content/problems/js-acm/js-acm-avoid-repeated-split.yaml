@@ -1,0 +1,130 @@
+slug: js-acm-avoid-repeated-split
+title: 避免循环中重复 split()
+description: 本练习只训练 **避免循环中重复 split()** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: hard
+training_category: large-input
+tags:
+- stdin
+- stdout
+- large-input
+- javascript-v8
+- nodejs
+input_description: 输入含大量行，每行多个整数。
+output_description: 缓冲并逐行输出每行整数和。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '1 2
+
+  3 4
+
+  '
+sample_output: '3
+
+  7
+
+  '
+sample_explanation: 按“避免循环中重复 split()”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '1 2
+
+    3 4
+
+    '
+  output: '3
+
+    7
+
+    '
+  explanation: 按“避免循环中重复 split()”的规则解析输入，并得到上述规范化输出。
+- input: '10 -2 8
+
+    4
+
+    '
+  output: '16
+
+    4
+
+    '
+  explanation: 按“避免循环中重复 split()”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“避免循环中重复 split()”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 无条件 trim() 导致空行、前导空格或末尾结构丢失。
+- 使用 shift() 反复移动大数组，造成不必要的二次方开销。
+chapter: js-acm-large-input
+chapter_order: 8
+prerequisites:
+- js-acm-use-index-cursor
+estimated_minutes: 12
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 避免循环中重复 split()\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 避免循环中重复 split()；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 3000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-avoid-repeated-split/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-avoid-repeated-split/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“避免循环中重复 split()”的格式边界与游标推进。
+    input_file: js-acm/js-acm-avoid-repeated-split/01.in
+    output_file: js-acm/js-acm-avoid-repeated-split/01.out
+    checksum: 4adf463fdef2da4de4d66daaf9a20b8fe43145c42d972ca273dbcee5833a3bca
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“避免循环中重复 split()”的格式边界与游标推进。
+    input_file: js-acm/js-acm-avoid-repeated-split/02.in
+    output_file: js-acm/js-acm-avoid-repeated-split/02.out
+    checksum: d98379f6ca1c5255e1d4810be42f11bb0036704fb63422d89150f6073a09d6ca
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“避免循环中重复 split()”的格式边界与游标推进。
+    input_file: js-acm/js-acm-avoid-repeated-split/03.in
+    output_file: js-acm/js-acm-avoid-repeated-split/03.out
+    checksum: de020bff0046bb9ca650bf52dade3fb4033d20752666c66ce8c0638f1c9ad593
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“避免循环中重复 split()”的格式边界与游标推进。
+    input_file: js-acm/js-acm-avoid-repeated-split/04.in
+    output_file: js-acm/js-acm-avoid-repeated-split/04.out
+    checksum: 9902423550c36c150b2426da235af4881b6001b7b6379d49c7be3c5edd183a13
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“避免循环中重复 split()”的格式边界与游标推进。
+    input_file: js-acm/js-acm-avoid-repeated-split/05.in
+    output_file: js-acm/js-acm-avoid-repeated-split/05.out
+    checksum: aa14eb876598e1d5af7258f0626bb1f125795a1480a1c4d4ef2054c5bddac39d
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“避免循环中重复 split()”的格式边界与游标推进。
+    input_file: js-acm/js-acm-avoid-repeated-split/06.in
+    output_file: js-acm/js-acm-avoid-repeated-split/06.out
+    checksum: 2b7f1a4ff766d522f67b7a40719984d33226c4495ba7f61d90fe8dfd06e988f5

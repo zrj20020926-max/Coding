@@ -1,52 +1,172 @@
 collections:
-- slug: acm-starter
-  title: ACM 入门
-  description: 从标准输入输出、线性结构到基础查找，建立 ACM 编程习惯。
+- slug: js-acm-single-value
+  title: 课程一：单值输入
+  description: 掌握单个标量、整行、空输入与 BigInt 的安全读取。
   company: CodeArena
   is_public: true
   problems:
-  - a-plus-b
-  - array-total
-  - reverse-line
-  - frequency-queries
-  - sorted-pair-exists
-  - balanced-brackets
-  - queue-commands
-  - first-occurrence
-  - stable-score-sort
-  - matrix-diagonal-sum
-- slug: core-data-structures
-  title: 核心数据结构
-  description: 覆盖数组、哈希、栈、队列、窗口、区间、图与并查集。
+  - js-acm-read-one-integer
+  - js-acm-read-one-float
+  - js-acm-read-one-word
+  - js-acm-read-whole-line
+  - js-acm-read-spaced-string
+  - js-acm-read-negative-number
+  - js-acm-read-bigint
+  - js-acm-handle-empty-input
+- slug: js-acm-single-line-values
+  title: 课程二：单行多值
+  description: 练习空白、制表符和自定义分隔符下的 token 化。
   company: CodeArena
   is_public: true
   problems:
-  - array-total
-  - frequency-queries
-  - balanced-brackets
-  - queue-commands
-  - longest-unique-segment
-  - range-sum-queries
-  - merge-intervals
-  - graph-component-count
-  - union-find-queries
-  - offline-edge-deletions
-- slug: algorithm-advanced
-  title: 算法进阶
-  description: 循序训练二分、图算法、贪心与动态规划。
+  - js-acm-two-integers
+  - js-acm-many-integers
+  - js-acm-integer-and-string
+  - js-acm-many-floats
+  - js-acm-multiple-spaces
+  - js-acm-tab-separated
+  - js-acm-outer-whitespace
+  - js-acm-comma-separated
+  - js-acm-colon-pipe-separated
+  - js-acm-unknown-token-count
+- slug: js-acm-multi-line
+  title: 课程三：多行输入
+  description: 使用行数组和游标组织固定行数、计数行与空行。
   company: CodeArena
   is_public: true
   problems:
-  - rotated-array-search
-  - maze-shortest-steps
-  - directed-shortest-paths
-  - minimum-spanning-network
-  - maximum-compatible-events
-  - zero-one-knapsack
-  - minimum-coin-count
-  - longest-increasing-subsequence
-  - string-edit-distance
-  - weighted-grid-route
-  - exact-k-nonadjacent
-  - kth-pair-distance
-  - minimum-cover-cost
+  - js-acm-fixed-two-lines
+  - js-acm-fixed-three-lines
+  - js-acm-count-then-array
+  - js-acm-n-following-lines
+  - js-acm-pair-per-line
+  - js-acm-variable-fields-per-line
+  - js-acm-multi-line-strings
+  - js-acm-multi-line-with-empty
+  - js-acm-preserve-line-spaces
+  - js-acm-crlf-lf-compatible
+- slug: js-acm-test-cases
+  title: 课程四：T 组测试数据
+  description: 按 T 和组内长度推进游标，并正确组织分组输出。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-t-one-line
+  - js-acm-t-fixed-two-lines
+  - js-acm-t-count-array
+  - js-acm-t-n-records
+  - js-acm-t-variable-length
+  - js-acm-t-blank-separator
+  - js-acm-t-one-result
+  - js-acm-t-case-format
+  - js-acm-t-output-blank-line
+  - js-acm-many-test-cases
+- slug: js-acm-read-until-eof
+  title: 课程五：读取到 EOF
+  description: 固定 EOF 语义，分别使用 V8 readline() 与 Node 行游标读取。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-line-until-eof
+  - js-acm-pairs-until-eof
+  - js-acm-two-lines-until-eof
+  - js-acm-blocks-until-eof
+  - js-acm-blank-before-eof
+  - js-acm-eof-without-newline
+  - js-acm-eof-many-newlines
+  - js-acm-v8-readline-eof
+  - js-acm-node-line-cursor-eof
+  - js-acm-large-eof-data
+- slug: js-acm-sentinel
+  title: 课程六：哨兵结束输入
+  description: 识别哨兵并保证终止标记不参与计算或输出。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-sentinel-zero
+  - js-acm-sentinel-minus-one
+  - js-acm-sentinel-zero-pair
+  - js-acm-sentinel-end-word
+  - js-acm-sentinel-multi-line-group
+  - js-acm-sentinel-not-output
+  - js-acm-eof-or-sentinel
+- slug: js-acm-arrays
+  title: 课程七：数组输入
+  description: 覆盖定长、不定长、多行、BigInt 与空数组。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-integer-array-line
+  - js-acm-string-array-line
+  - js-acm-multi-line-arrays
+  - js-acm-known-length-array
+  - js-acm-unknown-length-array
+  - js-acm-flattened-two-dimensional-array
+  - js-acm-bigint-array
+  - js-acm-float-array
+  - js-acm-negative-array
+  - js-acm-zero-length-array
+- slug: js-acm-matrices
+  title: 课程八：矩阵输入
+  description: 使用行列维度读取规则矩阵、字符网格和不规则二维数据。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-integer-matrix-nm
+  - js-acm-square-matrix
+  - js-acm-character-matrix
+  - js-acm-compact-character-grid
+  - js-acm-matrix-followed-by-field
+  - js-acm-t-matrices
+  - js-acm-ragged-two-dimensional-data
+  - js-acm-large-matrix
+  - js-acm-negative-matrix
+  - js-acm-float-matrix
+- slug: js-acm-strings
+  title: 课程九：字符串输入
+  description: 区分 token、整行、空串、Unicode 码点和 UTF-8 字节。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-string-word
+  - js-acm-string-sentence
+  - js-acm-string-multiple-lines
+  - js-acm-string-preserve-spaces
+  - js-acm-string-empty
+  - js-acm-string-chinese-unicode
+  - js-acm-string-emoji-surrogate
+  - js-acm-string-character-byte
+  - js-acm-string-comma-separated
+  - js-acm-string-json-safe
+- slug: js-acm-mixed-nested
+  title: 课程十：混合和嵌套格式
+  description: 综合使用行游标、token 游标与变长记录。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-student-records
+  - js-acm-name-and-score
+  - js-acm-string-followed-array
+  - js-acm-matrix-followed-queries
+  - js-acm-variable-record-groups
+  - js-acm-graph-edge-list
+  - js-acm-adjacency-list-input
+  - js-acm-interval-records
+  - js-acm-command-stream
+  - js-acm-different-field-types
+- slug: js-acm-large-input
+  title: 课程十一：大输入性能
+  description: 使用一次读取、索引游标和输出缓冲避免二次方退化。
+  company: CodeArena
+  is_public: true
+  problems:
+  - js-acm-one-hundred-thousand-integers
+  - js-acm-million-tokens
+  - js-acm-many-lines
+  - js-acm-large-string
+  - js-acm-large-bigint-data
+  - js-acm-avoid-repeated-shift
+  - js-acm-use-index-cursor
+  - js-acm-avoid-repeated-split
+  - js-acm-buffer-output-join
+  - js-acm-efficient-recommended-pattern

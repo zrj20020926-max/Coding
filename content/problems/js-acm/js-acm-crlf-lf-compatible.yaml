@@ -1,0 +1,124 @@
+slug: js-acm-crlf-lf-compatible
+title: CRLF 和 LF 兼容
+description: 本练习只训练 **CRLF 和 LF 兼容** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: multi-line
+tags:
+- stdin
+- stdout
+- multi-line
+- javascript-v8
+- nodejs
+input_description: 读取所有逻辑行直到 EOF，兼容 LF 与 CRLF。
+output_description: 用竖线连接全部逻辑行。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: 'a
+
+  b
+
+  '
+sample_output: 'a|b
+
+  '
+sample_explanation: 按“CRLF 和 LF 兼容”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: 'a
+
+    b
+
+    '
+  output: 'a|b
+
+    '
+  explanation: 按“CRLF 和 LF 兼容”的规则解析输入，并得到上述规范化输出。
+- input: 'one two
+
+    three
+
+    '
+  output: 'one two|three
+
+    '
+  explanation: 按“CRLF 和 LF 兼容”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“CRLF 和 LF 兼容”，并输出规范化结果。
+v8_hint: 循环调用 `readline()`，并用 `line === undefined` 判断 EOF；空字符串不是 EOF。
+nodejs_hint: 统一 CRLF 后建立行数组，用整数游标前进；不要用 `shift()` 消耗大数组。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 无条件 trim() 导致空行、前导空格或末尾结构丢失。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-multi-line
+chapter_order: 10
+prerequisites:
+- js-acm-preserve-line-spaces
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: CRLF 和 LF 兼容\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: CRLF 和 LF 兼容；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-crlf-lf-compatible/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-crlf-lf-compatible/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“CRLF 和 LF 兼容”的格式边界与游标推进。
+    input_file: js-acm/js-acm-crlf-lf-compatible/01.in
+    output_file: js-acm/js-acm-crlf-lf-compatible/01.out
+    checksum: 3476a58758b2eeb3ea4b89724ea34a16fbc19b8ccf1e03ad7f042fc843eac2b4
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“CRLF 和 LF 兼容”的格式边界与游标推进。
+    input_file: js-acm/js-acm-crlf-lf-compatible/02.in
+    output_file: js-acm/js-acm-crlf-lf-compatible/02.out
+    checksum: 306e6c8bd9719f31a0444bc10508e0aab1349e9a5acb27f2868cbb9628baf0f6
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“CRLF 和 LF 兼容”的格式边界与游标推进。
+    input_file: js-acm/js-acm-crlf-lf-compatible/03.in
+    output_file: js-acm/js-acm-crlf-lf-compatible/03.out
+    checksum: 0b649dd3b2469f64912528f9de34202814b121a72e035ff6124f61dc38ad45e7
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“CRLF 和 LF 兼容”的格式边界与游标推进。
+    input_file: js-acm/js-acm-crlf-lf-compatible/04.in
+    output_file: js-acm/js-acm-crlf-lf-compatible/04.out
+    checksum: cbe1ae6f731e99c93bcf782ae2c814219c0a2b9976553ed924d4b5b63ca4f609
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“CRLF 和 LF 兼容”的格式边界与游标推进。
+    input_file: js-acm/js-acm-crlf-lf-compatible/05.in
+    output_file: js-acm/js-acm-crlf-lf-compatible/05.out
+    checksum: 0d7998fdd2faebac07e96c91619f1f3fd990091c2e80b68e7be7d5cfc82f1079
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“CRLF 和 LF 兼容”的格式边界与游标推进。
+    input_file: js-acm/js-acm-crlf-lf-compatible/06.in
+    output_file: js-acm/js-acm-crlf-lf-compatible/06.out
+    checksum: 692647525b09594fa36a2e6dcbf580d27bc788cb9762330c3b0fd31a0d057aad

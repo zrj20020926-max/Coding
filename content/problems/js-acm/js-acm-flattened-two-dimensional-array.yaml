@@ -1,0 +1,124 @@
+slug: js-acm-flattened-two-dimensional-array
+title: 二维数组展开输入
+description: 本练习只训练 **二维数组展开输入** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: array-input
+tags:
+- stdin
+- stdout
+- arrays
+- javascript-v8
+- nodejs
+input_description: 先给 n m，随后给按行展开的 n×m 个整数。
+output_description: 输出 n×m:sum。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '2 2
+
+  1 2 3 4
+
+  '
+sample_output: '2x2:10
+
+  '
+sample_explanation: 按“二维数组展开输入”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '2 2
+
+    1 2 3 4
+
+    '
+  output: '2x2:10
+
+    '
+  explanation: 按“二维数组展开输入”的规则解析输入，并得到上述规范化输出。
+- input: '2 3
+
+    10 -2 0 8 4 1
+
+    '
+  output: '2x3:21
+
+    '
+  explanation: 按“二维数组展开输入”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“二维数组展开输入”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-arrays
+chapter_order: 6
+prerequisites:
+- js-acm-unknown-length-array
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 二维数组展开输入\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 二维数组展开输入；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-flattened-two-dimensional-array/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-flattened-two-dimensional-array/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“二维数组展开输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-flattened-two-dimensional-array/01.in
+    output_file: js-acm/js-acm-flattened-two-dimensional-array/01.out
+    checksum: e13d54dc18ded2f4ad22c20bdac5e7ea37f5fa251b8897038df45fde626813a8
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“二维数组展开输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-flattened-two-dimensional-array/02.in
+    output_file: js-acm/js-acm-flattened-two-dimensional-array/02.out
+    checksum: c741db93cd141c5f9f19ef51108f7ddc8145f331ccc9e963d2f773f6def93eff
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“二维数组展开输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-flattened-two-dimensional-array/03.in
+    output_file: js-acm/js-acm-flattened-two-dimensional-array/03.out
+    checksum: fa060450c0af81aa5efdeda26e12748124c31f3cc0b70a4d673cb3854dcddf2d
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“二维数组展开输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-flattened-two-dimensional-array/04.in
+    output_file: js-acm/js-acm-flattened-two-dimensional-array/04.out
+    checksum: 998d4721154a0d30241c419031e10f6a58c8e29e292ceb3f0033cf7ce7cf3856
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“二维数组展开输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-flattened-two-dimensional-array/05.in
+    output_file: js-acm/js-acm-flattened-two-dimensional-array/05.out
+    checksum: 9dcceedbf48189b80926eb60b746865f2ca8574ab99fb1a2aa40e2afc05a1756
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“二维数组展开输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-flattened-two-dimensional-array/06.in
+    output_file: js-acm/js-acm-flattened-two-dimensional-array/06.out
+    checksum: 571aec0d9e6bf97d704613ddfa63115c59dc072826146f8b60171d63af8a868a

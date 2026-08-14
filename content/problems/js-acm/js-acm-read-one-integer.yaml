@@ -1,0 +1,117 @@
+slug: js-acm-read-one-integer
+title: 读取一个整数
+description: 本练习只训练 **读取一个整数** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: single-value
+tags:
+- stdin
+- stdout
+- single-value
+- javascript-v8
+- nodejs
+input_description: 一行一个十进制整数 n。
+output_description: 输出 n + 1。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '7
+
+  '
+sample_output: '8
+
+  '
+sample_explanation: 按“读取一个整数”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '7
+
+    '
+  output: '8
+
+    '
+  explanation: 按“读取一个整数”的规则解析输入，并得到上述规范化输出。
+- input: '-3
+
+    '
+  output: '-2
+
+    '
+  explanation: 按“读取一个整数”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“读取一个整数”，并输出规范化结果。
+v8_hint: 调用一次 `readline()`；只有题意允许时才 `trim()`，空白 token 用 `/\s+/` 拆分。
+nodejs_hint: 读取原始 stdin 后按题意处理第一行；不要在模板阶段无条件 `trim()`。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-single-value
+chapter_order: 1
+prerequisites: []
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 读取一个整数\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 读取一个整数；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-read-one-integer/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-read-one-integer/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“读取一个整数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-one-integer/01.in
+    output_file: js-acm/js-acm-read-one-integer/01.out
+    checksum: aac784b95bc50aceb8da8ee7c8e36f85aed769991a6a90ef72f712ec108b501b
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“读取一个整数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-one-integer/02.in
+    output_file: js-acm/js-acm-read-one-integer/02.out
+    checksum: a700d9eba7b3d0d7d0a044767220a3b5076308a6e721b51a4f5f5ef65d624bbc
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“读取一个整数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-one-integer/03.in
+    output_file: js-acm/js-acm-read-one-integer/03.out
+    checksum: 7bd2b70c278449ed48db22dc703f2945ced7f4376c2a5967f9f94a1e37a0122f
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“读取一个整数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-one-integer/04.in
+    output_file: js-acm/js-acm-read-one-integer/04.out
+    checksum: c6d0436a8b365cf12c49aed7a7a57317ecd3a9c2f107e8239f5324abc539620e
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“读取一个整数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-one-integer/05.in
+    output_file: js-acm/js-acm-read-one-integer/05.out
+    checksum: be01eb85b382df2aa38b8c8eb14c7ced8a66b7b79e5de4cb95d0cf50302788f4
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“读取一个整数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-one-integer/06.in
+    output_file: js-acm/js-acm-read-one-integer/06.out
+    checksum: 972a3de6abf5d6710e1519fbf539cc10a7e525d6cda6bda0a1abc40544fe13c1

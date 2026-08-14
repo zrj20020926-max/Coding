@@ -4,10 +4,7 @@ import argparse
 import asyncio
 import hashlib
 import json
-import shutil
 import subprocess
-import sys
-import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,9 +42,9 @@ class CatalogValidationReport(BaseModel):
     status: Literal["success", "failed"]
     problem_count: int
     hidden_case_count: int
-    python_accepted: int
-    cpp_accepted: int
-    wrong_answer_verified: int
+    javascript_v8_accepted: int
+    nodejs_accepted: int
+    wrong_reading_detected: int
     minio_objects_verified: int
     duration_ms: int
     failures: list[ValidationFailure]
@@ -89,73 +86,78 @@ def _check_public_contracts() -> None:
             raise RuntimeError(f"public DTO contains forbidden fields: {', '.join(leaked)}")
 
 
-def _compile_cpp(compiler: str, source: Path, binary: Path) -> None:
-    result = subprocess.run(
-        [compiler, "-std=c++20", "-O2", "-pipe", str(source), "-o", str(binary)],
-        capture_output=True,
-        check=False,
-        timeout=30,
-    )
-    if result.returncode:
-        raise RuntimeError("C++20 reference implementation failed to compile")
-
-
 def _validate_solution(
     problem: MaterializedProblem,
     root: Path,
-    python: str,
-    compiler: str,
-    binary_root: Path,
-    check_python: bool,
-    check_cpp: bool,
+    node: str,
+    v8_runner: Path,
+    check_v8: bool,
+    check_nodejs: bool,
 ) -> tuple[bool, bool]:
     document = problem.document
-    python_source = root / document.reference_solutions.python
-    cpp_source = root / document.reference_solutions.cpp
-    binary = binary_root / document.slug
-    if sys.platform == "win32":
-        binary = binary.with_suffix(".exe")
-    if check_cpp:
-        _compile_cpp(compiler, cpp_source, binary)
-    cases = [(document.sample_input.encode(), document.sample_output.encode())] + [
+    if (
+        document.reference_solutions.javascript_v8 is None
+        or document.reference_solutions.nodejs is None
+    ):
+        raise RuntimeError("JavaScript course references are incomplete")
+    v8_source = root / document.reference_solutions.javascript_v8
+    node_source = root / document.reference_solutions.nodejs
+    public_cases = (
+        [(sample.input.encode(), sample.output.encode()) for sample in document.samples]
+        if document.samples
+        else [(document.sample_input.encode(), document.sample_output.encode())]
+    )
+    cases = public_cases + [
         (case.input_data, case.output_data) for case in problem.cases
     ]
-    python_ok = cpp_ok = True
+    v8_ok = nodejs_ok = True
     for stdin, expected in cases:
         timeout = max(5, document.time_limit_ms / 1000 * 4)
         normalized_expected = _normalize(expected)
-        python_result = None
-        cpp_result = None
-        if check_python:
-            python_result = _run([python, str(python_source)], stdin, timeout)
-            if python_result.returncode or _normalize(python_result.stdout) != normalized_expected:
-                python_ok = False
-        if check_cpp:
-            cpp_result = _run([str(binary)], stdin, timeout)
-            if cpp_result.returncode or _normalize(cpp_result.stdout) != normalized_expected:
-                cpp_ok = False
-        if python_result is not None and cpp_result is not None:
-            if _normalize(python_result.stdout) != _normalize(cpp_result.stdout):
-                python_ok = cpp_ok = False
-    return python_ok, cpp_ok
+        v8_result = None
+        node_result = None
+        if check_v8:
+            v8_result = _run([node, str(v8_runner), str(v8_source)], stdin, timeout)
+            if v8_result.returncode or _normalize(v8_result.stdout) != normalized_expected:
+                v8_ok = False
+        if check_nodejs:
+            node_result = _run([node, str(node_source)], stdin, timeout)
+            if node_result.returncode or _normalize(node_result.stdout) != normalized_expected:
+                nodejs_ok = False
+        if v8_result is not None and node_result is not None:
+            if _normalize(v8_result.stdout) != _normalize(node_result.stdout):
+                v8_ok = nodejs_ok = False
+    return v8_ok, nodejs_ok
 
 
-def _validate_wrong_solution(
+def _validate_wrong_reading(
     problem: MaterializedProblem,
     root: Path,
-    python: str,
+    node: str,
 ) -> bool:
-    wrong_source = root / "wrong-solutions" / f"{problem.document.slug}.py"
-    if not wrong_source.is_file():
+    relative = problem.document.reference_solutions.nodejs
+    if relative is None:
         return False
+    source = (root / relative).read_text(encoding="utf-8")
+    mutations = (
+        source.replace(
+            "const lines = input === '' ? [] : input.split('\\n');",
+            "const lines = input.trim().split('\\n');",
+        ),
+        source.replace(
+            "line.trim().split(/\\s+/)",
+            "line.split(' ')",
+        ),
+    )
     for case in problem.cases:
-        result = _run(
-            [python, str(wrong_source)],
-            case.input_data,
-            max(5, problem.document.time_limit_ms / 1000 * 4),
-        )
-        if result.returncode or _normalize(result.stdout) != _normalize(case.output_data):
-            return True
+        for mutation in mutations:
+            result = _run(
+                [node, "-e", mutation],
+                case.input_data,
+                max(5, problem.document.time_limit_ms / 1000 * 4),
+            )
+            if result.returncode or _normalize(result.stdout) != _normalize(case.output_data):
+                return True
     return False
 
 
@@ -178,61 +180,67 @@ async def _verify_minio(
 async def validate_catalog(
     manifest: Path,
     *,
-    python: str,
-    compiler: str,
+    node: str = "node",
+    v8_runner: Path | None = None,
     check_minio: bool = False,
     store: SourceObjectStore | None = None,
-    check_python: bool = True,
-    check_cpp: bool = True,
+    check_v8: bool = True,
+    check_nodejs: bool = True,
 ) -> CatalogValidationReport:
     started = time.monotonic()
     failures: list[ValidationFailure] = []
     bundle = load_content_bundle(manifest)
     root = await asyncio.to_thread(lambda: manifest.resolve().parent)
+    runner = v8_runner or root / "tools" / "run_v8_reference.cjs"
     _check_public_contracts()
-    python_accepted = cpp_accepted = wrong_answer_verified = 0
-    with tempfile.TemporaryDirectory(prefix="codearena-catalog-") as temporary:
-        binary_root = Path(temporary)
-        for slug, problem in bundle.problems.items():
-            try:
-                python_ok, cpp_ok = _validate_solution(
-                    problem,
-                    root,
-                    python,
-                    compiler,
-                    binary_root,
-                    check_python,
-                    check_cpp,
-                )
-            except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
-                failures.append(ValidationFailure(
-                    problem=slug, check="reference_execution", message=str(exc)[:300]
-                ))
-                continue
-            if check_python and python_ok:
-                python_accepted += 1
-            elif check_python:
-                failures.append(ValidationFailure(
-                    problem=slug, check="python_reference", message="reference output mismatch"
-                ))
-            if check_cpp and cpp_ok:
-                cpp_accepted += 1
-            elif check_cpp:
-                failures.append(ValidationFailure(
-                    problem=slug, check="cpp_reference", message="reference output mismatch"
-                ))
-            try:
-                if check_python and _validate_wrong_solution(problem, root, python):
-                    wrong_answer_verified += 1
-            except (OSError, subprocess.TimeoutExpired) as exc:
-                failures.append(ValidationFailure(
-                    problem=slug, check="wrong_solution", message=str(exc)[:300]
-                ))
-    if check_python and wrong_answer_verified < 10:
+    v8_accepted = nodejs_accepted = wrong_reading_detected = 0
+    chapters_with_counterexample: set[str] = set()
+    for slug, problem in bundle.problems.items():
+        try:
+            v8_ok, nodejs_ok = _validate_solution(
+                problem,
+                root,
+                node,
+                runner,
+                check_v8,
+                check_nodejs,
+            )
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
+            failures.append(ValidationFailure(
+                problem=slug, check="reference_execution", message=str(exc)[:300]
+            ))
+            continue
+        if check_v8 and v8_ok:
+            v8_accepted += 1
+        elif check_v8:
+            failures.append(ValidationFailure(
+                problem=slug, check="javascript_v8_reference", message="reference output mismatch"
+            ))
+        if check_nodejs and nodejs_ok:
+            nodejs_accepted += 1
+        elif check_nodejs:
+            failures.append(ValidationFailure(
+                problem=slug, check="nodejs_reference", message="reference output mismatch"
+            ))
+        try:
+            if check_nodejs and _validate_wrong_reading(problem, root, node):
+                wrong_reading_detected += 1
+                if problem.document.chapter is not None:
+                    chapters_with_counterexample.add(problem.document.chapter)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            failures.append(ValidationFailure(
+                problem=slug, check="wrong_reading", message=str(exc)[:300]
+            ))
+    course_chapters = {
+        item.document.chapter
+        for item in bundle.problems.values()
+        if item.document.chapter is not None
+    }
+    if check_nodejs and chapters_with_counterexample != course_chapters:
         failures.append(ValidationFailure(
             problem="catalog",
-            check="wrong_solutions",
-            message="fewer than ten wrong solutions were verified as Wrong Answer",
+            check="wrong_reading_counterexamples",
+            message="not every course chapter detects an unsafe reading mutation",
         ))
     minio_verified = 0
     if check_minio:
@@ -252,9 +260,9 @@ async def validate_catalog(
         status="failed" if failures else "success",
         problem_count=len(bundle.problems),
         hidden_case_count=sum(len(item.cases) for item in bundle.problems.values()),
-        python_accepted=python_accepted,
-        cpp_accepted=cpp_accepted,
-        wrong_answer_verified=wrong_answer_verified,
+        javascript_v8_accepted=v8_accepted,
+        nodejs_accepted=nodejs_accepted,
+        wrong_reading_detected=wrong_reading_detected,
         minio_objects_verified=minio_verified,
         duration_ms=round((time.monotonic() - started) * 1000),
         failures=failures,
@@ -264,25 +272,25 @@ async def validate_catalog(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate the complete CodeArena problem catalog")
     parser.add_argument("--manifest", required=True, type=Path)
-    parser.add_argument("--python", default=sys.executable)
-    parser.add_argument("--compiler", default=shutil.which("g++") or "g++")
+    parser.add_argument("--node", default="node")
+    parser.add_argument("--v8-runner", type=Path)
     parser.add_argument("--check-minio", action="store_true")
-    parser.add_argument("--skip-python", action="store_true")
-    parser.add_argument("--skip-cpp", action="store_true")
+    parser.add_argument("--skip-v8", action="store_true")
+    parser.add_argument("--skip-nodejs", action="store_true")
     args = parser.parse_args()
     try:
         report = asyncio.run(validate_catalog(
             args.manifest,
-            python=args.python,
-            compiler=args.compiler,
+            node=args.node,
+            v8_runner=args.v8_runner,
             check_minio=args.check_minio,
-            check_python=not args.skip_python,
-            check_cpp=not args.skip_cpp,
+            check_v8=not args.skip_v8,
+            check_nodejs=not args.skip_nodejs,
         ))
     except ContentBootstrapError as exc:
         report = CatalogValidationReport(
             status="failed", problem_count=0, hidden_case_count=0,
-            python_accepted=0, cpp_accepted=0, wrong_answer_verified=0,
+            javascript_v8_accepted=0, nodejs_accepted=0, wrong_reading_detected=0,
             minio_objects_verified=0, duration_ms=0,
             failures=[
                 ValidationFailure(

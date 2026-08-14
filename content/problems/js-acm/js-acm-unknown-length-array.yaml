@@ -1,0 +1,118 @@
+slug: js-acm-unknown-length-array
+title: 未知长度数组
+description: 本练习只训练 **未知长度数组** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: array-input
+tags:
+- stdin
+- stdout
+- arrays
+- javascript-v8
+- nodejs
+input_description: 一行未知长度的整数数组。
+output_description: 输出数组长度。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '1 2 3
+
+  '
+sample_output: '3
+
+  '
+sample_explanation: 按“未知长度数组”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '1 2 3
+
+    '
+  output: '3
+
+    '
+  explanation: 按“未知长度数组”的规则解析输入，并得到上述规范化输出。
+- input: '10 -2 0 8
+
+    '
+  output: '4
+
+    '
+  explanation: 按“未知长度数组”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“未知长度数组”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-arrays
+chapter_order: 5
+prerequisites:
+- js-acm-known-length-array
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 未知长度数组\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 未知长度数组；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-unknown-length-array/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-unknown-length-array/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“未知长度数组”的格式边界与游标推进。
+    input_file: js-acm/js-acm-unknown-length-array/01.in
+    output_file: js-acm/js-acm-unknown-length-array/01.out
+    checksum: aac784b95bc50aceb8da8ee7c8e36f85aed769991a6a90ef72f712ec108b501b
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“未知长度数组”的格式边界与游标推进。
+    input_file: js-acm/js-acm-unknown-length-array/02.in
+    output_file: js-acm/js-acm-unknown-length-array/02.out
+    checksum: 835552a7978ede9d459ed018bbde6b088a377aa6251e9b18703701300ef9c971
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“未知长度数组”的格式边界与游标推进。
+    input_file: js-acm/js-acm-unknown-length-array/03.in
+    output_file: js-acm/js-acm-unknown-length-array/03.out
+    checksum: 6490f35a93ceee5b45cbc2b6fe127760f0ea62fc573b203058bf0249dcbd3a8c
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“未知长度数组”的格式边界与游标推进。
+    input_file: js-acm/js-acm-unknown-length-array/04.in
+    output_file: js-acm/js-acm-unknown-length-array/04.out
+    checksum: 19eb987e3e9345770201466ac2f4e5d1f4e6d212b24fac89d8dd593fbf5f29c3
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“未知长度数组”的格式边界与游标推进。
+    input_file: js-acm/js-acm-unknown-length-array/05.in
+    output_file: js-acm/js-acm-unknown-length-array/05.out
+    checksum: a7c9c1278c4fe5d46863f14a691ca8c5d066dc2f9629d50b99033d2608ef731a
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“未知长度数组”的格式边界与游标推进。
+    input_file: js-acm/js-acm-unknown-length-array/06.in
+    output_file: js-acm/js-acm-unknown-length-array/06.out
+    checksum: bf31b8728bbe517262a0ecee446574df516e534152b1728e5b833d5a9ce5a350

@@ -1,0 +1,118 @@
+slug: js-acm-string-chinese-unicode
+title: Unicode 中文
+description: 本练习只训练 **Unicode 中文** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: string-input
+tags:
+- stdin
+- stdout
+- strings
+- javascript-v8
+- nodejs
+input_description: 一行 UTF-8 中文或其他 Unicode 文本。
+output_description: 输出 Unicode 码点数量。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '中文
+
+  '
+sample_output: '2
+
+  '
+sample_explanation: 按“Unicode 中文”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '中文
+
+    '
+  output: '2
+
+    '
+  explanation: 按“Unicode 中文”的规则解析输入，并得到上述规范化输出。
+- input: '汉字测试
+
+    '
+  output: '4
+
+    '
+  explanation: 按“Unicode 中文”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“Unicode 中文”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-strings
+chapter_order: 6
+prerequisites:
+- js-acm-string-empty
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: Unicode 中文\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: Unicode 中文；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-string-chinese-unicode/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-string-chinese-unicode/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“Unicode 中文”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-chinese-unicode/01.in
+    output_file: js-acm/js-acm-string-chinese-unicode/01.out
+    checksum: e952b79a568185385ea9c6224e7cb5694aaccadded38b549951da4682eb0de4b
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“Unicode 中文”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-chinese-unicode/02.in
+    output_file: js-acm/js-acm-string-chinese-unicode/02.out
+    checksum: 7d024f0fff9ad6e0f7ccc42effe44d2308fb1185fde653e963744a0203032bac
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“Unicode 中文”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-chinese-unicode/03.in
+    output_file: js-acm/js-acm-string-chinese-unicode/03.out
+    checksum: 3bc80c0cb2ce6101159e549e528da36edc699d4594bb732531900cf8226aa6fb
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“Unicode 中文”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-chinese-unicode/04.in
+    output_file: js-acm/js-acm-string-chinese-unicode/04.out
+    checksum: 737250fafc7a24090485da90be459d92ccada86f146fef11cf7dc75ccb35ea60
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“Unicode 中文”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-chinese-unicode/05.in
+    output_file: js-acm/js-acm-string-chinese-unicode/05.out
+    checksum: f5aac19e5f8e8128fe1829767afd5c5e88d720b920582c9f783470a386aabe4f
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“Unicode 中文”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-chinese-unicode/06.in
+    output_file: js-acm/js-acm-string-chinese-unicode/06.out
+    checksum: f027df044e45ff9af15e8868917c50c1b8cd8296b56bb4cde03e8b548e529087

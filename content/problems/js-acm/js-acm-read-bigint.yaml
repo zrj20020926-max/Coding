@@ -1,0 +1,118 @@
+slug: js-acm-read-bigint
+title: 读取超出安全范围的 BigInt
+description: 本练习只训练 **读取超出安全范围的 BigInt** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: single-value
+tags:
+- stdin
+- stdout
+- single-value
+- javascript-v8
+- nodejs
+input_description: 一行一个可超出 Number 安全范围的十进制整数。
+output_description: 使用 BigInt 输出该整数加一。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '9007199254740993
+
+  '
+sample_output: '9007199254740994
+
+  '
+sample_explanation: 按“读取超出安全范围的 BigInt”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '9007199254740993
+
+    '
+  output: '9007199254740994
+
+    '
+  explanation: 按“读取超出安全范围的 BigInt”的规则解析输入，并得到上述规范化输出。
+- input: '123456789012345678901234567890
+
+    '
+  output: '123456789012345678901234567891
+
+    '
+  explanation: 按“读取超出安全范围的 BigInt”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“读取超出安全范围的 BigInt”，并输出规范化结果。
+v8_hint: 调用一次 `readline()`；只有题意允许时才 `trim()`，空白 token 用 `/\s+/` 拆分。
+nodejs_hint: 读取原始 stdin 后按题意处理第一行；不要在模板阶段无条件 `trim()`。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-single-value
+chapter_order: 7
+prerequisites:
+- js-acm-read-negative-number
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 读取超出安全范围的 BigInt\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 读取超出安全范围的 BigInt；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-read-bigint/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-read-bigint/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“读取超出安全范围的 BigInt”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-bigint/01.in
+    output_file: js-acm/js-acm-read-bigint/01.out
+    checksum: aac784b95bc50aceb8da8ee7c8e36f85aed769991a6a90ef72f712ec108b501b
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“读取超出安全范围的 BigInt”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-bigint/02.in
+    output_file: js-acm/js-acm-read-bigint/02.out
+    checksum: abcc9199d7eabcc873760206190918cf316424f91c53dedfd1f98feed2880a51
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“读取超出安全范围的 BigInt”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-bigint/03.in
+    output_file: js-acm/js-acm-read-bigint/03.out
+    checksum: c22f2db1f20f2896398879dafcd99d1c405041973671c7391c893516d9dccbcd
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“读取超出安全范围的 BigInt”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-bigint/04.in
+    output_file: js-acm/js-acm-read-bigint/04.out
+    checksum: 66f15348d2824395c3c9c855e5cc8efb8914a3edc806382f13d0a455fc686f2f
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“读取超出安全范围的 BigInt”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-bigint/05.in
+    output_file: js-acm/js-acm-read-bigint/05.out
+    checksum: 844ede59c4f17674134b3f42025267f4b3101c2e98c7d35b2146f3e3ed5882d5
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“读取超出安全范围的 BigInt”的格式边界与游标推进。
+    input_file: js-acm/js-acm-read-bigint/06.in
+    output_file: js-acm/js-acm-read-bigint/06.out
+    checksum: 881e87c88c13cb06bf2efc1e2a6d56f46a0cc8431a3ef28a11bfa0fee120e95c

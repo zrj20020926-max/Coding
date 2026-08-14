@@ -1,0 +1,130 @@
+slug: js-acm-fixed-three-lines
+title: 固定三行
+description: 本练习只训练 **固定三行** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: multi-line
+tags:
+- stdin
+- stdout
+- multi-line
+- javascript-v8
+- nodejs
+input_description: 固定三行文本。
+output_description: 用大于号依次连接三行。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: 'a
+
+  b
+
+  c
+
+  '
+sample_output: 'a>b>c
+
+  '
+sample_explanation: 按“固定三行”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: 'a
+
+    b
+
+    c
+
+    '
+  output: 'a>b>c
+
+    '
+  explanation: 按“固定三行”的规则解析输入，并得到上述规范化输出。
+- input: 'one two
+
+    3
+
+    end
+
+    '
+  output: 'one two>3>end
+
+    '
+  explanation: 按“固定三行”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“固定三行”，并输出规范化结果。
+v8_hint: 循环调用 `readline()`，并用 `line === undefined` 判断 EOF；空字符串不是 EOF。
+nodejs_hint: 统一 CRLF 后建立行数组，用整数游标前进；不要用 `shift()` 消耗大数组。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 无条件 trim() 导致空行、前导空格或末尾结构丢失。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-multi-line
+chapter_order: 2
+prerequisites:
+- js-acm-fixed-two-lines
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 固定三行\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 固定三行；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-fixed-three-lines/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-fixed-three-lines/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“固定三行”的格式边界与游标推进。
+    input_file: js-acm/js-acm-fixed-three-lines/01.in
+    output_file: js-acm/js-acm-fixed-three-lines/01.out
+    checksum: f6258d793286d69f1a0ceb710bd42bc99d4e92f285931535621bea5a5c1f47f4
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“固定三行”的格式边界与游标推进。
+    input_file: js-acm/js-acm-fixed-three-lines/02.in
+    output_file: js-acm/js-acm-fixed-three-lines/02.out
+    checksum: bfe67cd0ea106806f45846f6d4ddbc030fc9f4770797b3f917f6fe77621ddf3e
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“固定三行”的格式边界与游标推进。
+    input_file: js-acm/js-acm-fixed-three-lines/03.in
+    output_file: js-acm/js-acm-fixed-three-lines/03.out
+    checksum: df8192914af2a7c9a877aa0ae76c7f201bb222d91b3321d2f5426506b5fd5647
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“固定三行”的格式边界与游标推进。
+    input_file: js-acm/js-acm-fixed-three-lines/04.in
+    output_file: js-acm/js-acm-fixed-three-lines/04.out
+    checksum: c7add5ed3292b6e78eb67122a26ad2d5ff0423989f0a4a18e36a11166a9375cd
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“固定三行”的格式边界与游标推进。
+    input_file: js-acm/js-acm-fixed-three-lines/05.in
+    output_file: js-acm/js-acm-fixed-three-lines/05.out
+    checksum: f475ce5409ad4660258695b06e3537b80dd25cd9f680e6665410117cf222d5f5
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“固定三行”的格式边界与游标推进。
+    input_file: js-acm/js-acm-fixed-three-lines/06.in
+    output_file: js-acm/js-acm-fixed-three-lines/06.out
+    checksum: d9930be5f647e5f32ee8b4bb34bcf5cfaabe43072d9f8b476d1afb162448bdd9

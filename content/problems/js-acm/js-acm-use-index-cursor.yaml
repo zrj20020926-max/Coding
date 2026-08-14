@@ -1,0 +1,124 @@
+slug: js-acm-use-index-cursor
+title: 使用索引游标
+description: 本练习只训练 **使用索引游标** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: hard
+training_category: large-input
+tags:
+- stdin
+- stdout
+- large-input
+- javascript-v8
+- nodejs
+input_description: 输入含大量整数对，按行或 token 游标读取。
+output_description: 输出所有整数总和。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '1 2
+
+  3 4
+
+  '
+sample_output: '10
+
+  '
+sample_explanation: 按“使用索引游标”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '1 2
+
+    3 4
+
+    '
+  output: '10
+
+    '
+  explanation: 按“使用索引游标”的规则解析输入，并得到上述规范化输出。
+- input: '10 -2
+
+    8 4
+
+    '
+  output: '20
+
+    '
+  explanation: 按“使用索引游标”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“使用索引游标”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 使用 shift() 反复移动大数组，造成不必要的二次方开销。
+chapter: js-acm-large-input
+chapter_order: 7
+prerequisites:
+- js-acm-avoid-repeated-shift
+estimated_minutes: 12
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 使用索引游标\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 使用索引游标；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 3000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-use-index-cursor/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-use-index-cursor/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“使用索引游标”的格式边界与游标推进。
+    input_file: js-acm/js-acm-use-index-cursor/01.in
+    output_file: js-acm/js-acm-use-index-cursor/01.out
+    checksum: 761e3ef517f16b27a5d2d571655841036835b83e192df90ff198d73ea3d1c490
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“使用索引游标”的格式边界与游标推进。
+    input_file: js-acm/js-acm-use-index-cursor/02.in
+    output_file: js-acm/js-acm-use-index-cursor/02.out
+    checksum: d98379f6ca1c5255e1d4810be42f11bb0036704fb63422d89150f6073a09d6ca
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“使用索引游标”的格式边界与游标推进。
+    input_file: js-acm/js-acm-use-index-cursor/03.in
+    output_file: js-acm/js-acm-use-index-cursor/03.out
+    checksum: 3445651802fae4f79dd933134a445c863a30f5d32a3af7a799337a39a6c78366
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“使用索引游标”的格式边界与游标推进。
+    input_file: js-acm/js-acm-use-index-cursor/04.in
+    output_file: js-acm/js-acm-use-index-cursor/04.out
+    checksum: 562bba5cce4859aa9aead5b3851146959cea57e29fc6c1fdc0815a9a959ceaea
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“使用索引游标”的格式边界与游标推进。
+    input_file: js-acm/js-acm-use-index-cursor/05.in
+    output_file: js-acm/js-acm-use-index-cursor/05.out
+    checksum: aa14eb876598e1d5af7258f0626bb1f125795a1480a1c4d4ef2054c5bddac39d
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“使用索引游标”的格式边界与游标推进。
+    input_file: js-acm/js-acm-use-index-cursor/06.in
+    output_file: js-acm/js-acm-use-index-cursor/06.out
+    checksum: b2fdc58455575d0ebd41465aa2762a3f3f862add270e3e3c2202883cd4826b9b

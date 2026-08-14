@@ -1,0 +1,134 @@
+slug: js-acm-matrix-followed-queries
+title: 矩阵后跟查询数量
+description: 本练习只训练 **矩阵后跟查询数量** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: hard
+training_category: mixed-input
+tags:
+- stdin
+- stdout
+- mixed-nested
+- javascript-v8
+- nodejs
+input_description: 先给 n m 和 n 行矩阵，随后一行查询数量 q。
+output_description: 输出矩阵元素和与 q。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '2 2
+
+  1 2
+
+  3 4
+
+  3
+
+  '
+sample_output: '10 3
+
+  '
+sample_explanation: 按“矩阵后跟查询数量”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '2 2
+
+    1 2
+
+    3 4
+
+    3
+
+    '
+  output: '10 3
+
+    '
+  explanation: 按“矩阵后跟查询数量”的规则解析输入，并得到上述规范化输出。
+- input: '1 3
+
+    10 -2 8
+
+    2
+
+    '
+  output: '16 2
+
+    '
+  explanation: 按“矩阵后跟查询数量”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“矩阵后跟查询数量”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 使用 shift() 反复移动大数组，造成不必要的二次方开销。
+chapter: js-acm-mixed-nested
+chapter_order: 4
+prerequisites:
+- js-acm-string-followed-array
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 矩阵后跟查询数量\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 矩阵后跟查询数量；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-matrix-followed-queries/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-matrix-followed-queries/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“矩阵后跟查询数量”的格式边界与游标推进。
+    input_file: js-acm/js-acm-matrix-followed-queries/01.in
+    output_file: js-acm/js-acm-matrix-followed-queries/01.out
+    checksum: 600d6e90176d1c11701f5e83299fb1bdc7e80cb4ea619d6bee73597de0f559bf
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“矩阵后跟查询数量”的格式边界与游标推进。
+    input_file: js-acm/js-acm-matrix-followed-queries/02.in
+    output_file: js-acm/js-acm-matrix-followed-queries/02.out
+    checksum: b8ee2b5049511e769148ecc4d1f720ab32ea7b275b04ddd02e1fcbec024e9e13
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“矩阵后跟查询数量”的格式边界与游标推进。
+    input_file: js-acm/js-acm-matrix-followed-queries/03.in
+    output_file: js-acm/js-acm-matrix-followed-queries/03.out
+    checksum: aa70e36bd2ff271b7756c7c79180e0a192d77a426294466dec294f4f223fadb0
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“矩阵后跟查询数量”的格式边界与游标推进。
+    input_file: js-acm/js-acm-matrix-followed-queries/04.in
+    output_file: js-acm/js-acm-matrix-followed-queries/04.out
+    checksum: 22ab8795b3176cf83a9436db0c6dc2a99b0868bfd1f6049353d6c8aec286771d
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“矩阵后跟查询数量”的格式边界与游标推进。
+    input_file: js-acm/js-acm-matrix-followed-queries/05.in
+    output_file: js-acm/js-acm-matrix-followed-queries/05.out
+    checksum: f84d58f049c5ca1dec7e9284b18fddc9b613e2f365556e99848acd69bca2bae1
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“矩阵后跟查询数量”的格式边界与游标推进。
+    input_file: js-acm/js-acm-matrix-followed-queries/06.in
+    output_file: js-acm/js-acm-matrix-followed-queries/06.out
+    checksum: 18882d94426543f61948f47bce1c9e6a0785500bbe215b512fc2ccf4f18e0152

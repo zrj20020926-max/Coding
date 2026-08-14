@@ -1,0 +1,130 @@
+slug: js-acm-negative-matrix
+title: 矩阵含负数
+description: 本练习只训练 **矩阵含负数** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: medium
+training_category: matrix-input
+tags:
+- stdin
+- stdout
+- matrices
+- javascript-v8
+- nodejs
+input_description: 第一行 n m；随后 n×m 个可能为负的整数。
+output_description: 输出矩阵所有元素之和。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '2 2
+
+  -1 -2
+
+  -3 -4
+
+  '
+sample_output: '-10
+
+  '
+sample_explanation: 按“矩阵含负数”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '2 2
+
+    -1 -2
+
+    -3 -4
+
+    '
+  output: '-10
+
+    '
+  explanation: 按“矩阵含负数”的规则解析输入，并得到上述规范化输出。
+- input: '2 3
+
+    10 -2 0
+
+    8 -4 1
+
+    '
+  output: '13
+
+    '
+  explanation: 按“矩阵含负数”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“矩阵含负数”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-matrices
+chapter_order: 9
+prerequisites:
+- js-acm-large-matrix
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 矩阵含负数\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 矩阵含负数；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-negative-matrix/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-negative-matrix/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“矩阵含负数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-negative-matrix/01.in
+    output_file: js-acm/js-acm-negative-matrix/01.out
+    checksum: 7a6aaa4b2f42324795ec984b60ae87c1856e7767bbf793bf6a710383cb1205fa
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“矩阵含负数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-negative-matrix/02.in
+    output_file: js-acm/js-acm-negative-matrix/02.out
+    checksum: 592b6d9198046b2898c19e2aa014d42490e75992703be25ef73ec88a1d39a935
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“矩阵含负数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-negative-matrix/03.in
+    output_file: js-acm/js-acm-negative-matrix/03.out
+    checksum: f715b2e419079b16359bc36b3da25ab38233c240b836d1f13c460fa285ce0950
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“矩阵含负数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-negative-matrix/04.in
+    output_file: js-acm/js-acm-negative-matrix/04.out
+    checksum: 0e5a78e403aa4f996418ba13f4b4c1554feff5ebda9b92eced06244f115beb74
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“矩阵含负数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-negative-matrix/05.in
+    output_file: js-acm/js-acm-negative-matrix/05.out
+    checksum: 6f16dade545cad8e3e63155896eaa235e98786d400cd364cdf09cfe0ac80d652
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“矩阵含负数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-negative-matrix/06.in
+    output_file: js-acm/js-acm-negative-matrix/06.out
+    checksum: facb05e56c38ac1a30926783e988c9426f6b08e2ce3a6d63f2c15dd9e8bcbddb

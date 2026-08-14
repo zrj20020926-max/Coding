@@ -1,0 +1,150 @@
+slug: js-acm-blocks-until-eof
+title: 第一行 n，随后 n 行，重复直到 EOF
+description: 本练习只训练 **第一行 n，随后 n 行，重复直到 EOF** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: medium
+training_category: read-until-eof
+tags:
+- stdin
+- stdout
+- read-until-eof
+- javascript-v8
+- nodejs
+input_description: 重复读取 n 和随后的 n 行记录，直到 EOF。
+output_description: 每块记录用逗号连接后输出一行。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '2
+
+  a
+
+  b
+
+  1
+
+  c
+
+  '
+sample_output: 'a,b
+
+  c
+
+  '
+sample_explanation: 按“第一行 n，随后 n 行，重复直到 EOF”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '2
+
+    a
+
+    b
+
+    1
+
+    c
+
+    '
+  output: 'a,b
+
+    c
+
+    '
+  explanation: 按“第一行 n，随后 n 行，重复直到 EOF”的规则解析输入，并得到上述规范化输出。
+- input: '1
+
+    one
+
+    3
+
+    a
+
+    b
+
+    c
+
+    '
+  output: 'one
+
+    a,b,c
+
+    '
+  explanation: 按“第一行 n，随后 n 行，重复直到 EOF”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“第一行 n，随后 n 行，重复直到 EOF”，并输出规范化结果。
+v8_hint: 循环调用 `readline()`，并用 `line === undefined` 判断 EOF；空字符串不是 EOF。
+nodejs_hint: 统一 CRLF 后建立行数组，用整数游标前进；不要用 `shift()` 消耗大数组。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 无条件 trim() 导致空行、前导空格或末尾结构丢失。
+- 使用 shift() 反复移动大数组，造成不必要的二次方开销。
+chapter: js-acm-read-until-eof
+chapter_order: 4
+prerequisites:
+- js-acm-two-lines-until-eof
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 第一行 n，随后 n 行，重复直到 EOF\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 第一行 n，随后 n 行，重复直到 EOF；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-blocks-until-eof/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-blocks-until-eof/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“第一行 n，随后 n 行，重复直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-blocks-until-eof/01.in
+    output_file: js-acm/js-acm-blocks-until-eof/01.out
+    checksum: 8ae35e1838a85b77fd3fbe142886a4f3f91f733dfeb4d63192f14646ef55a6c1
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“第一行 n，随后 n 行，重复直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-blocks-until-eof/02.in
+    output_file: js-acm/js-acm-blocks-until-eof/02.out
+    checksum: b2deb7398a15e2c0259e0fdda8dc847db1525e9132d1bcb1cc50b1576bff29d0
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“第一行 n，随后 n 行，重复直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-blocks-until-eof/03.in
+    output_file: js-acm/js-acm-blocks-until-eof/03.out
+    checksum: 7f8d36e62bcad685262954d4da6f8e6ca65557a2987aed6cc9d977810795f1b2
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“第一行 n，随后 n 行，重复直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-blocks-until-eof/04.in
+    output_file: js-acm/js-acm-blocks-until-eof/04.out
+    checksum: 32c89f50c829c56f27d68d3dabcf4bf8540557f8b6d155b1355b2714d57624f0
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“第一行 n，随后 n 行，重复直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-blocks-until-eof/05.in
+    output_file: js-acm/js-acm-blocks-until-eof/05.out
+    checksum: 4c9b1641bf812f79e62a281c2c9db7641acb405dd96684ddaa2389c4eaddca6f
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“第一行 n，随后 n 行，重复直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-blocks-until-eof/06.in
+    output_file: js-acm/js-acm-blocks-until-eof/06.out
+    checksum: eaeefb9931f51d0da79941b64862d7eab17124146d9ce06f8fdbeafe18c4cf1e

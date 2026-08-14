@@ -158,14 +158,34 @@ class TestSetContent(StrictModel):
         return self
 
 
-class ReferenceSolutions(StrictModel):
-    python: str
-    cpp: str
+class PublicSampleContent(StrictModel):
+    input: str = Field(max_length=100_000)
+    output: str = Field(max_length=100_000)
+    explanation: str = Field(min_length=1, max_length=20_000)
 
-    @field_validator("python", "cpp")
+
+class ReferenceSolutions(StrictModel):
+    python: Optional[str] = None
+    cpp: Optional[str] = None
+    javascript_v8: Optional[str] = None
+    nodejs: Optional[str] = None
+
+    @field_validator("python", "cpp", "javascript_v8", "nodejs")
     @classmethod
-    def validate_path(cls, value: str) -> str:
-        return _safe_relative_path(value)
+    def validate_path(cls, value: str | None) -> str | None:
+        return _safe_relative_path(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def validate_runtime_pairs(self) -> ReferenceSolutions:
+        legacy = self.python is not None or self.cpp is not None
+        javascript = self.javascript_v8 is not None or self.nodejs is not None
+        if legacy and (self.python is None or self.cpp is None):
+            raise ValueError("python and cpp reference solutions must be provided together")
+        if javascript and (self.javascript_v8 is None or self.nodejs is None):
+            raise ValueError("javascript_v8 and nodejs references must be provided together")
+        if not legacy and not javascript:
+            raise ValueError("at least one complete reference solution pair is required")
+        return self
 
 
 class ProblemContent(StrictModel):
@@ -181,6 +201,19 @@ class ProblemContent(StrictModel):
     sample_input: str = Field(max_length=100_000)
     sample_output: str = Field(max_length=100_000)
     sample_explanation: str = Field(min_length=1, max_length=20_000)
+    samples: list[PublicSampleContent] = Field(default_factory=list, max_length=10)
+    learning_objective: Optional[str] = Field(default=None, min_length=1, max_length=20_000)
+    v8_hint: Optional[str] = Field(default=None, min_length=1, max_length=20_000)
+    nodejs_hint: Optional[str] = Field(default=None, min_length=1, max_length=20_000)
+    common_errors: list[str] = Field(default_factory=list, max_length=20)
+    chapter: Optional[str] = Field(
+        default=None,
+        pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        max_length=100,
+    )
+    chapter_order: Optional[int] = Field(default=None, ge=1, le=500)
+    prerequisites: list[str] = Field(default_factory=list, max_length=20)
+    estimated_minutes: Optional[int] = Field(default=None, ge=1, le=240)
     starter_code_v8: Optional[str] = Field(default=None, max_length=262_144)
     starter_code_nodejs: Optional[str] = Field(default=None, max_length=262_144)
     time_limit_ms: int = Field(default=1000, ge=100, le=30_000)
@@ -196,6 +229,42 @@ class ProblemContent(StrictModel):
         if len(value) != len(set(value)):
             raise ValueError("problem tags must be unique")
         return value
+
+    @field_validator("prerequisites")
+    @classmethod
+    def validate_unique_prerequisites(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("problem prerequisites must be unique")
+        return value
+
+    @model_validator(mode="after")
+    def validate_course_metadata(self) -> ProblemContent:
+        course_fields = (
+            self.learning_objective,
+            self.v8_hint,
+            self.nodejs_hint,
+            self.chapter,
+            self.chapter_order,
+            self.estimated_minutes,
+        )
+        if any(item is not None for item in course_fields):
+            if any(item is None for item in course_fields):
+                raise ValueError("course exercises require complete learning metadata")
+            if len(self.samples) < 2:
+                raise ValueError("course exercises require at least two public samples")
+            if not self.common_errors:
+                raise ValueError("course exercises require common error guidance")
+            if self.reference_solutions.javascript_v8 is None:
+                raise ValueError("course exercises require JavaScript V8 and Node.js references")
+        if self.samples:
+            first = self.samples[0]
+            if (
+                first.input != self.sample_input
+                or first.output != self.sample_output
+                or first.explanation != self.sample_explanation
+            ):
+                raise ValueError("the first public sample must match legacy sample fields")
+        return self
 
 
 class CollectionContent(StrictModel):
@@ -342,10 +411,15 @@ def _read_hidden_file(path: Path, label: str) -> bytes:
 def _materialize_problem(
     document: ProblemContent, test_data_root: Path, content_root: Path
 ) -> MaterializedProblem:
-    for language, relative in (
+    references = (
         ("Python", document.reference_solutions.python),
         ("C++", document.reference_solutions.cpp),
-    ):
+        ("JavaScript V8", document.reference_solutions.javascript_v8),
+        ("Node.js", document.reference_solutions.nodejs),
+    )
+    for language, relative in references:
+        if relative is None:
+            continue
         reference_path = _resolve_inside(content_root, relative, f"{language} 引用实现")
         try:
             reference_source = reference_path.read_bytes()
@@ -443,6 +517,7 @@ def load_content_bundle(
 
     test_data_root = _resolve_inside(root, manifest.test_data_directory, "测试数据目录")
     problems: dict[str, MaterializedProblem] = {}
+    all_documents: dict[str, ProblemContent] = {}
     all_problem_slugs: set[str] = set()
     for relative in manifest.problems:
         document = _load_yaml(
@@ -452,6 +527,7 @@ def load_content_bundle(
         if document.slug in all_problem_slugs:
             raise ContentBootstrapError("CONTENT_INVALID", "题目 slug 重复")
         all_problem_slugs.add(document.slug)
+        all_documents[document.slug] = document
         if required_problem_slugs is None or document.slug in required_problem_slugs:
             problems[document.slug] = _materialize_problem(document, test_data_root, root)
     if required_problem_slugs is not None and set(problems) != required_problem_slugs:
@@ -466,6 +542,7 @@ def load_content_bundle(
     }
     if not referenced <= all_problem_slugs:
         raise ContentBootstrapError("CONTENT_INVALID", "题单引用了不存在的题目")
+    _validate_course_structure(all_documents, collections_doc.collections)
     daily = (
         tuple(daily_doc.daily_challenges)
         if problem_slug is None and collection_slug is None
@@ -487,10 +564,92 @@ def load_content_bundle(
     )
 
 
+def _render_problem_description(document: ProblemContent) -> str:
+    if document.learning_objective is None:
+        return document.description
+    sections = [
+        document.description.rstrip(),
+        "## 学习目标\n\n" + document.learning_objective,
+        "## JavaScript V8 提示\n\n" + (document.v8_hint or ""),
+        "## Node.js 提示\n\n" + (document.nodejs_hint or ""),
+    ]
+    if document.samples:
+        sample_sections = []
+        for index, sample in enumerate(document.samples, 1):
+            sample_sections.append(
+                f"### 公开样例 {index}\n\n"
+                f"输入：\n```text\n{sample.input.rstrip()}\n```\n\n"
+                f"输出：\n```text\n{sample.output.rstrip()}\n```\n\n"
+                f"说明：{sample.explanation}"
+            )
+        sections.append("## 公开样例\n\n" + "\n\n".join(sample_sections))
+    sections.append(
+        "## 常见错误\n\n"
+        + "\n".join(f"- {message}" for message in document.common_errors)
+    )
+    prerequisites = "、".join(document.prerequisites) if document.prerequisites else "无"
+    sections.append(
+        "## 课程信息\n\n"
+        f"- 所属章节：`{document.chapter}`\n"
+        f"- 章节顺序：{document.chapter_order}\n"
+        f"- 前置练习：{prerequisites}\n"
+        f"- 预计完成时间：{document.estimated_minutes} 分钟"
+    )
+    return "\n\n".join(sections) + "\n"
+
+
+def _validate_course_structure(
+    documents: dict[str, ProblemContent], collections: list[CollectionContent]
+) -> None:
+    collection_map = {item.slug: item for item in collections}
+    course_documents = {
+        slug: document for slug, document in documents.items() if document.chapter is not None
+    }
+    for slug, document in course_documents.items():
+        if slug in document.prerequisites:
+            raise ContentBootstrapError("CONTENT_INVALID", "课程前置练习不能引用自身")
+        if not set(document.prerequisites) <= set(course_documents):
+            raise ContentBootstrapError("CONTENT_INVALID", "课程前置练习不存在")
+        collection = collection_map.get(document.chapter or "")
+        if collection is None:
+            raise ContentBootstrapError("CONTENT_INVALID", "课程章节不存在")
+        expected_index = (document.chapter_order or 0) - 1
+        if (
+            expected_index >= len(collection.problems)
+            or collection.problems[expected_index] != slug
+        ):
+            raise ContentBootstrapError("CONTENT_INVALID", "课程章节顺序与题单不一致")
+    for collection in collections:
+        orders = [
+            document.chapter_order
+            for document in course_documents.values()
+            if document.chapter == collection.slug
+        ]
+        if orders and sorted(orders) != list(range(1, len(orders) + 1)):
+            raise ContentBootstrapError("CONTENT_INVALID", "课程章节顺序必须连续且唯一")
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(slug: str) -> None:
+        if slug in visiting:
+            raise ContentBootstrapError("CONTENT_INVALID", "课程前置关系存在环")
+        if slug in visited:
+            return
+        visiting.add(slug)
+        for prerequisite in course_documents[slug].prerequisites:
+            visit(prerequisite)
+        visiting.remove(slug)
+        visited.add(slug)
+
+    for slug in course_documents:
+        visit(slug)
+
+
 def _problem_values(document: ProblemContent) -> dict[str, object]:
     values: dict[str, object] = {
         "title": document.title,
-        "description": document.description,
+        "description": _render_problem_description(document),
         "difficulty": document.difficulty,
         "input_description": document.input_description,
         "output_description": document.output_description,

@@ -1,0 +1,128 @@
+slug: js-acm-float-matrix
+title: 矩阵含浮点数
+description: 本练习只训练 **矩阵含浮点数** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: medium
+training_category: matrix-input
+tags:
+- stdin
+- stdout
+- matrices
+- javascript-v8
+- nodejs
+input_description: 第一行 n m；随后 n 行，每行 m 个浮点数。
+output_description: 输出元素总和并保留两位小数。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '2 2
+
+  1.5 2.5
+
+  3.25 4.75
+
+  '
+sample_output: '12.00
+
+  '
+sample_explanation: 按“矩阵含浮点数”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '2 2
+
+    1.5 2.5
+
+    3.25 4.75
+
+    '
+  output: '12.00
+
+    '
+  explanation: 按“矩阵含浮点数”的规则解析输入，并得到上述规范化输出。
+- input: '1 3
+
+    10 -2 0.5
+
+    '
+  output: '8.50
+
+    '
+  explanation: 按“矩阵含浮点数”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“矩阵含浮点数”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-matrices
+chapter_order: 10
+prerequisites:
+- js-acm-negative-matrix
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 矩阵含浮点数\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 矩阵含浮点数；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-float-matrix/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-float-matrix/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“矩阵含浮点数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-float-matrix/01.in
+    output_file: js-acm/js-acm-float-matrix/01.out
+    checksum: f84d86c8f41e2d1e94cde92dfc7e5ccda4bb8318b6ab7e4491f38c46f4ce23f1
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“矩阵含浮点数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-float-matrix/02.in
+    output_file: js-acm/js-acm-float-matrix/02.out
+    checksum: 63182669a44845f811a5836025e849835700f5542209da7c142554baec4e9294
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“矩阵含浮点数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-float-matrix/03.in
+    output_file: js-acm/js-acm-float-matrix/03.out
+    checksum: 1956c8ea11e35a2730f5130b5e8ff0d00f87391ac668e1fbd10df63a719a45d9
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“矩阵含浮点数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-float-matrix/04.in
+    output_file: js-acm/js-acm-float-matrix/04.out
+    checksum: 82885e10e42d5afcb75d09e147790ac586893bb44af08da535ffe5d9aae9fb8f
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“矩阵含浮点数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-float-matrix/05.in
+    output_file: js-acm/js-acm-float-matrix/05.out
+    checksum: 226474c839101e480e976697092e1a66e2d00c497df6a2b02647c7cd1c2a0b27
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“矩阵含浮点数”的格式边界与游标推进。
+    input_file: js-acm/js-acm-float-matrix/06.in
+    output_file: js-acm/js-acm-float-matrix/06.out
+    checksum: 0aab6469af9a30ef00d9fb9075281fa6ee72cd5d4d72d9a3a855c500ddf4545f

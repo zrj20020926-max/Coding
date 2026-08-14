@@ -5,14 +5,22 @@ import os
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Lock
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = os.getenv("CATALOG_API_URL", "http://backend-api-content-test:8000/api/v1")
 TERMINAL = {
     "Accepted", "Wrong Answer", "Compile Error", "Runtime Error",
-    "Time Limit Exceeded", "Memory Limit Exceeded", "System Error",
+    "Time Limit Exceeded", "Memory Limit Exceeded", "Output Limit Exceeded", "System Error",
 }
+
+
+class ApiRequestError(RuntimeError):
+    def __init__(self, method: str, path: str, status: int) -> None:
+        self.status = status
+        super().__init__(f"API request failed: {method} {path}: HTTP {status}")
 
 
 def request(
@@ -39,13 +47,83 @@ def request(
             raw = response.read()
             return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"API request failed: {method} {path}: HTTP {exc.code}") from None
+        raise ApiRequestError(method, path, exc.code) from None
+
+
+class ApiClient:
+    def __init__(self, credentials: dict[str, object]) -> None:
+        self.credentials = credentials
+        self._access_token = ""
+        self._auth_lock = Lock()
+
+    def authenticate(self, *, register: bool = False) -> None:
+        with self._auth_lock:
+            if register:
+                try:
+                    session = request("POST", "/auth/register", payload=self.credentials)
+                except ApiRequestError as exc:
+                    if exc.status != 409:
+                        raise
+                else:
+                    self._access_token = str(session["access_token"])
+                    return
+            session = request(
+                "POST",
+                "/auth/login",
+                payload={
+                    "account": self.credentials["username"],
+                    "password": self.credentials["password"],
+                },
+            )
+            self._access_token = str(session["access_token"])
+
+    def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        payload: dict[str, object] | None = None,
+        idempotency_key: str | None = None,
+    ) -> dict[str, object]:
+        token = self._access_token
+        try:
+            return request(
+                method,
+                path,
+                payload=payload,
+                token=token,
+                idempotency_key=idempotency_key,
+            )
+        except ApiRequestError as exc:
+            if exc.status != 401:
+                raise
+        # Long catalog runs can outlive the short access-token lifetime. Only
+        # one polling thread renews the session; peers reuse the new token.
+        with self._auth_lock:
+            if self._access_token == token:
+                session = request(
+                    "POST",
+                    "/auth/login",
+                    payload={
+                        "account": self.credentials["username"],
+                        "password": self.credentials["password"],
+                    },
+                )
+                self._access_token = str(session["access_token"])
+            renewed_token = self._access_token
+        return request(
+            method,
+            path,
+            payload=payload,
+            token=renewed_token,
+            idempotency_key=idempotency_key,
+        )
 
 
 def submit_and_wait(
-    token: str, problem_id: int, language: str, source: str, key: str
+    client: ApiClient, problem_id: int, language: str, source: str, key: str
 ) -> str:
-    created = request(
+    created = client.request(
         "POST",
         "/submissions",
         payload={
@@ -54,15 +132,12 @@ def submit_and_wait(
             "source_code": source,
             "mode": "judge",
         },
-        token=token,
         idempotency_key=key,
     )
     submission_id = created["id"]
     deadline = time.monotonic() + 120
     while time.monotonic() < deadline:
-        detail = request(
-            "GET", f"/submissions/{submission_id}/status", token=token
-        )
+        detail = client.request("GET", f"/submissions/{submission_id}/status")
         status = str(detail["status"])
         if status in TERMINAL:
             return status
@@ -71,22 +146,70 @@ def submit_and_wait(
 
 
 def require_status(
-    token: str,
+    client: ApiClient,
     problem_id: int,
     language: str,
     source: str,
     key: str,
     expected: str,
 ) -> str:
-    status = submit_and_wait(token, problem_id, language, source, key)
+    status = submit_and_wait(client, problem_id, language, source, key)
     if status == expected:
         return status
     # A previous acceptance run may have snapshotted an older resource limit.
     # One fresh key is sufficient to verify the current content version while
     # preserving the original immutable submission for audit.
     return submit_and_wait(
-        token, problem_id, language, source, f"{key}-current-content"
+        client, problem_id, language, source, f"{key}-current-content"
     )
+
+
+def enqueue(
+    client: ApiClient, problem_id: int, language: str, source: str, key: str
+) -> str:
+    created = client.request(
+        "POST",
+        "/submissions",
+        payload={
+            "problem_id": problem_id,
+            "language": language,
+            "source_code": source,
+            "mode": "judge",
+        },
+        idempotency_key=key,
+    )
+    return str(created["id"])
+
+
+def wait_for_all(
+    client: ApiClient,
+    submissions: list[tuple[str, str, str]],
+    timeout_seconds: int = 1800,
+) -> None:
+    pending = {submission_id: (slug, language) for submission_id, slug, language in submissions}
+    deadline = time.monotonic() + timeout_seconds
+    with ThreadPoolExecutor(max_workers=24) as executor:
+        while pending and time.monotonic() < deadline:
+            ids = list(pending)
+            statuses = executor.map(
+                lambda submission_id: client.request(
+                    "GET", f"/submissions/{submission_id}/status"
+                ),
+                ids,
+            )
+            for submission_id, detail in zip(ids, statuses):
+                status = str(detail["status"])
+                if status not in TERMINAL:
+                    continue
+                slug, language = pending.pop(submission_id)
+                if status != "Accepted":
+                    raise RuntimeError(
+                        f"reference was not Accepted: {slug}/{language}: {status}"
+                    )
+            if pending:
+                time.sleep(0.5)
+    if pending:
+        raise RuntimeError(f"reference acceptance timed out with {len(pending)} pending")
 
 
 def main() -> int:
@@ -97,95 +220,68 @@ def main() -> int:
         "password": "Catalog-Acceptance-2026!",
         "nickname": "题库验收员",
     }
-    try:
-        session = request("POST", "/auth/register", payload=credentials)
-    except RuntimeError as exc:
-        if "HTTP 409" not in str(exc):
-            raise
-        session = request(
-            "POST",
-            "/auth/login",
-            payload={
-                "account": credentials["username"],
-                "password": credentials["password"],
-            },
+    client = ApiClient(credentials)
+    client.authenticate(register=True)
+    first_page = client.request("GET", "/problems?page=1&page_size=100&sort=oldest")
+    items = list(first_page["items"])
+    for page_number in range(2, int(first_page["pages"]) + 1):
+        page = client.request(
+            "GET", f"/problems?page={page_number}&page_size=100&sort=oldest"
         )
-    token = str(session["access_token"])
-    page = request("GET", "/problems?page=1&page_size=100&sort=oldest", token=token)
-    items = page["items"]
-    if not isinstance(items, list) or len(items) < 30:
-        raise RuntimeError("public problem API returned fewer than 30 problems")
+        items.extend(page["items"])
+    if len(items) != 105:
+        raise RuntimeError("public training API did not return exactly 105 exercises")
     problems = {str(item["slug"]): int(item["id"]) for item in items}
-    if len(problems) != 30:
+    if len(problems) != 105:
         raise RuntimeError("public problem slugs are not unique")
     forbidden = {
         "reference_solutions", "test_set", "test_cases", "input_object_key",
         "output_object_key", "checksum", "docker_image", "compile_command",
     }
-    for slug, problem_id in problems.items():
-        detail = request("GET", f"/problems/{problem_id}", token=token)
+    for slug in problems:
+        detail = client.request("GET", f"/problems/{slug}")
         serialized = json.dumps(detail, sort_keys=True)
         if any(f'"{field}"' in serialized for field in forbidden):
             raise RuntimeError(f"public problem DTO leaked internal fields: {slug}")
-    collections = request("GET", "/collections?page=1&page_size=100", token=token)
+    collections = client.request("GET", "/collections?page=1&page_size=100")
     collection_items = collections["items"]
-    if not isinstance(collection_items, list) or len(collection_items) != 3:
-        raise RuntimeError("expected three public collections")
+    if not isinstance(collection_items, list) or len(collection_items) != 11:
+        raise RuntimeError("expected eleven public course chapters")
     for collection in collection_items:
-        detail = request(
-            "GET", f"/collections/{collection['slug']}?page=1&page_size=100", token=token
+        detail = client.request(
+            "GET", f"/collections/{collection['slug']}?page=1&page_size=100"
         )
-        if len(detail["problems"]) < 8:
-            raise RuntimeError("public collection contains fewer than eight problems")
-    request("GET", "/daily-challenge", token=token)
+        if not detail["problems"]:
+            raise RuntimeError("public course chapter is empty")
+    client.request("GET", "/daily-challenge")
 
-    python_accepted = cpp_accepted = wrong_answers = 0
+    submissions: list[tuple[str, str, str]] = []
     for slug, problem_id in problems.items():
-        solution_root = ROOT / "reference-solutions" / slug
-        python_status = require_status(
-            token,
+        solution_root = ROOT / "reference-solutions" / "js-acm" / slug
+        v8_id = enqueue(
+            client,
             problem_id,
-            "python",
-            (solution_root / "solution.py").read_text(encoding="utf-8"),
-            f"catalog-python-{slug}",
-            "Accepted",
+            "javascript-v8",
+            (solution_root / "solution-v8.js").read_text(encoding="utf-8"),
+            f"course-v8-{slug}",
         )
-        python_accepted += int(python_status == "Accepted")
-        if python_status != "Accepted":
-            raise RuntimeError(f"Python reference was not Accepted: {slug}: {python_status}")
-        cpp_status = require_status(
-            token,
+        submissions.append((v8_id, slug, "javascript-v8"))
+        nodejs_id = enqueue(
+            client,
             problem_id,
-            "cpp",
-            (solution_root / "solution.cpp").read_text(encoding="utf-8"),
-            f"catalog-cpp-{slug}",
-            "Accepted",
+            "nodejs",
+            (solution_root / "solution-nodejs.js").read_text(encoding="utf-8"),
+            f"course-nodejs-{slug}",
         )
-        cpp_accepted += int(cpp_status == "Accepted")
-        if cpp_status != "Accepted":
-            raise RuntimeError(f"C++ reference was not Accepted: {slug}: {cpp_status}")
-
-    for wrong_source in sorted((ROOT / "wrong-solutions").glob("*.py")):
-        slug = wrong_source.stem
-        status = require_status(
-            token,
-            problems[slug],
-            "python",
-            wrong_source.read_text(encoding="utf-8"),
-            f"catalog-wrong-{slug}",
-            "Wrong Answer",
-        )
-        wrong_answers += int(status == "Wrong Answer")
-        if status != "Wrong Answer":
-            raise RuntimeError(f"wrong solution did not get Wrong Answer: {slug}: {status}")
+        submissions.append((nodejs_id, slug, "nodejs"))
+    wait_for_all(client, submissions)
 
     report = {
         "status": "success",
         "public_problems": len(problems),
         "details_opened": len(problems),
-        "python_accepted": python_accepted,
-        "cpp_accepted": cpp_accepted,
-        "wrong_answers": wrong_answers,
+        "javascript_v8_accepted": len(problems),
+        "nodejs_accepted": len(problems),
         "collections": len(collection_items),
         "daily_challenge": 1,
         "duration_ms": round((time.monotonic() - started) * 1000),

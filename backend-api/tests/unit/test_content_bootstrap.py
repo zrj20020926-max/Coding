@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -70,7 +71,9 @@ def test_manifest_is_strict_and_checksums_are_verified(tmp_path: Path) -> None:
     assert invalid.value.code == "CONTENT_INVALID"
 
     manifest = copy_content(tmp_path / "checksum")
-    problem_path = manifest.parent / "problems" / "a-plus-b.yaml"
+    problem_path = (
+        manifest.parent / "problems" / "js-acm" / "js-acm-read-one-integer.yaml"
+    )
     problem = yaml.safe_load(problem_path.read_text(encoding="utf-8"))
     problem["test_set"]["cases"][0]["checksum"] = "0" * 64
     problem_path.write_text(
@@ -101,7 +104,7 @@ async def test_validate_only_and_dry_run_do_not_write(
         store=fake_object_store,
     )
     assert dry_run.status == "dry-run"
-    assert dry_run.problems.created == 30
+    assert dry_run.problems.created == 105
     assert await db_session.scalar(select(func.count(Problem.id))) == 0
     assert fake_object_store.test_objects == {}
 
@@ -118,27 +121,27 @@ async def test_empty_bootstrap_is_idempotent_and_populates_all_content(
     second = await run_content_bootstrap(
         CONTENT_ROOT / "manifest.yaml", db=db_session, store=fake_object_store
     )
-    assert first.problems.created == 30
-    assert first.test_sets.created == 30
-    assert second.problems.skipped == 30
-    assert second.test_sets.skipped == 30
-    assert second.collections.skipped == 3
+    assert first.problems.created == 105
+    assert first.test_sets.created == 105
+    assert second.problems.skipped == 105
+    assert second.test_sets.skipped == 105
+    assert second.collections.skipped == 11
     assert second.daily_challenges.skipped == 14
-    assert await db_session.scalar(select(func.count(Problem.id))) == 30
-    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 30
-    assert await db_session.scalar(select(func.count(Collection.id))) == 3
-    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) >= 24
+    assert await db_session.scalar(select(func.count(Problem.id))) == 105
+    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 105
+    assert await db_session.scalar(select(func.count(Collection.id))) == 11
+    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 105
     assert await db_session.scalar(select(func.count(DailyChallenge.problem_id))) == 14
     challenge = await db_session.scalar(select(DailyChallenge))
     assert challenge is not None
     assert challenge.challenge_date == datetime.now(ZoneInfo("Asia/Shanghai")).date()
-    assert len(fake_object_store.test_objects) == 360
+    assert len(fake_object_store.test_objects) == 1260
     public = (
         await db_session.scalars(
             select(Problem).where(Problem.visibility == ProblemVisibility.PUBLIC)
         )
     ).all()
-    assert len(public) == 30
+    assert len(public) == 105
     for problem in public:
         active_count = await db_session.scalar(
             select(func.count(ProblemTestSet.id)).where(
@@ -161,22 +164,42 @@ async def test_single_problem_update_creates_version_only_when_test_content_chan
     await run_content_bootstrap(manifest, db=db_session, store=fake_object_store)
     unchanged = await run_content_bootstrap(
         manifest,
-        problem_slug="a-plus-b",
+        problem_slug="js-acm-read-one-integer",
         db=db_session,
         store=fake_object_store,
     )
     assert unchanged.test_sets.skipped == 1
 
-    hidden_output = manifest.parent / "test-data" / "a-plus-b" / "01.out"
+    hidden_output = (
+        manifest.parent
+        / "test-data"
+        / "js-acm"
+        / "js-acm-read-one-integer"
+        / "01.out"
+    )
     hidden_output.write_text("1\n", encoding="utf-8")
+    problem_path = (
+        manifest.parent / "problems" / "js-acm" / "js-acm-read-one-integer.yaml"
+    )
+    problem_document = yaml.safe_load(problem_path.read_text(encoding="utf-8"))
+    hidden_input = hidden_output.with_suffix(".in").read_bytes()
+    problem_document["test_set"]["cases"][0]["checksum"] = hashlib.sha256(
+        hidden_input + b"\0" + hidden_output.read_bytes()
+    ).hexdigest()
+    problem_path.write_text(
+        yaml.safe_dump(problem_document, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
     changed = await run_content_bootstrap(
         manifest,
-        problem_slug="a-plus-b",
+        problem_slug="js-acm-read-one-integer",
         db=db_session,
         store=fake_object_store,
     )
     assert changed.test_sets.created == 1
-    problem = await db_session.scalar(select(Problem).where(Problem.slug == "a-plus-b"))
+    problem = await db_session.scalar(
+        select(Problem).where(Problem.slug == "js-acm-read-one-integer")
+    )
     assert problem is not None
     versions = (
         await db_session.scalars(
@@ -202,7 +225,9 @@ async def test_single_problem_statement_update_does_not_create_test_set(
     await seed_languages(db_session)
     manifest = copy_content(tmp_path)
     await run_content_bootstrap(manifest, db=db_session, store=fake_object_store)
-    problem_path = manifest.parent / "problems" / "a-plus-b.yaml"
+    problem_path = (
+        manifest.parent / "problems" / "js-acm" / "js-acm-read-one-integer.yaml"
+    )
     problem_document = yaml.safe_load(problem_path.read_text(encoding="utf-8"))
     problem_document["title"] = "边界求和（更新）"
     problem_path.write_text(
@@ -211,13 +236,13 @@ async def test_single_problem_statement_update_does_not_create_test_set(
     )
     updated = await run_content_bootstrap(
         manifest,
-        problem_slug="a-plus-b",
+        problem_slug="js-acm-read-one-integer",
         db=db_session,
         store=fake_object_store,
     )
     assert updated.problems.updated == 1
     assert updated.test_sets.skipped == 1
-    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 30
+    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 105
 
     problem_document["test_set"]["version"] = 99
     problem_path.write_text(
@@ -226,12 +251,12 @@ async def test_single_problem_statement_update_does_not_create_test_set(
     )
     version_only = await run_content_bootstrap(
         manifest,
-        problem_slug="a-plus-b",
+        problem_slug="js-acm-read-one-integer",
         db=db_session,
         store=fake_object_store,
     )
     assert version_only.test_sets.skipped == 1
-    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 30
+    assert await db_session.scalar(select(func.count(ProblemTestSet.id))) == 105
 
 
 class FailingStore(FakeSourceObjectStore):
@@ -271,7 +296,9 @@ async def test_database_commit_failure_cleans_orphan_objects(
         raise OSError("private database detail")
 
     monkeypatch.setattr(db_session, "commit", fail_commit)
-    bundle = load_content_bundle(CONTENT_ROOT / "manifest.yaml", problem_slug="a-plus-b")
+    bundle = load_content_bundle(
+        CONTENT_ROOT / "manifest.yaml", problem_slug="js-acm-read-one-integer"
+    )
     with pytest.raises(ContentBootstrapError) as failed:
         await import_content_bundle(db_session, fake_object_store, bundle)
     assert failed.value.code == "CONTENT_IMPORT_FAILED"
@@ -288,20 +315,20 @@ async def test_single_collection_filter_has_no_duplicate_relations(
     await seed_languages(db_session)
     report = await run_content_bootstrap(
         CONTENT_ROOT / "manifest.yaml",
-        collection_slug="acm-starter",
+        collection_slug="js-acm-single-value",
         db=db_session,
         store=fake_object_store,
     )
     assert report.collections.created == 1
-    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 10
+    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 8
     second = await run_content_bootstrap(
         CONTENT_ROOT / "manifest.yaml",
-        collection_slug="acm-starter",
+        collection_slug="js-acm-single-value",
         db=db_session,
         store=fake_object_store,
     )
     assert second.collections.skipped == 1
-    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 10
+    assert await db_session.scalar(select(func.count(CollectionProblem.problem_id))) == 8
 
 
 @pytest.mark.unit

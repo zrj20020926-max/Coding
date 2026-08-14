@@ -1,0 +1,118 @@
+slug: js-acm-integer-and-string
+title: 整数与字符串混合
+description: 本练习只训练 **整数与字符串混合** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: single-line-multiple-values
+tags:
+- stdin
+- stdout
+- single-line-values
+- javascript-v8
+- nodejs
+input_description: 一行先给整数 id，随后是一个或多个字符串 token。
+output_description: 输出 id:文本，文本 token 之间用单个空格连接。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '7 apple
+
+  '
+sample_output: '7:apple
+
+  '
+sample_explanation: 按“整数与字符串混合”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '7 apple
+
+    '
+  output: '7:apple
+
+    '
+  explanation: 按“整数与字符串混合”的规则解析输入，并得到上述规范化输出。
+- input: '0 hello world
+
+    '
+  output: '0:hello world
+
+    '
+  explanation: 按“整数与字符串混合”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“整数与字符串混合”，并输出规范化结果。
+v8_hint: 调用一次 `readline()`；只有题意允许时才 `trim()`，空白 token 用 `/\s+/` 拆分。
+nodejs_hint: 读取原始 stdin 后按题意处理第一行；不要在模板阶段无条件 `trim()`。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-single-line-values
+chapter_order: 3
+prerequisites:
+- js-acm-many-integers
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 整数与字符串混合\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 整数与字符串混合；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-integer-and-string/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-integer-and-string/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“整数与字符串混合”的格式边界与游标推进。
+    input_file: js-acm/js-acm-integer-and-string/01.in
+    output_file: js-acm/js-acm-integer-and-string/01.out
+    checksum: 97fab96fe0b54d7bcd8691d2a9930c2d874aa61e8e19b4a99da00e68176bec1f
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“整数与字符串混合”的格式边界与游标推进。
+    input_file: js-acm/js-acm-integer-and-string/02.in
+    output_file: js-acm/js-acm-integer-and-string/02.out
+    checksum: 83ad7c76e1a55f251cd12bea323af2cd479aa5a5e8a6bb04da93526ff131e80d
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“整数与字符串混合”的格式边界与游标推进。
+    input_file: js-acm/js-acm-integer-and-string/03.in
+    output_file: js-acm/js-acm-integer-and-string/03.out
+    checksum: 156dfecebeecc49b356f9913cc77ca9e3a27d4fed4abc6a041444c8a5f928b27
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“整数与字符串混合”的格式边界与游标推进。
+    input_file: js-acm/js-acm-integer-and-string/04.in
+    output_file: js-acm/js-acm-integer-and-string/04.out
+    checksum: 0bab7c1e2523e6023e5d81e7589ddc12581caa8ca42a085b2b1b210c6dfe93b3
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“整数与字符串混合”的格式边界与游标推进。
+    input_file: js-acm/js-acm-integer-and-string/05.in
+    output_file: js-acm/js-acm-integer-and-string/05.out
+    checksum: c516bc82c9557f6120ea59baefe3a0b4addbf4cf490cd5711e0d4d33d2916e76
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“整数与字符串混合”的格式边界与游标推进。
+    input_file: js-acm/js-acm-integer-and-string/06.in
+    output_file: js-acm/js-acm-integer-and-string/06.out
+    checksum: f512b842fac122cdc836eae1f41b0f4f6de7d30880a5a0f97c86f48091b3c970

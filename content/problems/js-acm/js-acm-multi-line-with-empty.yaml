@@ -1,0 +1,132 @@
+slug: js-acm-multi-line-with-empty
+title: 包含空行的输入
+description: 本练习只训练 **包含空行的输入** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: multi-line
+tags:
+- stdin
+- stdout
+- multi-line
+- javascript-v8
+- nodejs
+input_description: 读取所有逻辑行直到 EOF；空行和每行外侧空格必须保留。
+output_description: 每行用方括号包住并逐行输出。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: 'a
+
+
+  b
+
+  '
+sample_output: '[a]
+
+  []
+
+  [b]
+
+  '
+sample_explanation: 按“包含空行的输入”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: 'a
+
+
+    b
+
+    '
+  output: '[a]
+
+    []
+
+    [b]
+
+    '
+  explanation: 按“包含空行的输入”的规则解析输入，并得到上述规范化输出。
+- input: "  first  \nsecond\n"
+  output: '[  first  ]
+
+    [second]
+
+    '
+  explanation: 按“包含空行的输入”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“包含空行的输入”，并输出规范化结果。
+v8_hint: 循环调用 `readline()`，并用 `line === undefined` 判断 EOF；空字符串不是 EOF。
+nodejs_hint: 统一 CRLF 后建立行数组，用整数游标前进；不要用 `shift()` 消耗大数组。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 无条件 trim() 导致空行、前导空格或末尾结构丢失。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-multi-line
+chapter_order: 8
+prerequisites:
+- js-acm-multi-line-strings
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 包含空行的输入\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 包含空行的输入；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-multi-line-with-empty/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-multi-line-with-empty/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“包含空行的输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-multi-line-with-empty/01.in
+    output_file: js-acm/js-acm-multi-line-with-empty/01.out
+    checksum: 09e12cad8d55579dece7d566034cb75cb9c11522aa02eef380c7ec5a840aae3f
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“包含空行的输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-multi-line-with-empty/02.in
+    output_file: js-acm/js-acm-multi-line-with-empty/02.out
+    checksum: ef1c8e6bafb8ecee8078cbe5f9fb5db0cc61e3fedebc80684d2e490ec64e21fd
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“包含空行的输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-multi-line-with-empty/03.in
+    output_file: js-acm/js-acm-multi-line-with-empty/03.out
+    checksum: 54f81bfc74a086c83b3a5c0aa039b83735a7c025e8618bd5bfdf322ec8738687
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“包含空行的输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-multi-line-with-empty/04.in
+    output_file: js-acm/js-acm-multi-line-with-empty/04.out
+    checksum: 3313a469e74d99e6186afad15341dd68bd0cf72f232a0c755415a72af847234a
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“包含空行的输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-multi-line-with-empty/05.in
+    output_file: js-acm/js-acm-multi-line-with-empty/05.out
+    checksum: b4fdc9aca0850e55e51a533dfe485965621853f38879480e3b0b542f5db0f780
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“包含空行的输入”的格式边界与游标推进。
+    input_file: js-acm/js-acm-multi-line-with-empty/06.in
+    output_file: js-acm/js-acm-multi-line-with-empty/06.out
+    checksum: da6b920f348885aa65b6d66568bbc0a84be17216bd4aed68347e4814076ff1ce

@@ -167,6 +167,30 @@ else process.stdout.write(input);
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("language", "source"),
+    [
+        ("javascript-v8", b"print(readline().length);"),
+        (
+            "nodejs",
+            b"console.log(require('fs').readFileSync(0, 'utf8').trimEnd().length);",
+        ),
+    ],
+)
+async def test_input_may_exceed_output_limit(
+    sandbox: DockerSandbox,
+    language: str,
+    source: bytes,
+) -> None:
+    stdin = b"x" * (128 * 1024) + b"\n"
+
+    result = await run(sandbox, language, source, stdin, timeout_ms=2000)
+
+    assert result.status is SubmissionStatus.ACCEPTED
+    assert result.stdout == b"131072\n"
+
+
+@pytest.mark.asyncio
 async def test_node_network_sensitive_file_and_root_write_are_blocked(
     sandbox: DockerSandbox,
 ) -> None:

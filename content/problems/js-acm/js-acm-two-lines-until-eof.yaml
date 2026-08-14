@@ -1,0 +1,136 @@
+slug: js-acm-two-lines-until-eof
+title: 每组固定两行直到 EOF
+description: 本练习只训练 **每组固定两行直到 EOF** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: medium
+training_category: read-until-eof
+tags:
+- stdin
+- stdout
+- read-until-eof
+- javascript-v8
+- nodejs
+input_description: 每组固定两行，组数未知，读取到 EOF。
+output_description: 每组用竖线连接两行后输出。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: 'a
+
+  b
+
+  c
+
+  d
+
+  '
+sample_output: 'a|b
+
+  c|d
+
+  '
+sample_explanation: 按“每组固定两行直到 EOF”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: 'a
+
+    b
+
+    c
+
+    d
+
+    '
+  output: 'a|b
+
+    c|d
+
+    '
+  explanation: 按“每组固定两行直到 EOF”的规则解析输入，并得到上述规范化输出。
+- input: 'one
+
+    two words
+
+    '
+  output: 'one|two words
+
+    '
+  explanation: 按“每组固定两行直到 EOF”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“每组固定两行直到 EOF”，并输出规范化结果。
+v8_hint: 循环调用 `readline()`，并用 `line === undefined` 判断 EOF；空字符串不是 EOF。
+nodejs_hint: 统一 CRLF 后建立行数组，用整数游标前进；不要用 `shift()` 消耗大数组。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 无条件 trim() 导致空行、前导空格或末尾结构丢失。
+- 使用 shift() 反复移动大数组，造成不必要的二次方开销。
+chapter: js-acm-read-until-eof
+chapter_order: 3
+prerequisites:
+- js-acm-pairs-until-eof
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 每组固定两行直到 EOF\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 每组固定两行直到 EOF；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-two-lines-until-eof/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-two-lines-until-eof/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“每组固定两行直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-two-lines-until-eof/01.in
+    output_file: js-acm/js-acm-two-lines-until-eof/01.out
+    checksum: 289e02da6329500b3a68fa9464ca6bcd32f0f5b0b7bafd55fd849cd927d98f6f
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“每组固定两行直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-two-lines-until-eof/02.in
+    output_file: js-acm/js-acm-two-lines-until-eof/02.out
+    checksum: 936e71e514db997e3b507e40f49f65fb8a876a27a3a2089a34a5d59867f042f2
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“每组固定两行直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-two-lines-until-eof/03.in
+    output_file: js-acm/js-acm-two-lines-until-eof/03.out
+    checksum: 5707d3c5058d5a96a705386809f65cf5c40ccdb18194175d7772f05f72a8c5d9
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“每组固定两行直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-two-lines-until-eof/04.in
+    output_file: js-acm/js-acm-two-lines-until-eof/04.out
+    checksum: 787064ab8d049853ccc875d1a7d41cb43dc4bab3e3863dc8e2e4da06ceae2f7d
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“每组固定两行直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-two-lines-until-eof/05.in
+    output_file: js-acm/js-acm-two-lines-until-eof/05.out
+    checksum: f3145a63344596266cb787a87213420194cebf524494ef631596ac1b37ee32fb
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“每组固定两行直到 EOF”的格式边界与游标推进。
+    input_file: js-acm/js-acm-two-lines-until-eof/06.in
+    output_file: js-acm/js-acm-two-lines-until-eof/06.out
+    checksum: c2d206e2a259c2b287c5fbaa2ff89316b81629f56be538cb46e5c48a2c8b5783

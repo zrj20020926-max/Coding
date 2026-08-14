@@ -1,0 +1,132 @@
+slug: js-acm-graph-edge-list
+title: 图的 n、m 和 m 条边
+description: 本练习只训练 **图的 n、m 和 m 条边** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: hard
+training_category: mixed-input
+tags:
+- stdin
+- stdout
+- mixed-nested
+- javascript-v8
+- nodejs
+input_description: 第一行 n m；随后 m 行无向边 u v。
+output_description: 按顶点 1..n 输出每个顶点度数。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '3 2
+
+  1 2
+
+  2 3
+
+  '
+sample_output: '1 2 1
+
+  '
+sample_explanation: 按“图的 n、m 和 m 条边”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '3 2
+
+    1 2
+
+    2 3
+
+    '
+  output: '1 2 1
+
+    '
+  explanation: 按“图的 n、m 和 m 条边”的规则解析输入，并得到上述规范化输出。
+- input: '4 3
+
+    1 2
+
+    1 3
+
+    1 4
+
+    '
+  output: '3 1 1 1
+
+    '
+  explanation: 按“图的 n、m 和 m 条边”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“图的 n、m 和 m 条边”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 使用 shift() 反复移动大数组，造成不必要的二次方开销。
+chapter: js-acm-mixed-nested
+chapter_order: 6
+prerequisites:
+- js-acm-variable-record-groups
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 图的 n、m 和 m 条边\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 图的 n、m 和 m 条边；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-graph-edge-list/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-graph-edge-list/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“图的 n、m 和 m 条边”的格式边界与游标推进。
+    input_file: js-acm/js-acm-graph-edge-list/01.in
+    output_file: js-acm/js-acm-graph-edge-list/01.out
+    checksum: 87b660b6ebc3ad41a811feed7057695f506408dbb8477a1bf0c5372391f4b941
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“图的 n、m 和 m 条边”的格式边界与游标推进。
+    input_file: js-acm/js-acm-graph-edge-list/02.in
+    output_file: js-acm/js-acm-graph-edge-list/02.out
+    checksum: 5ed5001d61bf31471be3b6e6b4e3e25316d6bcf52112ff89629363fe3f835d8a
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“图的 n、m 和 m 条边”的格式边界与游标推进。
+    input_file: js-acm/js-acm-graph-edge-list/03.in
+    output_file: js-acm/js-acm-graph-edge-list/03.out
+    checksum: f057db66d61c054f854c35259a7f4466976f5a40e98c3731168a0a653c8facc4
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“图的 n、m 和 m 条边”的格式边界与游标推进。
+    input_file: js-acm/js-acm-graph-edge-list/04.in
+    output_file: js-acm/js-acm-graph-edge-list/04.out
+    checksum: 85a5352c2c7b071f971b5de93d2fb92db0294ee3312c5fa6eff3d3431f5b745e
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“图的 n、m 和 m 条边”的格式边界与游标推进。
+    input_file: js-acm/js-acm-graph-edge-list/05.in
+    output_file: js-acm/js-acm-graph-edge-list/05.out
+    checksum: 9fc67fc70cdef27e03ff5eb579ec44f30a3fb539b130391aab5641885bb067b5
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“图的 n、m 和 m 条边”的格式边界与游标推进。
+    input_file: js-acm/js-acm-graph-edge-list/06.in
+    output_file: js-acm/js-acm-graph-edge-list/06.out
+    checksum: 0bc5886b4e66a85b618b49b13d48cd030b730a7c141dfcbefedc2e883f9f411e

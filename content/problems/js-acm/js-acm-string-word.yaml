@@ -1,0 +1,118 @@
+slug: js-acm-string-word
+title: 单个单词
+description: 本练习只训练 **单个单词** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: string-input
+tags:
+- stdin
+- stdout
+- strings
+- javascript-v8
+- nodejs
+input_description: 一行一个不含空白的字符串。
+output_description: 按 Unicode 码点输出长度。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: 'hello
+
+  '
+sample_output: '5
+
+  '
+sample_explanation: 按“单个单词”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: 'hello
+
+    '
+  output: '5
+
+    '
+  explanation: 按“单个单词”的规则解析输入，并得到上述规范化输出。
+- input: 'CodeArena
+
+    '
+  output: '9
+
+    '
+  explanation: 按“单个单词”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“单个单词”，并输出规范化结果。
+v8_hint: 按行读取后使用 token 或行游标；将输出先放入数组，最后用 `print(out.join('\n'))`。
+nodejs_hint: 一次读取 stdin，使用索引游标组织 token/行；将输出缓存后一次写入 stdout。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-strings
+chapter_order: 1
+prerequisites:
+- js-acm-float-matrix
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 单个单词\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 单个单词；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-string-word/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-string-word/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“单个单词”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-word/01.in
+    output_file: js-acm/js-acm-string-word/01.out
+    checksum: e952b79a568185385ea9c6224e7cb5694aaccadded38b549951da4682eb0de4b
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“单个单词”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-word/02.in
+    output_file: js-acm/js-acm-string-word/02.out
+    checksum: d93c57004b49d0139a06434e8a1c9598b545c3c32a4e4152a24b925b0ddcbd2b
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“单个单词”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-word/03.in
+    output_file: js-acm/js-acm-string-word/03.out
+    checksum: c107f00067898a3ad6e490a250bf3f6f1296eb93a4ac32e2b3f102bf22aa6b03
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“单个单词”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-word/04.in
+    output_file: js-acm/js-acm-string-word/04.out
+    checksum: 737250fafc7a24090485da90be459d92ccada86f146fef11cf7dc75ccb35ea60
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“单个单词”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-word/05.in
+    output_file: js-acm/js-acm-string-word/05.out
+    checksum: 7aa64b617d6d5ec36ab6e891b2fefb383e282fde7cf7f13c9a25d9b4da3c4997
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“单个单词”的格式边界与游标推进。
+    input_file: js-acm/js-acm-string-word/06.in
+    output_file: js-acm/js-acm-string-word/06.out
+    checksum: 29f0802c5eed30a427ca8150b05ab6b23e1679525cf45d72eb7bf61b66872b75

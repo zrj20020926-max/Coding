@@ -297,10 +297,11 @@ async def create_submission(
 
     await _enforce_submission_rate(cache, user.id, mode)
 
+    user_id = user.id
     submission_id = uuid4()
     attempt_id = uuid4()
     object_key = (
-        f"submissions/{user.id}/{datetime.now(timezone.utc):%Y/%m/%d}/"
+        f"submissions/{user_id}/{datetime.now(timezone.utc):%Y/%m/%d}/"
         f"{submission_id}/{checksum}"
     )
     try:
@@ -314,7 +315,7 @@ async def create_submission(
 
     submission = Submission(
         id=submission_id,
-        user_id=user.id,
+        user_id=user_id,
         problem=problem,
         language=language,
         status=SubmissionStatus.PENDING,
@@ -353,8 +354,13 @@ async def create_submission(
             "submission_id": str(submission_id),
         },
     )
-    db.add_all([submission, attempt, event])
+    db.add(submission)
     try:
+        # submission_attempts has an immediate FK back to submissions, while
+        # submissions.effective_attempt_id is deferred. Establish the parent
+        # row first so PostgreSQL cannot choose an invalid flush order.
+        await db.flush()
+        db.add_all([attempt, event])
         await db.commit()
     except IntegrityError:
         await db.rollback()
@@ -362,7 +368,7 @@ async def create_submission(
             await object_store.delete_source(object_key)
         except Exception:
             pass
-        winner = await _find_idempotent_submission(db, user.id, key)
+        winner = await _find_idempotent_submission(db, user_id, key)
         if winner is not None and winner.request_fingerprint == request_fingerprint:
             return to_submission_created(winner, replay=True)
         raise submission_error(

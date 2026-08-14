@@ -1,0 +1,124 @@
+slug: js-acm-large-eof-data
+title: 大量 EOF 数据
+description: 本练习只训练 **大量 EOF 数据** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: medium
+training_category: read-until-eof
+tags:
+- stdin
+- stdout
+- read-until-eof
+- javascript-v8
+- nodejs
+input_description: 包含大量整数行，不提供数量，读取到 EOF。
+output_description: 输出全部整数之和。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '1
+
+  2
+
+  '
+sample_output: '3
+
+  '
+sample_explanation: 按“大量 EOF 数据”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '1
+
+    2
+
+    '
+  output: '3
+
+    '
+  explanation: 按“大量 EOF 数据”的规则解析输入，并得到上述规范化输出。
+- input: '10 -2
+
+    3
+
+    '
+  output: '11
+
+    '
+  explanation: 按“大量 EOF 数据”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“大量 EOF 数据”，并输出规范化结果。
+v8_hint: 循环调用 `readline()`，并用 `line === undefined` 判断 EOF；空字符串不是 EOF。
+nodejs_hint: 统一 CRLF 后建立行数组，用整数游标前进；不要用 `shift()` 消耗大数组。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 无条件 trim() 导致空行、前导空格或末尾结构丢失。
+- 使用 shift() 反复移动大数组，造成不必要的二次方开销。
+chapter: js-acm-read-until-eof
+chapter_order: 10
+prerequisites:
+- js-acm-node-line-cursor-eof
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 大量 EOF 数据\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 大量 EOF 数据；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-large-eof-data/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-large-eof-data/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“大量 EOF 数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-eof-data/01.in
+    output_file: js-acm/js-acm-large-eof-data/01.out
+    checksum: 4adf463fdef2da4de4d66daaf9a20b8fe43145c42d972ca273dbcee5833a3bca
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“大量 EOF 数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-eof-data/02.in
+    output_file: js-acm/js-acm-large-eof-data/02.out
+    checksum: d98379f6ca1c5255e1d4810be42f11bb0036704fb63422d89150f6073a09d6ca
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“大量 EOF 数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-eof-data/03.in
+    output_file: js-acm/js-acm-large-eof-data/03.out
+    checksum: ab38a1941f2f17b59521c8e42822ce3b58c3f3f5897bf54f3b45193876039dcf
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“大量 EOF 数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-eof-data/04.in
+    output_file: js-acm/js-acm-large-eof-data/04.out
+    checksum: 325cb817c0af370415432191b18531994ecf03483e44dddeaf32635cf2e52882
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“大量 EOF 数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-eof-data/05.in
+    output_file: js-acm/js-acm-large-eof-data/05.out
+    checksum: bcba2bc7ab6a68ecbfbecca7718558283cb39d11bc4d4a8faa39a5d27248ec54
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“大量 EOF 数据”的格式边界与游标推进。
+    input_file: js-acm/js-acm-large-eof-data/06.in
+    output_file: js-acm/js-acm-large-eof-data/06.out
+    checksum: 4f58a51858ea153cf566bbfcc53be02154f04a763d7ebaaf12c69bfe45071f79

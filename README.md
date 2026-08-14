@@ -143,7 +143,7 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 
 ## 完整内容初始化
 
-正式内容位于 `content/`。全新 PostgreSQL 与 MinIO 启动时，Compose 会按 migration、bucket、content-bootstrap、API/Judge/前端的顺序执行；导入失败会阻止 API 假启动。现有 30 道 ACM 内容、隐藏用例、题单与每日一题继续兼容使用。其 Python/C++ 引用实现仅用于离线生成和校验内容，不是用户可提交语言，也不会进入数据库、MinIO 或公开响应；后续内容迭代将逐步改写为以输入输出模式为主的课程。
+正式内容位于 `content/`。全新 PostgreSQL 与 MinIO 启动时，Compose 会按 migration、bucket、content-bootstrap、API/Judge/前端的顺序执行；导入失败会阻止 API 假启动。默认 manifest 包含 11 章、105 道 JavaScript ACM 输入专项练习、210 个公开样例与 630 个隐藏用例。每题都有 V8/Node.js 独立参考实现、初始模板、前置关系和预计时长；引用实现与隐藏数据不会进入数据库公开字段、前端资源或公开响应。
 
 ```powershell
 cd backend-api
@@ -152,11 +152,10 @@ cd backend-api
 .\.venv\Scripts\python -m app.bootstrap.content --manifest ../content/manifest.yaml --force
 ```
 
-遗留内容验证会真实运行内部 Python 3.12/C++20 引用实现，并确认错误实现得到 Wrong Answer：
+内容验证会真实运行 Node.js 与受控 V8 兼容参考实现，并注入常见错误读取变体：
 
 ```powershell
 docker compose -f docker-compose.content-test.yml run --build --rm catalog-validator-test
-docker compose -f docker-compose.content-test.yml run --rm catalog-cpp-validator-test
 ```
 
 详细格式、单题/单题单导入、生产保护和恢复方式见[内容初始化系统](docs/content-bootstrap.md)。

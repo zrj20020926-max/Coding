@@ -50,6 +50,19 @@ def test_sandbox_policy_has_no_privileged_escape_hatches() -> None:
     assert "exec" in options["tmpfs"]["/workspace"]
     assert "volumes" not in options
     assert "mounts" not in options
+    file_size_limit = next(
+        limit for limit in options["ulimits"] if limit["Name"] == "fsize"
+    )
+    assert file_size_limit["Soft"] == settings.sandbox_disk_limit_bytes
+    assert file_size_limit["Hard"] == settings.sandbox_disk_limit_bytes
+
+
+@pytest.mark.unit
+def test_runtime_wrapper_applies_output_limit_separately_from_staging_limit() -> None:
+    command = DockerSandbox._wrapper("node /workspace/main.js", 64 * 1024)
+
+    assert "ulimit -f 128" in command[-1]
+    assert ">/workspace/stdout" in command[-1]
 
 
 @pytest.mark.unit

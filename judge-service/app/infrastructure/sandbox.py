@@ -162,8 +162,12 @@ class DockerSandbox:
                 Ulimit(name="nofile", soft=64, hard=64),
                 Ulimit(
                     name="fsize",
-                    soft=self.settings.sandbox_output_limit_bytes,
-                    hard=self.settings.sandbox_output_limit_bytes,
+                    # Test inputs may legitimately be larger than the output cap.
+                    # The per-command wrapper lowers RLIMIT_FSIZE before user code
+                    # starts, while this container-level ceiling only bounds files
+                    # created while staging the sandbox.
+                    soft=self.settings.sandbox_disk_limit_bytes,
+                    hard=self.settings.sandbox_disk_limit_bytes,
                 ),
             ],
             "shm_size": 1024 * 1024,

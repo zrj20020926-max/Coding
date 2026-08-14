@@ -1,0 +1,128 @@
+slug: js-acm-sentinel-zero-pair
+title: 输入 0 0 结束
+description: 本练习只训练 **输入 0 0 结束** 的 stdin 解析。计算步骤保持简单：按照输入结构读取数据，再输出题目要求的规范化结果。
+difficulty: easy
+training_category: sentinel
+tags:
+- stdin
+- stdout
+- sentinel
+- javascript-v8
+- nodejs
+input_description: 每行两个整数；读到 0 0 或 EOF 时结束。
+output_description: 哨兵前每组输出两数之和。 不得包含提示语或调试信息。
+data_constraints: 输入为 UTF-8 文本；逻辑行使用 LF 或 CRLF。除 BigInt 专项外，整数绝对值不超过 10^9；普通练习输入不超过 10^5 个 token，大输入专项按题面可达到
+  10^6 个 token。
+sample_input: '1 2
+
+  0 0
+
+  '
+sample_output: '3
+
+  '
+sample_explanation: 按“输入 0 0 结束”的规则解析输入，并得到上述规范化输出。
+samples:
+- input: '1 2
+
+    0 0
+
+    '
+  output: '3
+
+    '
+  explanation: 按“输入 0 0 结束”的规则解析输入，并得到上述规范化输出。
+- input: '10 -2
+
+    3 4
+
+    0 0
+
+    '
+  output: '8
+
+    7
+
+    '
+  explanation: 按“输入 0 0 结束”的规则解析输入，并得到上述规范化输出。
+learning_objective: 能够在两种 JavaScript ACM 运行模式中正确处理“输入 0 0 结束”，并输出规范化结果。
+v8_hint: 循环调用 `readline()`，并用 `line === undefined` 判断 EOF；空字符串不是 EOF。
+nodejs_hint: 统一 CRLF 后建立行数组，用整数游标前进；不要用 `shift()` 消耗大数组。
+common_errors:
+- 在 JavaScript V8 模式中误用 require、process、fs 或 Buffer。
+- 在 Node.js 模式中直接调用未定义的 readline() 或 print()。
+- 只按单个空格 split(' ') 导致连续空白产生空 token。
+- 输出调试文字、额外空格或错误的分隔符导致 Wrong Answer。
+chapter: js-acm-sentinel
+chapter_order: 3
+prerequisites:
+- js-acm-sentinel-minus-one
+estimated_minutes: 8
+starter_code_v8: "const lines = [];\nfor (let line = readline(); line !== undefined; line = readline())\
+  \ {\n  lines.push(line);\n}\n\n// TODO: 输入 0 0 结束\nprint(lines.length);\n"
+starter_code_nodejs: 'const fs = require(''fs'');
+
+
+  const input = fs.readFileSync(0, ''utf8'');
+
+  const lines = input.replace(/\r\n/g, ''\n'').split(''\n'');
+
+
+  // TODO: 输入 0 0 结束；请按题意决定是否移除末尾空行
+
+  console.log(lines.length);
+
+  '
+time_limit_ms: 1000
+memory_limit_mb: 256
+source: CodeArena JavaScript ACM 原创课程
+publish: true
+reference_solutions:
+  javascript_v8: reference-solutions/js-acm/js-acm-sentinel-zero-pair/solution-v8.js
+  nodejs: reference-solutions/js-acm/js-acm-sentinel-zero-pair/solution-nodejs.js
+test_set:
+  version: 1
+  checker_type: exact
+  cases:
+  - sequence: 1
+    score: 10
+    scenario: minimum_boundary
+    scenario_description: 最小边界：验证“输入 0 0 结束”的格式边界与游标推进。
+    input_file: js-acm/js-acm-sentinel-zero-pair/01.in
+    output_file: js-acm/js-acm-sentinel-zero-pair/01.out
+    checksum: 98f5a4c6759f7416655bfad852d064444d5036391db0f8f02a0d61b86e0295cb
+  - sequence: 2
+    score: 15
+    scenario: normal
+    scenario_description: 普通输入：验证“输入 0 0 结束”的格式边界与游标推进。
+    input_file: js-acm/js-acm-sentinel-zero-pair/02.in
+    output_file: js-acm/js-acm-sentinel-zero-pair/02.out
+    checksum: 776212f96800cd481835f8008b4fdca767b2495498f99112d4ef3a3d2f33e60b
+  - sequence: 3
+    score: 15
+    scenario: duplicates
+    scenario_description: 重复值或重复行：验证“输入 0 0 结束”的格式边界与游标推进。
+    input_file: js-acm/js-acm-sentinel-zero-pair/03.in
+    output_file: js-acm/js-acm-sentinel-zero-pair/03.out
+    checksum: 4ff14879c379a1f64fb1c2610c48cddc8d369164aadca820022c39484145982d
+  - sequence: 4
+    score: 20
+    scenario: special_structure
+    scenario_description: 空白、Unicode 或特殊分隔结构：验证“输入 0 0 结束”的格式边界与游标推进。
+    input_file: js-acm/js-acm-sentinel-zero-pair/04.in
+    output_file: js-acm/js-acm-sentinel-zero-pair/04.out
+    checksum: c97f262fc1f50913a53d3ca50cbd40e4edda52ad42ae2702b4d02d027e915641
+  - sequence: 5
+    score: 20
+    scenario: performance
+    scenario_description: 固定种子的规模压力：验证“输入 0 0 结束”的格式边界与游标推进。
+    input_file: js-acm/js-acm-sentinel-zero-pair/05.in
+    output_file: js-acm/js-acm-sentinel-zero-pair/05.out
+    checksum: fe75e8019c7bab86ca6cd3db2a537a2807be53d0aad311d3783522eb84c61008
+  - sequence: 6
+    score: 20
+    scenario: counterexample
+    scenario_description: 常见错误读取方式的反例：验证“输入 0 0 结束”的格式边界与游标推进。
+    input_file: js-acm/js-acm-sentinel-zero-pair/06.in
+    output_file: js-acm/js-acm-sentinel-zero-pair/06.out
+    checksum: 73789545cf62e7b8ded1d30ac397746f009618637521b424add5e427adb688a0
