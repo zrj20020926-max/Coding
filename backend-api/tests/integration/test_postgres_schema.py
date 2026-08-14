@@ -30,7 +30,7 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260814_0016"
+            assert revision == "20260814_0017"
 
             problem_columns = set(
                 (
@@ -159,6 +159,18 @@ async def test_migrations_preserve_postgresql_features(
             assert {"test_set_status", "checker_type"} <= enum_names
             assert "training_category" in enum_names
             assert {"course_type", "exercise_progress_status"} <= enum_names
+            submission_modes = set(
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT enumlabel FROM pg_enum JOIN pg_type "
+                            "ON pg_type.oid=pg_enum.enumtypid "
+                            "WHERE pg_type.typname='submission_mode'"
+                        )
+                    )
+                ).scalars()
+            )
+            assert submission_modes == {"sample", "custom", "judge"}
 
             indexes = set(
                 (

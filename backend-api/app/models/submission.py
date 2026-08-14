@@ -49,6 +49,7 @@ class SubmissionStatus(str, enum.Enum):
 
 class SubmissionMode(str, enum.Enum):
     SAMPLE = "sample"
+    CUSTOM = "custom"
     JUDGE = "judge"
 
 
@@ -78,9 +79,17 @@ class Submission(Base):
             ondelete="RESTRICT",
         ),
         CheckConstraint(
-            "(mode = 'sample' AND test_set_id IS NULL) OR "
+            "(mode IN ('sample', 'custom') AND test_set_id IS NULL) OR "
             "(mode = 'judge' AND test_set_id IS NOT NULL)",
             name="ck_submissions_test_set_mode",
+        ),
+        CheckConstraint(
+            "(mode = 'custom' AND custom_input_object_key IS NOT NULL "
+            "AND custom_input_checksum IS NOT NULL AND custom_input_size_bytes IS NOT NULL "
+            "AND custom_input_size_bytes >= 0) OR "
+            "(mode <> 'custom' AND custom_input_object_key IS NULL "
+            "AND custom_input_checksum IS NULL AND custom_input_size_bytes IS NULL)",
+            name="ck_submissions_custom_input_mode",
         ),
     )
 
@@ -111,6 +120,9 @@ class Submission(Base):
     source_code: Mapped[Optional[str]] = mapped_column(Text)
     source_object_key: Mapped[Optional[str]] = mapped_column(Text)
     source_checksum: Mapped[str] = mapped_column(CHAR(64), nullable=False)
+    custom_input_object_key: Mapped[Optional[str]] = mapped_column(Text)
+    custom_input_checksum: Mapped[Optional[str]] = mapped_column(CHAR(64))
+    custom_input_size_bytes: Mapped[Optional[int]] = mapped_column(Integer)
     idempotency_key: Mapped[Optional[str]] = mapped_column(String(128))
     request_fingerprint: Mapped[Optional[str]] = mapped_column(CHAR(64))
     is_rejudge: Mapped[bool] = mapped_column(nullable=False, default=False)

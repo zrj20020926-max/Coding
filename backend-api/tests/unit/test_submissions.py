@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import json
 from typing import Any
@@ -86,13 +88,17 @@ def request(
     problem_id: int,
     source: str = "console.log(require('fs').readFileSync(0, 'utf8').trim())",
     mode: str = "judge",
+    custom_input: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    payload: dict[str, Any] = {
         "problem_id": problem_id,
         "language": "nodejs",
         "source_code": source,
         "mode": mode,
     }
+    if custom_input is not None:
+        payload["custom_input"] = custom_input
+    return payload
 
 
 @pytest.mark.unit
@@ -199,6 +205,91 @@ async def test_sample_and_formal_runs_are_distinct_and_detail_is_owner_safe(
     assert "source_object_key" not in detail.text
     modes = set((await db_session.scalars(select(Submission.mode))).all())
     assert modes == {SubmissionMode.SAMPLE, SubmissionMode.JUDGE}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_custom_stdin_run_accepts_empty_and_multiline_input_without_exposing_it(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    fake_object_store: FakeSourceObjectStore,
+) -> None:
+    problem, _ = await seed_submission_catalog(db_session)
+    headers = await register(client, "custom_input_owner")
+    headers["Idempotency-Key"] = "custom-input-empty-lines"
+    custom_input = "first\r\n\r\nthird\n"
+
+    response = await client.post(
+        "/api/v1/submissions",
+        json=request(problem.id, mode="custom", custom_input=custom_input),
+        headers=headers,
+    )
+
+    assert response.status_code == 202
+    assert response.json()["mode"] == "custom"
+    submission = (await db_session.scalars(select(Submission))).one()
+    assert submission.test_set_id is None
+    assert submission.custom_input_size_bytes == len(custom_input.encode())
+    assert submission.custom_input_checksum == hashlib.sha256(custom_input.encode()).hexdigest()
+    assert fake_object_store.objects[submission.custom_input_object_key] == custom_input.encode()
+    assert custom_input not in response.text
+    assert "custom_input_object_key" not in response.text
+
+    empty = await client.post(
+        "/api/v1/submissions",
+        json=request(problem.id, mode="custom", custom_input=""),
+        headers={
+            **(await register(client, "custom_empty_input_owner")),
+            "Idempotency-Key": "custom-input-empty",
+        },
+    )
+    assert empty.status_code == 202
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_custom_stdin_validation_and_idempotency_include_input(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    problem, _ = await seed_submission_catalog(db_session)
+    headers = await register(client, "custom_input_validation")
+    headers["Idempotency-Key"] = "custom-input-idempotency"
+    first = await client.post(
+        "/api/v1/submissions",
+        json=request(problem.id, mode="custom", custom_input="1\n"),
+        headers=headers,
+    )
+    conflict = await client.post(
+        "/api/v1/submissions",
+        json=request(problem.id, mode="custom", custom_input="2\n"),
+        headers=headers,
+    )
+    missing = await client.post(
+        "/api/v1/submissions",
+        json=request(problem.id, mode="custom"),
+        headers={**headers, "Idempotency-Key": "missing-custom-input"},
+    )
+    misplaced = await client.post(
+        "/api/v1/submissions",
+        json=request(problem.id, mode="sample", custom_input="not allowed"),
+        headers={**headers, "Idempotency-Key": "misplaced-custom-input"},
+    )
+    oversized = await client.post(
+        "/api/v1/submissions",
+        json=request(
+            problem.id,
+            mode="custom",
+            custom_input="x" * (settings.submission_custom_input_max_bytes + 1),
+        ),
+        headers={**headers, "Idempotency-Key": "oversized-custom-input"},
+    )
+
+    assert first.status_code == 202
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"]["code"] == "IDEMPOTENCY_KEY_REUSED"
+    assert missing.status_code == misplaced.status_code == 422
+    assert oversized.status_code == 413
+    assert oversized.json()["detail"]["code"] == "CUSTOM_INPUT_TOO_LARGE"
 
 
 @pytest.mark.unit
@@ -405,6 +496,7 @@ def test_submission_openapi_does_not_expose_internal_runtime_fields() -> None:
     openapi = json.dumps(app.openapi())
     for forbidden in (
         "source_object_key",
+        "custom_input_object_key",
         "queue_message_id",
         "compile_command",
         "docker_image",

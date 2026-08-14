@@ -27,12 +27,14 @@ const props = defineProps<{
   theme: 'light' | 'dark'
   fontSize: number
   modelId: string
+  runtime: 'javascript-v8' | 'nodejs'
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   save: []
   runSample: []
+  runCustom: []
   submit: []
 }>()
 
@@ -50,14 +52,20 @@ let formattingDisposable: monaco.IDisposable | null = null
   getWorker: () => new EditorWorker(),
 }
 
-function registerCompletions(language: string): monaco.IDisposable {
-  const suggestions = [
-    ['readline', 'const ${1:line} = readline();'],
-    ['readints', 'const ${1:values} = readline().trim().split(/\\s+/).map(Number);'],
-    ['node-stdin', "const input = require('fs').readFileSync(0, 'utf8');"],
-    ['tokens', "const tokens = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/);"],
-    ['print', 'print(${1:value});'],
-  ]
+function registerCompletions(language: string, runtime: 'javascript-v8' | 'nodejs'): monaco.IDisposable {
+  const suggestions = runtime === 'javascript-v8'
+    ? [
+        ['readline', 'const ${1:line} = readline();'],
+        ['readints', 'const ${1:values} = readline().trim().split(/\\s+/).map(Number);'],
+        ['read-eof', 'for (let ${1:line}; (${1:line} = readline()) !== undefined;) {\n\t${2:// 处理每行}\n}'],
+        ['print', 'print(${1:value});'],
+      ]
+    : [
+        ['node-stdin', "const input = require('fs').readFileSync(0, 'utf8');"],
+        ['tokens', "const tokens = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/);"],
+        ['lines', "const lines = require('fs').readFileSync(0, 'utf8').split(/\\r?\\n/);"],
+        ['scanner', "const data = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/);\nlet cursor = 0;\nconst next = () => data[cursor++];"],
+      ]
   return monaco.languages.registerCompletionItemProvider(language, {
     triggerCharacters: ['.', ' '],
     provideCompletionItems(textModel, position) {
@@ -130,10 +138,14 @@ onMounted(async () => {
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => emit('save'))
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => emit('runSample'))
   editor.addCommand(
+    monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.Enter,
+    () => emit('runCustom'),
+  )
+  editor.addCommand(
     monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter,
     () => emit('submit'),
   )
-  completionDisposable = registerCompletions(props.language)
+  completionDisposable = registerCompletions(props.language, props.runtime)
   formattingDisposable = registerFormatter(props.language)
   editor.addCommand(
     monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF,
@@ -156,9 +168,16 @@ watch(
     if (!model) return
     monaco.editor.setModelLanguage(model, value)
     completionDisposable?.dispose()
-    completionDisposable = registerCompletions(value)
+    completionDisposable = registerCompletions(value, props.runtime)
     formattingDisposable?.dispose()
     formattingDisposable = registerFormatter(value)
+  },
+)
+watch(
+  () => props.runtime,
+  (value) => {
+    completionDisposable?.dispose()
+    completionDisposable = registerCompletions(props.language, value)
   },
 )
 watch(

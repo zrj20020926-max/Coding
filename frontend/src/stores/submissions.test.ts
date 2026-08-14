@@ -87,6 +87,28 @@ describe('submission store', () => {
     expect(store.polling).toBe(false)
   })
 
+  it('keeps idempotency for an identical custom run and rotates it when stdin changes', async () => {
+    vi.mocked(createSubmission).mockRejectedValue(new Error('offline'))
+    const store = useSubmissionStore()
+    const base = {
+      problem_id: 7,
+      language: 'nodejs',
+      source_code: "console.log('ok')",
+      mode: 'custom' as const,
+    }
+
+    await expect(store.submitAndPoll({ ...base, custom_input: '' }, 'user-1')).rejects.toThrow()
+    const emptyInputKey = vi.mocked(createSubmission).mock.calls[0]?.[1]
+    await expect(store.submitAndPoll({ ...base, custom_input: 'a\n' }, 'user-1')).rejects.toThrow()
+    const changedInputKey = vi.mocked(createSubmission).mock.calls[1]?.[1]
+    await expect(store.submitAndPoll({ ...base, custom_input: 'a\n' }, 'user-1')).rejects.toThrow()
+
+    expect(emptyInputKey).toBeTruthy()
+    expect(changedInputKey).toBeTruthy()
+    expect(changedInputKey).not.toBe(emptyInputKey)
+    expect(vi.mocked(createSubmission).mock.calls[2]?.[1]).toBe(changedInputKey)
+  })
+
   it('stops at a terminal status and removes persisted active state', async () => {
     vi.mocked(createSubmission).mockResolvedValue(pending)
     vi.mocked(getSubmissionStatus).mockResolvedValue(accepted)

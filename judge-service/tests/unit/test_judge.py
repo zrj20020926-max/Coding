@@ -13,7 +13,7 @@ from app.domain.models import (
     SubmissionStatus,
 )
 from app.domain.models import TestCase as JudgeTestCase
-from app.errors import JudgeConfigurationError
+from app.errors import InfrastructureError, JudgeConfigurationError
 from app.infrastructure.sandbox import SandboxRunResult
 from app.judge import JudgeEngine
 
@@ -32,6 +32,9 @@ class FakeObjectStore:
 
     async def get_test_output(self, _key: str) -> bytes:
         return self.expected
+
+    async def get_custom_input(self, _key: str) -> bytes:
+        return self.stdin
 
 
 class FakeSandbox:
@@ -129,6 +132,59 @@ async def test_sample_run_uses_inline_public_case_without_hidden_object_reads() 
     assert result.status is SubmissionStatus.ACCEPTED
     assert result.total_case_count == 1
     assert result.public_output == "answer\n"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_custom_input_run_returns_stdout_without_comparing_or_hidden_reads() -> None:
+    engine, job, _cases = fixture(b"debug output\r\n", b"unused expected")
+    stdin = b"first\r\n\r\nthird\n"
+    engine.object_store.stdin = stdin
+    custom_case = JudgeTestCase(
+        id=uuid4(),
+        input_object_key="submission-inputs/private/custom",
+        output_object_key=None,
+        checksum=hashlib.sha256(stdin).hexdigest(),
+        score=Decimal("0"),
+        sequence=0,
+        custom_input=True,
+    )
+
+    result = await engine.judge(
+        replace(
+            job,
+            mode=SubmissionMode.CUSTOM,
+            test_set_id=None,
+            custom_input_object_key=custom_case.input_object_key,
+            custom_input_checksum=custom_case.checksum,
+        ),
+        [custom_case],
+    )
+
+    assert result.status is SubmissionStatus.ACCEPTED
+    assert result.public_output == "debug output\r\n"
+    assert result.total_case_count == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_custom_input_checksum_mismatch_is_infrastructure_error() -> None:
+    engine, job, _cases = fixture(b"output", b"unused")
+    custom_case = JudgeTestCase(
+        id=uuid4(),
+        input_object_key="submission-inputs/private/custom",
+        output_object_key=None,
+        checksum="0" * 64,
+        score=Decimal("0"),
+        sequence=0,
+        custom_input=True,
+    )
+
+    with pytest.raises(InfrastructureError, match="custom input checksum"):
+        await engine.judge(
+            replace(job, mode=SubmissionMode.CUSTOM, test_set_id=None),
+            [custom_case],
+        )
 
 
 @pytest.mark.unit

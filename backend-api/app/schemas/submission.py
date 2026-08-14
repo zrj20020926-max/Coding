@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.submission import SubmissionMode, SubmissionStatus
 
@@ -13,6 +13,15 @@ class SubmissionCreate(BaseModel):
     language: str = Field(min_length=1, max_length=30, pattern=r"^[a-z0-9+#-]+$")
     source_code: str = Field(min_length=1)
     mode: SubmissionMode = SubmissionMode.JUDGE
+    custom_input: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_custom_input_mode(self) -> "SubmissionCreate":
+        if self.mode is SubmissionMode.CUSTOM and self.custom_input is None:
+            raise ValueError("custom_input is required for custom mode")
+        if self.mode is not SubmissionMode.CUSTOM and self.custom_input is not None:
+            raise ValueError("custom_input is only allowed for custom mode")
+        return self
 
 
 class SubmissionProblemPublic(BaseModel):

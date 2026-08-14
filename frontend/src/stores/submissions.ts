@@ -26,8 +26,7 @@ interface ActiveSubmission {
 }
 
 interface PendingRequest {
-  language: string
-  sourceCode: string
+  requestBody: string
   key: string
 }
 
@@ -163,10 +162,10 @@ export const useSubmissionStore = defineStore('submissions', () => {
     pollTimedOut.value = false
     const storageKey = pendingRequestKey(userId, payload.problem_id, payload.mode)
     const stored = parseStored<PendingRequest>(localStorage.getItem(storageKey))
-    const pending =
-      stored?.language === payload.language && stored.sourceCode === payload.source_code
-        ? stored
-        : { language: payload.language, sourceCode: payload.source_code, key: randomKey() }
+    const requestBody = JSON.stringify(payload)
+    const pending = stored?.requestBody === requestBody
+      ? stored
+      : { requestBody, key: randomKey() }
     localStorage.setItem(storageKey, JSON.stringify(pending))
     try {
       const created = await createSubmission(payload, pending.key)

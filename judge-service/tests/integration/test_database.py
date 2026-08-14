@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import os
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -572,13 +573,23 @@ async def test_learning_progress_tracks_runtimes_and_excludes_sample_and_system_
             )
 
             async def create_submission(language: str, mode: str = "judge") -> UUID:
+                custom_input_key = f"submission-inputs/{uuid4()}" if mode == "custom" else None
+                custom_input_checksum = (
+                    hashlib.sha256(b"custom stdin\n").hexdigest()
+                    if mode == "custom"
+                    else None
+                )
                 submission_id = await connection.scalar(
                     text(
                         "INSERT INTO submissions (user_id, problem_id, language_id, status, "
                         "mode, source_object_key, source_checksum, test_set_id, problem_version, "
-                        "time_limit_ms_snapshot, memory_limit_mb_snapshot) VALUES (:user_id, "
+                        "time_limit_ms_snapshot, memory_limit_mb_snapshot, "
+                        "custom_input_object_key, custom_input_checksum, custom_input_size_bytes) "
+                        "VALUES (:user_id, "
                         ":problem_id, :language_id, 'Pending', CAST(:mode AS submission_mode), "
-                        ":object_key, :checksum, :test_set_id, 1, 1000, 256) RETURNING id"
+                        ":object_key, :checksum, :test_set_id, 1, 1000, 256, "
+                        ":custom_input_key, :custom_input_checksum, :custom_input_size) "
+                        "RETURNING id"
                     ),
                     {
                         "user_id": user_id,
@@ -588,6 +599,9 @@ async def test_learning_progress_tracks_runtimes_and_excludes_sample_and_system_
                         "object_key": f"source/{uuid4()}",
                         "checksum": uuid4().hex * 2,
                         "test_set_id": test_set_id if mode == "judge" else None,
+                        "custom_input_key": custom_input_key,
+                        "custom_input_checksum": custom_input_checksum,
+                        "custom_input_size": 13 if mode == "custom" else None,
                     },
                 )
                 await create_initial_attempt(connection, submission_id)
@@ -599,6 +613,7 @@ async def test_learning_progress_tracks_runtimes_and_excludes_sample_and_system_
             node_accepted = await create_submission("nodejs")
             v8_system_error = await create_submission("javascript-v8")
             sample_accepted = await create_submission("nodejs", "sample")
+            custom_accepted = await create_submission("javascript-v8", "custom")
 
         async def finalize(submission_id: UUID, status: SubmissionStatus) -> bool:
             owner = f"learning-{submission_id}"
@@ -621,6 +636,7 @@ async def test_learning_progress_tracks_runtimes_and_excludes_sample_and_system_
         assert await finalize(node_accepted, SubmissionStatus.ACCEPTED)
         assert await finalize(v8_system_error, SubmissionStatus.SYSTEM_ERROR)
         assert await finalize(sample_accepted, SubmissionStatus.ACCEPTED)
+        assert await finalize(custom_accepted, SubmissionStatus.ACCEPTED)
 
         async with engine.connect() as connection:
             progress = (

@@ -51,6 +51,7 @@ async def submit_source(
         payload.language,
         payload.source_code,
         payload.mode,
+        payload.custom_input,
         idempotency_key,
     )
 

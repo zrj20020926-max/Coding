@@ -20,6 +20,7 @@ class SubmissionStatus(StrEnum):
 
 class SubmissionMode(StrEnum):
     SAMPLE = "sample"
+    CUSTOM = "custom"
     JUDGE = "judge"
 
 
@@ -57,6 +58,8 @@ class SubmissionJob:
     time_limit_ms: int
     memory_limit_mb: int
     checker_type: CheckerType
+    custom_input_object_key: str | None = None
+    custom_input_checksum: str | None = None
     absolute_tolerance: Decimal | None = None
     relative_tolerance: Decimal | None = None
     attempt_id: UUID | None = None
@@ -79,6 +82,7 @@ class TestCase:
     group_score: Decimal | None = None
     group_short_circuit: bool = True
     dependency_group_id: UUID | None = None
+    custom_input: bool = False
 
 
 @dataclass(frozen=True)

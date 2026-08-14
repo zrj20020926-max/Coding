@@ -63,7 +63,8 @@ class JudgeRepository:
             )
             SELECT s.id, s.problem_id, l.slug AS language,
                    claimed.status::text AS status, s.mode::text AS mode,
-                   s.source_object_key, s.source_checksum, claimed.test_set_id,
+                   s.source_object_key, s.source_checksum,
+                   s.custom_input_object_key, s.custom_input_checksum, claimed.test_set_id,
                    claimed.problem_version, claimed.time_limit_ms_snapshot,
                    claimed.memory_limit_mb_snapshot,
                    COALESCE(ts.checker_type::text, 'exact') AS checker_type,
@@ -99,7 +100,8 @@ class JudgeRepository:
             """
             SELECT s.id, s.problem_id, l.slug AS language,
                    sa.status::text AS status, s.mode::text AS mode,
-                   s.source_object_key, s.source_checksum, sa.test_set_id,
+                   s.source_object_key, s.source_checksum,
+                   s.custom_input_object_key, s.custom_input_checksum, sa.test_set_id,
                    sa.problem_version, sa.time_limit_ms_snapshot,
                    sa.memory_limit_mb_snapshot,
                    COALESCE(ts.checker_type::text, 'exact') AS checker_type,
@@ -142,6 +144,8 @@ class JudgeRepository:
             problem_version=row["problem_version"],
             source_object_key=row["source_object_key"],
             source_checksum=row["source_checksum"],
+            custom_input_object_key=row["custom_input_object_key"],
+            custom_input_checksum=row["custom_input_checksum"],
             time_limit_ms=row["time_limit_ms_snapshot"],
             memory_limit_mb=row["memory_limit_mb_snapshot"],
             checker_type=CheckerType(row["checker_type"]),
@@ -203,9 +207,32 @@ class JudgeRepository:
     async def load_test_cases(self, job: SubmissionJob) -> list[TestCase]:
         if job.mode is SubmissionMode.SAMPLE:
             return await self._load_sample_case(job.problem_id)
+        if job.mode is SubmissionMode.CUSTOM:
+            return self._load_custom_case(job)
         if job.test_set_id is None:
             return []
         return await self._load_hidden_test_cases(job.test_set_id)
+
+    @staticmethod
+    def _load_custom_case(job: SubmissionJob) -> list[TestCase]:
+        if not job.custom_input_object_key or not job.custom_input_checksum:
+            return []
+        case_id = uuid5(NAMESPACE_URL, f"codearena:submission:{job.id}:custom-input")
+        return [
+            TestCase(
+                id=case_id,
+                input_object_key=job.custom_input_object_key,
+                output_object_key=None,
+                checksum=job.custom_input_checksum,
+                score=Decimal("0"),
+                sequence=0,
+                group_id=case_id,
+                group_name="custom-input",
+                group_sequence=0,
+                group_score=Decimal("0"),
+                custom_input=True,
+            )
+        ]
 
     async def _load_sample_case(self, problem_id: int) -> list[TestCase]:
         statement = text(

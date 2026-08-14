@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import OutputDiff from '@/components/problems/OutputDiff.vue'
 import SubmissionStatusBadge from './SubmissionStatusBadge.vue'
 import type { SubmissionDetail, SubmissionSummary } from '@/types/submission'
 
 defineProps<{
   submission: SubmissionSummary | null
   detail: SubmissionDetail | null
+  expectedOutput?: string | null
   polling: boolean
   timedOut: boolean
   error: string
@@ -17,6 +19,13 @@ function memoryLabel(value: number | null): string {
   if (value >= 1024) return `${(value / 1024).toFixed(1)} MB`
   return `${value} KB`
 }
+
+function modeLabel(mode: SubmissionSummary['mode'] | undefined): string {
+  if (mode === 'sample') return '公开样例运行'
+  if (mode === 'custom') return '自定义输入运行'
+  if (mode === 'judge') return '正式提交'
+  return '运行结果'
+}
 </script>
 
 <template>
@@ -24,7 +33,7 @@ function memoryLabel(value: number | null): string {
     <header class="judge-result-header">
       <div>
         <span>JUDGE RESULT</span>
-        <h3>{{ submission?.mode === 'sample' ? '公开样例运行' : '正式提交' }}</h3>
+        <h3>{{ modeLabel(submission?.mode) }}</h3>
       </div>
       <SubmissionStatusBadge v-if="submission" :status="submission.status" />
       <span v-else class="result-idle">等待运行</span>
@@ -36,9 +45,9 @@ function memoryLabel(value: number | null): string {
       <div><span>通过用例</span><strong>{{ submission.passed_case_count }} / {{ submission.total_case_count || '—' }}</strong></div>
     </div>
 
-    <p v-if="polling" class="judge-progress-copy">判题服务正在处理，页面可安全切换后再返回。</p>
+    <p v-if="polling" class="judge-progress-copy">代码正在独立 Judge 沙箱中运行，切换页面后仍可恢复查询。</p>
     <div v-if="submission?.status === 'System Error'" class="judge-system-error" role="alert">
-      平台判题环境暂时异常，不代表你的代码有误。请稍后重新提交；本次结果不会计为代码错误。
+      平台判题环境暂时异常，不代表你的代码有误。本次结果不会计入训练进度。
     </div>
     <div v-if="error" class="judge-poll-error">
       <span>{{ error }}</span>
@@ -54,11 +63,24 @@ function memoryLabel(value: number | null): string {
       <span>编译输出</span><pre><code>{{ detail.compiler_output }}</code></pre>
     </div>
     <div v-if="detail?.error_message" class="diagnostic-block">
-      <span>诊断信息</span><pre><code>{{ detail.error_message }}</code></pre>
+      <span>受控诊断</span><pre><code>{{ detail.error_message }}</code></pre>
     </div>
-    <div v-if="detail?.mode === 'sample' && detail.sample_output !== null" class="diagnostic-block">
-      <span>程序输出</span><pre><code>{{ detail.sample_output || '（无输出）' }}</code></pre>
+    <div v-if="detail && detail.mode !== 'judge' && detail.sample_output !== null" class="result-output-grid">
+      <div v-if="expectedOutput !== null && expectedOutput !== undefined" class="diagnostic-block">
+        <span>期望 stdout</span><pre><code>{{ expectedOutput || '（无输出）' }}</code></pre>
+      </div>
+      <div class="diagnostic-block">
+        <span>实际 stdout</span><pre><code>{{ detail?.sample_output || '（无输出）' }}</code></pre>
+      </div>
     </div>
+    <OutputDiff
+      v-if="detail?.mode === 'sample' && detail.sample_output !== null && expectedOutput !== null && expectedOutput !== undefined"
+      :expected="expectedOutput"
+      :actual="detail.sample_output"
+    />
+    <p v-if="detail?.mode === 'judge'" class="hidden-cases-notice">
+      正式提交只展示汇总结果；隐藏测试输入和标准输出不会返回浏览器。
+    </p>
     <RouterLink
       v-if="submission"
       class="submission-detail-link"

@@ -36,7 +36,7 @@ const filters = computed<SubmissionHistoryFilters>(() => {
     result.status = status as SubmissionStatus
   }
   const mode = route.query['mode']
-  if (mode === 'sample' || mode === 'judge') result.mode = mode
+  if (mode === 'sample' || mode === 'custom' || mode === 'judge') result.mode = mode
   return result
 })
 
@@ -135,7 +135,9 @@ onMounted(() => void loadFilterOptions())
         aria-label="按提交类型筛选"
         @update:model-value="updateQuery('mode', $event as SubmissionMode)"
       >
-        <el-option label="公开样例" value="sample" /><el-option label="正式提交" value="judge" />
+        <el-option label="公开样例" value="sample" />
+        <el-option label="自定义输入" value="custom" />
+        <el-option label="正式提交" value="judge" />
       </el-select>
       <el-button @click="clearFilters">清空筛选</el-button>
     </section>
@@ -160,7 +162,10 @@ onMounted(() => void loadFilterOptions())
       >
         <div class="submission-problem">
           <strong>{{ item.problem.title }}</strong>
-          <small>#{{ item.problem.id }} · {{ item.mode === 'sample' ? '公开样例' : '正式提交' }}</small>
+          <small>
+            #{{ item.problem.id }} ·
+            {{ item.mode === 'sample' ? '公开样例' : item.mode === 'custom' ? '自定义输入' : '正式提交' }}
+          </small>
         </div>
         <span>{{ item.language.display_name }} {{ item.language.version }}</span>
         <SubmissionStatusBadge :status="item.status" />

@@ -14,6 +14,8 @@ class JudgeObjectStore(Protocol):
 
     async def get_test_output(self, object_key: str) -> bytes: ...
 
+    async def get_custom_input(self, object_key: str) -> bytes: ...
+
 
 class MinioJudgeObjectStore:
     def __init__(
@@ -59,3 +61,6 @@ class MinioJudgeObjectStore:
 
     async def get_test_output(self, object_key: str) -> bytes:
         return await asyncio.to_thread(self._read, self.test_data_bucket, object_key)
+
+    async def get_custom_input(self, object_key: str) -> bytes:
+        return await asyncio.to_thread(self._read, self.source_bucket, object_key)

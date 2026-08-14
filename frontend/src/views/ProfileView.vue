@@ -186,7 +186,7 @@ onMounted(() => void training.loadDashboard())
             :key="submission.id"
             :to="{ name: 'submission-detail', params: { id: submission.id } }"
           >
-            <span><strong>{{ submission.problem.title }}</strong><small>{{ submission.language.display_name }} · {{ submission.mode === 'judge' ? '正式提交' : '公开样例' }}</small></span>
+            <span><strong>{{ submission.problem.title }}</strong><small>{{ submission.language.display_name }} · {{ submission.mode === 'judge' ? '正式提交' : submission.mode === 'custom' ? '自定义输入' : '公开样例' }}</small></span>
             <SubmissionStatusBadge :status="submission.status" />
           </RouterLink>
         </div>

@@ -153,7 +153,14 @@ class JudgeEngine:
         source: bytes,
         artifact: bytes | None,
     ) -> tuple[SubmissionStatus, SandboxRunResult, str | None]:
-        if test_case.inline_input is not None and test_case.inline_output is not None:
+        if test_case.custom_input:
+            if not test_case.input_object_key:
+                raise JudgeConfigurationError("custom run has no readable stdin")
+            stdin = await self.object_store.get_custom_input(test_case.input_object_key)
+            if hashlib.sha256(stdin).hexdigest() != test_case.checksum:
+                raise InfrastructureError("custom input checksum verification failed")
+            expected = None
+        elif test_case.inline_input is not None and test_case.inline_output is not None:
             stdin = test_case.inline_input
             expected = test_case.inline_output
         elif test_case.input_object_key and test_case.output_object_key:
@@ -163,8 +170,12 @@ class JudgeEngine:
             raise JudgeConfigurationError(
                 f"test case {test_case.sequence} has no readable data source"
             )
-        checksum = hashlib.sha256(stdin + b"\0" + expected).hexdigest()
-        if checksum != test_case.checksum:
+        checksum = (
+            hashlib.sha256(stdin + b"\0" + expected).hexdigest()
+            if expected is not None
+            else None
+        )
+        if checksum is not None and checksum != test_case.checksum:
             raise InfrastructureError(
                 f"test data checksum verification failed for sequence {test_case.sequence}"
             )
@@ -179,9 +190,9 @@ class JudgeEngine:
         )
         case_status = run.status
         public_output = None
-        if job.mode is SubmissionMode.SAMPLE:
+        if job.mode in {SubmissionMode.SAMPLE, SubmissionMode.CUSTOM}:
             public_output = run.stdout.decode("utf-8", errors="replace")
-        matches = self._matches(job, run.stdout, expected)
+        matches = expected is None or self._matches(job, run.stdout, expected)
         if case_status is SubmissionStatus.ACCEPTED and not matches:
             case_status = SubmissionStatus.WRONG_ANSWER
         return case_status, run, public_output

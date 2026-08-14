@@ -1,4 +1,4 @@
-export type SubmissionMode = 'sample' | 'judge'
+export type SubmissionMode = 'sample' | 'custom' | 'judge'
 export type SubmissionStatus =
   | 'Pending'
   | 'Compiling'
@@ -77,6 +77,7 @@ export interface CreateSubmissionPayload {
   language: string
   source_code: string
   mode: SubmissionMode
+  custom_input?: string
 }
 
 export const TERMINAL_SUBMISSION_STATUSES: ReadonlySet<SubmissionStatus> = new Set([

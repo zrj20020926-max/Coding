@@ -49,7 +49,11 @@ def submission_error(http_status: int, code: str, message: str) -> HTTPException
 
 
 def _fingerprint(
-    problem_id: int, language_slug: str, checksum: str, mode: SubmissionMode
+    problem_id: int,
+    language_slug: str,
+    checksum: str,
+    mode: SubmissionMode,
+    custom_input_checksum: str | None,
 ) -> str:
     serialized = json.dumps(
         {
@@ -57,6 +61,7 @@ def _fingerprint(
             "language": language_slug,
             "checksum": checksum,
             "mode": mode.value,
+            "custom_input_checksum": custom_input_checksum,
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -219,7 +224,7 @@ async def to_submission_detail(
         error_message=submission.error_message,
         sample_output=(
             submission.sample_output
-            if submission.mode is SubmissionMode.SAMPLE
+            if submission.mode in {SubmissionMode.SAMPLE, SubmissionMode.CUSTOM}
             else None
         ),
         attempts=attempts,
@@ -235,6 +240,7 @@ async def create_submission(
     language_slug: str,
     source_code: str,
     mode: SubmissionMode,
+    custom_input: str | None,
     idempotency_key: str | None,
 ) -> SubmissionCreated:
     key = normalize_idempotency_key(idempotency_key)
@@ -246,8 +252,26 @@ async def create_submission(
             f"source code exceeds {settings.submission_source_max_bytes} bytes",
         )
 
+    custom_input_content = custom_input.encode("utf-8") if custom_input is not None else None
+    if (
+        custom_input_content is not None
+        and len(custom_input_content) > settings.submission_custom_input_max_bytes
+    ):
+        raise submission_error(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            "CUSTOM_INPUT_TOO_LARGE",
+            f"custom input exceeds {settings.submission_custom_input_max_bytes} bytes",
+        )
+
     checksum = hashlib.sha256(content).hexdigest()
-    request_fingerprint = _fingerprint(problem_id, language_slug, checksum, mode)
+    custom_input_checksum = (
+        hashlib.sha256(custom_input_content).hexdigest()
+        if custom_input_content is not None
+        else None
+    )
+    request_fingerprint = _fingerprint(
+        problem_id, language_slug, checksum, mode, custom_input_checksum
+    )
     existing = await _find_idempotent_submission(db, user.id, key)
     if existing is not None:
         if existing.request_fingerprint != request_fingerprint:
@@ -304,9 +328,25 @@ async def create_submission(
         f"submissions/{user_id}/{datetime.now(timezone.utc):%Y/%m/%d}/"
         f"{submission_id}/{checksum}"
     )
+    custom_input_object_key = (
+        f"submission-inputs/{user_id}/{datetime.now(timezone.utc):%Y/%m/%d}/"
+        f"{submission_id}/{custom_input_checksum}"
+        if custom_input_checksum is not None
+        else None
+    )
+    uploaded_keys: list[str] = []
     try:
         await object_store.put_source(object_key, content)
+        uploaded_keys.append(object_key)
+        if custom_input_object_key is not None and custom_input_content is not None:
+            await object_store.put_source(custom_input_object_key, custom_input_content)
+            uploaded_keys.append(custom_input_object_key)
     except Exception as exc:
+        for uploaded_key in reversed(uploaded_keys):
+            try:
+                await object_store.delete_source(uploaded_key)
+            except Exception:
+                pass
         raise submission_error(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "SOURCE_STORAGE_UNAVAILABLE",
@@ -327,6 +367,11 @@ async def create_submission(
         source_code=None,
         source_object_key=object_key,
         source_checksum=checksum,
+        custom_input_object_key=custom_input_object_key,
+        custom_input_checksum=custom_input_checksum,
+        custom_input_size_bytes=(
+            len(custom_input_content) if custom_input_content is not None else None
+        ),
         idempotency_key=key,
         request_fingerprint=request_fingerprint,
         effective_attempt_id=attempt_id,
@@ -364,10 +409,11 @@ async def create_submission(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        try:
-            await object_store.delete_source(object_key)
-        except Exception:
-            pass
+        for uploaded_key in reversed(uploaded_keys):
+            try:
+                await object_store.delete_source(uploaded_key)
+            except Exception:
+                pass
         winner = await _find_idempotent_submission(db, user_id, key)
         if winner is not None and winner.request_fingerprint == request_fingerprint:
             return to_submission_created(winner, replay=True)

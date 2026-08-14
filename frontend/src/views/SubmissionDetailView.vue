@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AIAnalysisPanel from '@/components/submissions/AIAnalysisPanel.vue'
 import SubmissionStatusBadge from '@/components/submissions/SubmissionStatusBadge.vue'
 import { useAuthStore } from '@/stores/auth'
-import { useEditorStore } from '@/stores/editor'
+import { starterCodeVersion, useEditorStore } from '@/stores/editor'
 import { useSubmissionStore } from '@/stores/submissions'
 
 const route = useRoute()
@@ -36,6 +36,7 @@ async function useCodeAgain(): Promise<void> {
     auth.user.id,
     detail.value.problem.id,
     detail.value.language.slug,
+    starterCodeVersion(detail.value.source_code),
     detail.value.source_code,
   )
   await router.push(`/problems/${detail.value.problem.slug}`)
@@ -60,7 +61,7 @@ watch(submissionId, load, { immediate: true })
     <article v-else-if="detail" class="submission-detail-card">
       <header>
         <div>
-          <p>{{ detail.mode === 'sample' ? '公开样例运行' : '正式提交' }}</p>
+          <p>{{ detail.mode === 'sample' ? '公开样例运行' : detail.mode === 'custom' ? '自定义输入运行' : '正式提交' }}</p>
           <h1>{{ detail.problem.title }}</h1>
           <span>{{ detail.language.display_name }} {{ detail.language.version }} · {{ new Date(detail.created_at).toLocaleString('zh-CN') }}</span>
         </div>
@@ -83,7 +84,7 @@ watch(submissionId, load, { immediate: true })
       <section v-if="detail.error_message" class="submission-code-block">
         <h2>诊断信息</h2><pre><code>{{ detail.error_message }}</code></pre>
       </section>
-      <section v-if="detail.mode === 'sample' && detail.sample_output !== null" class="submission-code-block">
+      <section v-if="detail.mode !== 'judge' && detail.sample_output !== null" class="submission-code-block">
         <h2>程序输出</h2><pre><code>{{ detail.sample_output || '（无输出）' }}</code></pre>
       </section>
       <AIAnalysisPanel
