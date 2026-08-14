@@ -38,6 +38,10 @@ describe('editor store', () => {
         version: 'ES2023',
         monaco_language: 'javascript',
         source_filename: 'main.js',
+        runtime_mode: 'v8-compat',
+        input_api: 'readline()',
+        output_api: 'print(...args)',
+        eof_value: 'undefined',
         sort_order: 1,
       },
       {
@@ -47,6 +51,10 @@ describe('editor store', () => {
         version: '22',
         monaco_language: 'javascript',
         source_filename: 'main.js',
+        runtime_mode: 'nodejs',
+        input_api: "fs.readFileSync(0, 'utf8')",
+        output_api: 'console.log/process.stdout.write',
+        eof_value: null,
         sort_order: 2,
       },
     ])
@@ -73,7 +81,11 @@ describe('editor store', () => {
     expect(defaultCodeFor('javascript-v8')).toContain('readline()')
     expect(defaultCodeFor('javascript-v8')).toContain('print(')
     expect(defaultCodeFor('javascript-v8')).not.toContain("require('fs')")
-    expect(defaultCodeFor('nodejs')).toContain("require('fs').readFileSync(0, 'utf8')")
+    expect(defaultCodeFor('nodejs')).toContain("const fs = require('fs')")
+    expect(defaultCodeFor('nodejs')).toContain("fs.readFileSync(0, 'utf8')")
     expect(defaultCodeFor('nodejs')).toContain('console.log(')
+    expect(defaultCodeFor('nodejs')).not.toContain('.trim()')
+    expect(defaultCodeFor('javascript-v8', { starter_code_v8: 'print(42);' }))
+      .toBe('print(42);')
   })
 })

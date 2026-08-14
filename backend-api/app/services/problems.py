@@ -103,6 +103,8 @@ def to_problem_detail(
         sample_input=problem.sample_input,
         sample_output=problem.sample_output,
         sample_explanation=problem.sample_explanation,
+        starter_code_v8=problem.starter_code_v8,
+        starter_code_nodejs=problem.starter_code_nodejs,
         time_limit_ms=problem.time_limit_ms,
         memory_limit_mb=problem.memory_limit_mb,
         created_at=problem.created_at,

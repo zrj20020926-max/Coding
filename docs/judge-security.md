@@ -20,7 +20,12 @@ judge-service --docker socket--> one isolated compile/case container
 
 JavaScript 语法检查和每个隐藏用例分别使用新容器。源码与输入不通过宿主 bind mount 传递，而是经受控 exec stdin 解包到 tmpfs，避免容器访问宿主工作目录。结果读取发生在容器仍存活时，随后强制删除，后台进程和临时文件不会跨用例保留。
 
-用户侧只开放两个运行模式：`javascript-v8` 由 Judge 内置兼容 runner 注入 `readline()` 与 `print()`，不会注入 `require`、`process`、`Buffer` 或 DOM；`nodejs` 直接运行 Node.js，可使用标准 Node API，但没有浏览器 DOM。兼容 runner 不是安全边界，外层独立 Docker 沙箱仍承担隔离职责。
+用户侧只开放两个运行模式：
+
+- `javascript-v8` 使用 Node.js 22 Debian 镜像内的受控 `vm` 兼容 runner，不宣称为 d8。runner 只注入 `readline()` 与 `print()`：输入先统一 CRLF/LF，`readline()` 每次返回一行且 EOF 固定为 `undefined`，`print(...args)` 以空格连接参数并换行。注入函数移除宿主函数原型链，VM 禁止字符串代码生成和 WebAssembly，不注入 `require`、`process`、`Buffer`、文件系统、网络 API 或 DOM。
+- `nodejs` 使用独立 Node.js 22 Alpine 镜像，可使用 `fs.readFileSync(0, 'utf8')`、`console.log()`、`process.stdout.write()`、`Buffer` 和标准 Node API，但没有浏览器 DOM。容器 `network none` 阻断网络，非 root 与只读 rootfs 阻止读取受限文件和写入允许 tmpfs 之外的位置，PID/cgroup/墙钟限制约束子进程。
+
+两种模式不会互相回退：V8 使用 Node API、或 Node.js 直接使用 `readline()/print()`，均返回不含沙箱路径、镜像和内部命令的受控 Runtime Error。兼容 runner 不是安全边界，外层独立 Docker 沙箱仍承担隔离职责。
 
 ## 幂等与重试
 

@@ -237,6 +237,8 @@ async def update_problem(
         "sample_input",
         "sample_output",
         "sample_explanation",
+        "starter_code_v8",
+        "starter_code_nodejs",
         "time_limit_ms",
         "memory_limit_mb",
     }

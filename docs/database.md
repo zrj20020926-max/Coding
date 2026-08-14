@@ -81,6 +81,8 @@ erDiagram
 - 总数与当前页分别查询，排序始终追加稳定的 `id` 次序。
 - `20260808_0003` 增加部分索引 `idx_problems_public_created (created_at DESC, id DESC) WHERE visibility = 'public'`，服务默认最新排序。
 - `20260813_0013` 增加 `training_category` ENUM 和公开分类索引。`difficulty` 保留兼容值 `easy/medium/hard`，用户语义改为输入输出结构的“基础/组合/综合”。同一迁移保留原 JavaScript 语言外键并将其升级为 `nodejs`，新增 `javascript-v8`，停用其他用户提交语言。
+- `20260813_0014` 为启用语言增加 `runtime_mode`、输入/输出 API 和 EOF 契约，并为题目增加独立的 `starter_code_v8`、`starter_code_nodejs`；V8 与 Node.js 使用不同内部镜像和运行命令，公开 DTO 不返回这些内部字段。
+- `20260814_0015` 修复 submissions 与 submission_attempts 共用的状态转换触发器，使 attempt 租约流程可以安全执行 `Pending → Compiling → Running → 终态`。
 
 ## 数据边界
 

@@ -43,14 +43,21 @@ const modelId = computed(
   () => `${draftUserId.value}/${props.problem.id}/${selectedLanguage.value}`,
 )
 const modeHint = computed(() => selectedLanguage.value === 'javascript-v8'
-  ? 'V8 模式：只可使用 readline() 与 print()，fs/process/Buffer 不可用。'
+  ? 'V8 兼容模式：readline() 逐行读取，EOF 返回 undefined；print() 按空格连接并换行。require/process/Buffer 不可用。'
   : 'Node.js 模式：使用 fs.readFileSync(0, \'utf8\') 读取 stdin；没有浏览器 DOM。')
+
+function starterCode(languageSlug: string): string | null {
+  return languageSlug === 'javascript-v8'
+    ? props.problem.starter_code_v8
+    : props.problem.starter_code_nodejs
+}
 
 function restoreDraft(): void {
   sourceCode.value = editorStore.loadDraft(
     draftUserId.value,
     props.problem.id,
     selectedLanguage.value,
+    starterCode(selectedLanguage.value),
   )
 }
 
@@ -69,6 +76,7 @@ function clearDraft(): void {
     draftUserId.value,
     props.problem.id,
     selectedLanguage.value,
+    starterCode(selectedLanguage.value),
   )
   ElMessage.success('当前语言草稿已清空')
 }

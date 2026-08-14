@@ -12,6 +12,41 @@ from app.domain.models import CaseResult, JudgeResult, SubmissionStatus
 from app.infrastructure.database import JudgeRepository
 
 
+async def create_initial_attempt(connection, submission_id: UUID) -> UUID:
+    attempt_id = uuid4()
+    await connection.execute(
+        text(
+            "INSERT INTO submission_attempts (id, submission_id, sequence, kind, status, "
+            "problem_id, test_set_id, problem_version, time_limit_ms_snapshot, "
+            "memory_limit_mb_snapshot) SELECT :attempt_id, id, 1, 'initial', 'Pending', "
+            "problem_id, test_set_id, problem_version, time_limit_ms_snapshot, "
+            "memory_limit_mb_snapshot FROM submissions WHERE id = :submission_id"
+        ),
+        {"attempt_id": attempt_id, "submission_id": submission_id},
+    )
+    await connection.execute(
+        text("UPDATE submissions SET effective_attempt_id = :attempt_id WHERE id = :id"),
+        {"attempt_id": attempt_id, "id": submission_id},
+    )
+    return attempt_id
+
+
+async def claim_running(
+    repository: JudgeRepository,
+    submission_id: UUID,
+    lease_owner: str,
+):
+    job = await repository.claim_submission(submission_id, None, lease_owner, 60)
+    assert job is not None
+    assert await repository.transition(
+        job, SubmissionStatus.PENDING, SubmissionStatus.COMPILING, lease_owner
+    )
+    assert await repository.transition(
+        job, SubmissionStatus.COMPILING, SubmissionStatus.RUNNING, lease_owner
+    )
+    return job
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> None:
@@ -27,6 +62,7 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
     user_id: UUID | None = None
     problem_id: int | None = None
     test_set_id: UUID | None = None
+    test_group_id: UUID | None = None
     test_case_id: UUID | None = None
     judge_id: UUID | None = None
     sample_id: UUID | None = None
@@ -52,7 +88,7 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
                 {"slug": f"judge-integration-{suffix}"},
             )
             language_id = await connection.scalar(
-                text("SELECT id FROM languages WHERE slug = 'python'")
+                text("SELECT id FROM languages WHERE slug = 'nodejs'")
             )
             test_set_id = await connection.scalar(
                 text(
@@ -61,13 +97,25 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
                 ),
                 {"problem_id": problem_id},
             )
+            test_group_id = await connection.scalar(
+                text(
+                    "INSERT INTO test_groups (test_set_id, name, sequence, score) "
+                    "VALUES (:test_set_id, 'default', 0, 100) RETURNING id"
+                ),
+                {"test_set_id": test_set_id},
+            )
             test_case_id = await connection.scalar(
                 text(
-                    "INSERT INTO test_cases (test_set_id, input_object_key, "
+                    "INSERT INTO test_cases (test_set_id, group_id, input_object_key, "
                     "output_object_key, checksum, score, sequence) VALUES "
-                    "(:test_set_id, 'input', 'output', :checksum, 100, 0) RETURNING id"
+                    "(:test_set_id, :group_id, 'input', 'output', :checksum, "
+                    "100, 0) RETURNING id"
                 ),
-                {"test_set_id": test_set_id, "checksum": "0" * 64},
+                {
+                    "test_set_id": test_set_id,
+                    "group_id": test_group_id,
+                    "checksum": "0" * 64,
+                },
             )
             await connection.execute(
                 text("UPDATE test_sets SET status = 'active' WHERE id = :id"),
@@ -83,7 +131,7 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
                     "INSERT INTO submissions (user_id, problem_id, language_id, status, "
                     "mode, source_object_key, source_checksum, test_set_id, "
                     "problem_version, time_limit_ms_snapshot, memory_limit_mb_snapshot) "
-                    "VALUES (:user_id, :problem_id, :language_id, 'Running', 'judge', "
+                    "VALUES (:user_id, :problem_id, :language_id, 'Pending', 'judge', "
                     "'source', :checksum, :test_set_id, 1, 1000, 256) RETURNING id"
                 ),
                 {**common, "checksum": "1" * 64, "test_set_id": test_set_id},
@@ -93,15 +141,19 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
                     "INSERT INTO submissions (user_id, problem_id, language_id, status, "
                     "mode, source_object_key, source_checksum, problem_version, "
                     "time_limit_ms_snapshot, memory_limit_mb_snapshot) VALUES (:user_id, "
-                    ":problem_id, :language_id, 'Running', 'sample', 'source', "
+                    ":problem_id, :language_id, 'Pending', 'sample', 'source', "
                     ":checksum, 1, 1000, 256) RETURNING id"
                 ),
                 {**common, "checksum": "2" * 64},
             )
+            await create_initial_attempt(connection, judge_id)
+            await create_initial_attempt(connection, sample_id)
 
         assert judge_id is not None
         assert test_case_id is not None
-        loaded_job = await repository.load_submission(judge_id)
+        judge_owner = f"judge-test-{suffix}"
+        sample_owner = f"sample-test-{suffix}"
+        loaded_job = await claim_running(repository, judge_id, judge_owner)
         assert loaded_job is not None
         assert loaded_job.test_set_id == test_set_id
         assert loaded_job.problem_version == 1
@@ -145,13 +197,17 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
                     2048,
                     0,
                     Decimal("100"),
+                    test_group_id,
                 )
             ],
             total_case_count=1,
         )
-        assert await repository.finalize(judge_id, SubmissionStatus.RUNNING, formal)
+        assert await repository.finalize(
+            loaded_job, SubmissionStatus.RUNNING, formal, judge_owner
+        )
 
         assert sample_id is not None
+        sample_job = await claim_running(repository, sample_id, sample_owner)
         sample = JudgeResult(
             status=SubmissionStatus.ACCEPTED,
             case_results=[
@@ -167,7 +223,9 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
             total_case_count=1,
             public_output="3\n",
         )
-        assert await repository.finalize(sample_id, SubmissionStatus.RUNNING, sample)
+        assert await repository.finalize(
+            sample_job, SubmissionStatus.RUNNING, sample, sample_owner
+        )
 
         async with engine.connect() as connection:
             progress = (
@@ -278,6 +336,7 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
     problem_id: int | None = None
     test_set_id: UUID | None = None
     submission_ids: list[UUID] = []
+    jobs = []
     try:
         async with engine.begin() as connection:
             user_id = await connection.scalar(
@@ -300,7 +359,7 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
                 {"slug": f"concurrent-{suffix}"},
             )
             language_id = await connection.scalar(
-                text("SELECT id FROM languages WHERE slug = 'python'")
+                text("SELECT id FROM languages WHERE slug = 'nodejs'")
             )
             test_set_id = await connection.scalar(
                 text(
@@ -315,7 +374,7 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
                         "INSERT INTO submissions (user_id, problem_id, language_id, "
                         "status, mode, source_object_key, source_checksum, test_set_id, "
                         "problem_version, time_limit_ms_snapshot, memory_limit_mb_snapshot) VALUES "
-                        "(:user_id, :problem_id, :language_id, 'Running', 'judge', "
+                        "(:user_id, :problem_id, :language_id, 'Pending', 'judge', "
                         ":object_key, :checksum, :test_set_id, 1, 1000, 256) RETURNING id"
                     ),
                     {
@@ -329,6 +388,12 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
                 )
                 assert submission_id is not None
                 submission_ids.append(submission_id)
+                await create_initial_attempt(connection, submission_id)
+
+        for index, submission_id in enumerate(submission_ids):
+            jobs.append(
+                await claim_running(repository, submission_id, f"concurrent-{suffix}-{index}")
+            )
 
         accepted = JudgeResult(
             status=SubmissionStatus.ACCEPTED,
@@ -338,16 +403,20 @@ async def test_concurrent_accepts_and_duplicate_terminal_events_are_idempotent()
         finalized = await asyncio.gather(
             *(
                 repository.finalize(
-                    submission_id,
+                    job,
                     SubmissionStatus.RUNNING,
                     accepted,
+                    f"concurrent-{suffix}-{index}",
                 )
-                for submission_id in submission_ids
+                for index, job in enumerate(jobs)
             )
         )
         assert finalized == [True, True]
         assert not await repository.finalize(
-            submission_ids[0], SubmissionStatus.RUNNING, accepted
+            jobs[0],
+            SubmissionStatus.RUNNING,
+            accepted,
+            f"concurrent-{suffix}-0",
         )
 
         async with engine.connect() as connection:

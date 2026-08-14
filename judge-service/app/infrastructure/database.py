@@ -38,7 +38,8 @@ class JudgeRepository:
                 SELECT sa.id
                   FROM submission_attempts sa
                  WHERE sa.submission_id = :submission_id
-                   AND (:attempt_id IS NULL AND sa.kind = 'initial' OR sa.id = :attempt_id)
+                   AND (CAST(:attempt_id AS UUID) IS NULL AND sa.kind = 'initial'
+                        OR sa.id = CAST(:attempt_id AS UUID))
                    AND sa.status IN ('Pending', 'Compiling', 'Running')
                    AND (sa.lease_expires_at IS NULL OR sa.lease_expires_at < now()
                         OR sa.lease_owner = :lease_owner)
@@ -109,7 +110,8 @@ class JudgeRepository:
               JOIN submission_attempts sa ON sa.submission_id = s.id
               LEFT JOIN test_sets ts ON ts.id = sa.test_set_id
              WHERE s.id = :submission_id
-               AND (:attempt_id IS NULL AND sa.kind = 'initial' OR sa.id = :attempt_id)
+               AND (CAST(:attempt_id AS UUID) IS NULL AND sa.kind = 'initial'
+                    OR sa.id = CAST(:attempt_id AS UUID))
              ORDER BY sa.sequence DESC
              LIMIT 1
             """
@@ -472,7 +474,20 @@ class JudgeRepository:
 
     @staticmethod
     async def _insert_attempt_results(connection, attempt_id: UUID, result: JudgeResult) -> None:
-        if result.case_results:
+        case_rows = [
+            {
+                "attempt_id": attempt_id,
+                "test_case_id": item.test_case_id,
+                "group_id": item.group_id,
+                "status": item.status.value,
+                "time": item.time_used_ms,
+                "memory": item.memory_used_kb,
+                "exit_code": item.exit_code,
+            }
+            for item in result.case_results
+            if item.group_id is not None
+        ]
+        if case_rows:
             await connection.execute(
                 text(
                     "INSERT INTO submission_attempt_case_results (attempt_id, test_case_id, "
@@ -480,19 +495,7 @@ class JudgeRepository:
                     "(:attempt_id, :test_case_id, :group_id, CAST(:status AS submission_status), "
                     ":time, :memory, :exit_code) ON CONFLICT (attempt_id, test_case_id) DO NOTHING"
                 ),
-                [
-                    {
-                        "attempt_id": attempt_id,
-                        "test_case_id": item.test_case_id,
-                        "group_id": item.group_id,
-                        "status": item.status.value,
-                        "time": item.time_used_ms,
-                        "memory": item.memory_used_kb,
-                        "exit_code": item.exit_code,
-                    }
-                    for item in result.case_results
-                    if item.group_id is not None
-                ],
+                case_rows,
             )
         if result.group_results:
             await connection.execute(

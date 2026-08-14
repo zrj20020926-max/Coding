@@ -30,7 +30,7 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260813_0013"
+            assert revision == "20260814_0015"
 
             problem_columns = set(
                 (
@@ -42,7 +42,11 @@ async def test_migrations_preserve_postgresql_features(
                     )
                 ).scalars()
             )
-            assert "training_category" in problem_columns
+            assert {
+                "training_category",
+                "starter_code_v8",
+                "starter_code_nodejs",
+            } <= problem_columns
 
             enabled_languages = set(
                 (
@@ -52,6 +56,25 @@ async def test_migrations_preserve_postgresql_features(
                 ).scalars()
             )
             assert enabled_languages == {"javascript-v8", "nodejs"}
+            contracts = (
+                await connection.execute(
+                    text(
+                        "SELECT slug, runtime_mode, input_api, output_api, eof_value, "
+                        "run_command, docker_image FROM languages "
+                        "WHERE slug IN ('javascript-v8', 'nodejs') ORDER BY slug"
+                    )
+                )
+            ).mappings().all()
+            by_slug = {row["slug"]: row for row in contracts}
+            assert by_slug["javascript-v8"]["runtime_mode"] == "v8-compat"
+            assert by_slug["javascript-v8"]["input_api"] == "readline()"
+            assert by_slug["javascript-v8"]["output_api"] == "print(...args)"
+            assert by_slug["javascript-v8"]["eof_value"] == "undefined"
+            assert by_slug["nodejs"]["runtime_mode"] == "nodejs"
+            assert by_slug["nodejs"]["input_api"] == "fs.readFileSync(0, 'utf8')"
+            assert by_slug["nodejs"]["eof_value"] is None
+            assert by_slug["javascript-v8"]["run_command"] != by_slug["nodejs"]["run_command"]
+            assert by_slug["javascript-v8"]["docker_image"] != by_slug["nodejs"]["docker_image"]
 
             submission_columns = set(
                 (

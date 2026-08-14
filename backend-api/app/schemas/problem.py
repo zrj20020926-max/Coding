@@ -46,6 +46,10 @@ class LanguagePublic(BaseModel):
     version: str
     monaco_language: str
     source_filename: str
+    runtime_mode: Optional[str]
+    input_api: Optional[str]
+    output_api: Optional[str]
+    eof_value: Optional[str]
     sort_order: int
 
 
@@ -80,6 +84,8 @@ class ProblemDetail(ProblemSummary):
     sample_input: str
     sample_output: str
     sample_explanation: str
+    starter_code_v8: Optional[str]
+    starter_code_nodejs: Optional[str]
     time_limit_ms: int
     memory_limit_mb: int
     created_at: datetime
@@ -106,6 +112,8 @@ class ProblemWriteBase(BaseModel):
     sample_input: str = ""
     sample_output: str = ""
     sample_explanation: str = ""
+    starter_code_v8: Optional[str] = Field(default=None, max_length=262_144)
+    starter_code_nodejs: Optional[str] = Field(default=None, max_length=262_144)
     time_limit_ms: int = Field(default=1000, ge=100, le=30000)
     memory_limit_mb: int = Field(default=256, ge=16, le=2048)
     source: Optional[str] = Field(default=None, max_length=200)
@@ -140,6 +148,8 @@ class ProblemUpdate(BaseModel):
     sample_input: Optional[str] = None
     sample_output: Optional[str] = None
     sample_explanation: Optional[str] = Field(default=None, min_length=1)
+    starter_code_v8: Optional[str] = Field(default=None, max_length=262_144)
+    starter_code_nodejs: Optional[str] = Field(default=None, max_length=262_144)
     time_limit_ms: Optional[int] = Field(default=None, ge=100, le=30000)
     memory_limit_mb: Optional[int] = Field(default=None, ge=16, le=2048)
     source: Optional[str] = Field(default=None, max_length=200)

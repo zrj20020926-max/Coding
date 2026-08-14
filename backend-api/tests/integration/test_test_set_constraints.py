@@ -23,7 +23,7 @@ async def seed_problem(connection, suffix: str) -> tuple[int, object, int]:
         ),
         {"slug": f"test-sets-{suffix}"},
     )
-    language_id = await connection.scalar(text("SELECT id FROM languages WHERE slug = 'python'"))
+    language_id = await connection.scalar(text("SELECT id FROM languages WHERE slug = 'nodejs'"))
     return problem_id, user_id, language_id
 
 
@@ -74,13 +74,21 @@ async def test_referenced_test_set_cases_and_submission_snapshot_are_immutable(
             text("UPDATE test_sets SET status = 'draft' WHERE id = :id"),
             {"id": test_set_id},
         )
+        group_id = await connection.scalar(
+            text(
+                "INSERT INTO test_groups (test_set_id, name, sequence, score) "
+                "VALUES (:id, 'default', 1, 100) RETURNING id"
+            ),
+            {"id": test_set_id},
+        )
         case_id = await connection.scalar(
             text(
-                "INSERT INTO test_cases (test_set_id, input_object_key, output_object_key, "
-                "checksum, score, sequence) VALUES (:id, 'private/input', "
-                "'private/output', :checksum, 100, 1) RETURNING id"
+                "INSERT INTO test_cases (test_set_id, group_id, input_object_key, "
+                "output_object_key, checksum, score, sequence) VALUES "
+                "(:id, :group_id, 'private/input', 'private/output', :checksum, "
+                "100, 1) RETURNING id"
             ),
-            {"id": test_set_id, "checksum": "a" * 64},
+            {"id": test_set_id, "group_id": group_id, "checksum": "a" * 64},
         )
         await connection.execute(
             text("UPDATE test_sets SET status = 'active', activated_at = now() WHERE id = :id"),

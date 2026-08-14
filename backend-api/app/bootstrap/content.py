@@ -181,6 +181,8 @@ class ProblemContent(StrictModel):
     sample_input: str = Field(max_length=100_000)
     sample_output: str = Field(max_length=100_000)
     sample_explanation: str = Field(min_length=1, max_length=20_000)
+    starter_code_v8: Optional[str] = Field(default=None, max_length=262_144)
+    starter_code_nodejs: Optional[str] = Field(default=None, max_length=262_144)
     time_limit_ms: int = Field(default=1000, ge=100, le=30_000)
     memory_limit_mb: int = Field(default=256, ge=16, le=2048)
     source: Optional[str] = Field(default=None, max_length=200)
@@ -502,6 +504,10 @@ def _problem_values(document: ProblemContent) -> dict[str, object]:
     }
     if document.training_category is not None:
         values["training_category"] = document.training_category
+    if document.starter_code_v8 is not None:
+        values["starter_code_v8"] = document.starter_code_v8
+    if document.starter_code_nodejs is not None:
+        values["starter_code_nodejs"] = document.starter_code_nodejs
     return values
 
 

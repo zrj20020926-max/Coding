@@ -49,6 +49,8 @@ export interface ProblemDetail extends ProblemSummary {
   sample_input: string
   sample_output: string
   sample_explanation: string
+  starter_code_v8: string | null
+  starter_code_nodejs: string | null
   time_limit_ms: number
   memory_limit_mb: number
   created_at: string

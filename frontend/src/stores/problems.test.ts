@@ -56,6 +56,8 @@ const detail: ProblemDetail = {
   sample_input: '1 2\n',
   sample_output: '3\n',
   sample_explanation: '一加二等于三。',
+  starter_code_v8: null,
+  starter_code_nodejs: null,
   time_limit_ms: 1000,
   memory_limit_mb: 128,
   created_at: '2026-08-08T00:00:00Z',

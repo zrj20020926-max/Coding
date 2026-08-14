@@ -38,11 +38,15 @@ class FakeSandbox:
     def __init__(self, actual: bytes, status: SubmissionStatus = SubmissionStatus.ACCEPTED) -> None:
         self.actual = actual
         self.status = status
+        self.compiled_language: str | None = None
+        self.executed_language: str | None = None
 
-    async def compile(self, _language: str, _source: bytes) -> CompileResult:
+    async def compile(self, language: str, _source: bytes) -> CompileResult:
+        self.compiled_language = language
         return CompileResult(True)
 
-    async def run_case(self, *_args) -> SandboxRunResult:
+    async def run_case(self, language: str, *_args) -> SandboxRunResult:
+        self.executed_language = language
         return SandboxRunResult(self.status, self.actual, 10, 100, 0)
 
 
@@ -200,6 +204,18 @@ async def test_judge_accepts_both_javascript_modes(language: str) -> None:
     result = await engine.judge(replace(job, language=language), cases)
 
     assert result.status is SubmissionStatus.ACCEPTED
+    assert engine.sandbox.compiled_language == language
+    assert engine.sandbox.executed_language == language
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_extra_debug_output_is_wrong_answer() -> None:
+    engine, job, cases = fixture(b"answer\ndebug\n", b"answer\n")
+
+    result = await engine.judge(job, cases)
+
+    assert result.status is SubmissionStatus.WRONG_ANSWER
 
 
 @pytest.mark.unit

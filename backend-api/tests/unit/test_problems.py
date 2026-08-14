@@ -110,6 +110,10 @@ async def seed_catalog(db: AsyncSession) -> dict[str, Problem]:
                 version="ES2023",
                 monaco_language="javascript",
                 source_filename="main.js",
+                runtime_mode="v8-compat",
+                input_api="readline()",
+                output_api="print(...args)",
+                eof_value="undefined",
                 compile_command=None,
                 run_command="private v8 runtime",
                 docker_image="private.registry/judge-node:22",
@@ -122,6 +126,10 @@ async def seed_catalog(db: AsyncSession) -> dict[str, Problem]:
                 version="22",
                 monaco_language="javascript",
                 source_filename="main.js",
+                runtime_mode="nodejs",
+                input_api="fs.readFileSync(0, 'utf8')",
+                output_api="console.log/process.stdout.write",
+                eof_value=None,
                 compile_command=None,
                 run_command="private node runtime",
                 docker_image="private.registry/judge-node:22",
@@ -240,6 +248,11 @@ async def test_public_responses_do_not_leak_runtime_configuration(
     languages = await client.get("/api/v1/languages")
     assert languages.status_code == 200
     assert [item["slug"] for item in languages.json()] == ["javascript-v8", "nodejs"]
+    contracts = {item["slug"]: item for item in languages.json()}
+    assert contracts["javascript-v8"]["runtime_mode"] == "v8-compat"
+    assert contracts["javascript-v8"]["eof_value"] == "undefined"
+    assert contracts["nodejs"]["runtime_mode"] == "nodejs"
+    assert contracts["nodejs"]["eof_value"] is None
 
     detail = await client.get(f"/api/v1/problems/{problems['sum'].id}")
     slug_detail = await client.get(f"/api/v1/problems/{problems['sum'].slug}")

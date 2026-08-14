@@ -112,6 +112,8 @@ async def import_problem_seed(
                 "output_description",
                 "sample_input",
                 "sample_output",
+                "starter_code_v8",
+                "starter_code_nodejs",
                 "time_limit_ms",
                 "memory_limit_mb",
             }

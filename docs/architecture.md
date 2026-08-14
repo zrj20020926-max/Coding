@@ -48,7 +48,7 @@ AI 队列与 Judge 队列使用不同 Redis Stream 和 consumer group。API 事�
 
 公开样例与正式提交共享上述控制平面和沙箱。样例模式从题面读取公开输入输出并允许返回该次 stdout，但不写隐藏用例结果、不更新用户正式进度与题目统计；正式模式只从 MinIO 读取隐藏用例，前端只能看到聚合计数。
 
-用户语言只有两种：`javascript-v8` 通过内置 runner 创建隔离 VM context，仅注入逐行 `readline()` 与 `print()`；`nodejs` 直接运行 Node.js 22，支持 `fs`、`process.stdout` 等标准 API，但没有 DOM。VM context 负责 API 兼容与误用提示，真正安全边界始终是外层一次性 Docker 沙箱。
+用户语言只有两种，并且不是同一命令的别名：`javascript-v8` 使用 Node.js 22 Debian 镜像中的受控 `vm` 兼容 runner（不是 d8），仅注入逐行 `readline()` 与 `print()`，EOF 固定为 `undefined`；`nodejs` 使用独立 Alpine 镜像直接运行 Node.js 22 CommonJS，支持 `fs`、`Buffer`、`process.stdout` 等标准 API，但没有 DOM。两者的镜像、启动命令和沙箱文件集合均独立，模式误用不会自动回退。VM context 负责 API 兼容与受控诊断，真正安全边界始终是外层一次性 Docker 沙箱。
 
 ## 4. 安全基线
 

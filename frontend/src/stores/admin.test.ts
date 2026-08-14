@@ -12,6 +12,7 @@ const problem: AdminProblem = {
   accepted_count: 0, submission_count: 0, acceptance_rate: 0, tags: [], description: '描述',
   input_description: '输入', output_description: '输出', data_constraints: 'n <= 10',
   sample_input: '1', sample_output: '1', sample_explanation: '解释', time_limit_ms: 1000,
+  starter_code_v8: null, starter_code_nodejs: null,
   memory_limit_mb: 256, created_at: '2026-08-12T00:00:00Z', updated_at: '2026-08-12T00:00:00Z',
   visibility: 'draft', created_by: null,
 }

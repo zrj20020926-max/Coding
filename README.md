@@ -90,6 +90,13 @@ AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、
 - `GET /api/v1/tags`：标签列表。
 - `GET /api/v1/languages`：启用语言的公开编辑器元数据。
 
+公开语言元数据包含 `runtime_mode`、输入/输出 API 与 EOF 约定，但不包含运行命令或镜像。两种模式是独立运行契约：
+
+- `javascript-v8`（JavaScript V8）：实际运行于 Node.js 22 Debian 沙箱内的受控 `vm` 兼容启动器，并非 d8，也不会开放完整 Node.js API。全局 `readline()` 每次返回一行，EOF 固定返回 `undefined`；`print(...args)` 将参数转为字符串、以单个空格连接并追加换行。`require`、`process`、`Buffer`、文件系统、网络 API 和 DOM 不可用。
+- `nodejs`（Node.js 22）：运行于独立 Alpine 沙箱，使用 `fs.readFileSync(0, 'utf8')` 读取原始 stdin，支持 `console.log()`、`process.stdout.write()`、`Buffer` 和标准 Node.js API；不提供 `readline()`、`print()` 或浏览器 DOM，容器网络仍被禁用。
+
+两种模式使用不同镜像、命令和沙箱文件集合。题目可分别配置 `starter_code_v8` 与 `starter_code_nodejs`；未配置时才使用平台通用模板。Node 通用模板不会无条件调用 `trim()`，避免破坏空行和末尾换行训练。
+
 `status=solved|attempted|unattempted|favorited` 需要登录；其中 `attempted` 表示尝试过但尚未通过。登录后的列表和详情会增加 `solved`、`attempted`、`attempt_count`、`favorited`，匿名响应不包含这些字段。普通用户和匿名用户始终只能读取 `visibility=public` 的题目。
 
 训练与收藏接口：
@@ -288,7 +295,7 @@ alembic upgrade head
 alembic current
 ```
 
-`20260812_0009` 会为历史隐藏用例创建 legacy v1 测试集并回填提交快照；`20260813_0013` 增加训练分类并把用户判题语言切换为 JavaScript V8/Node.js。由于迁移进程不读取 MinIO，历史用例大小元数据为 0，重新发布前应创建并验证新测试集版本。
+`20260812_0009` 会为历史隐藏用例创建 legacy v1 测试集并回填提交快照；`20260813_0013` 增加训练分类并把用户判题语言切换为 JavaScript V8/Node.js；`20260813_0014` 固化两种独立运行契约和题目级模板；`20260814_0015` 修复 submission/attempt 共用状态触发器。由于迁移进程不读取 MinIO，历史用例大小元数据为 0，重新发布前应创建并验证新测试集版本。
 
 若缓存计数因历史数据、运维修复或事件补偿需要校正，可在暂停/排空 Judge 写入后执行幂等重建。命令会获取与 Judge 终态事务互斥的 PostgreSQL advisory lock，并在单事务中重建进度、事件台账和计数：
 
@@ -300,7 +307,7 @@ python -m app.maintenance.rebuild_statistics --apply
 
 ## JavaScript ACM Judge Worker
 
-`judge-service/` 是独立 Python 服务，通过 Redis Streams 消费任务，用户提交只开放 `javascript-v8` 和 `nodejs`。V8 模式在沙箱中注入兼容的 `readline()/print()`，不注入 `fs`、`require`、`process`、`Buffer` 或 DOM；Node.js 模式支持标准 Node API，但不提供浏览器 DOM。语法检查和每个测试用例都运行在独立、无网络、只读根目录、非 root、无 capabilities 且受 CPU/内存/PID/tmpfs/输出/墙钟限制的容器中。
+`judge-service/` 是独立 Python 服务，通过 Redis Streams 消费任务，用户提交只开放 `javascript-v8` 和 `nodejs`。V8 模式是 Node.js 22 容器内的受控 V8 兼容 runner（不是 d8），只提供 EOF 为 `undefined` 的 `readline()` 和按空格连接并换行的 `print()`；Node.js 模式使用另一镜像直接执行 CommonJS 源码并提供标准 Node API。选错模式会得到受控 Runtime Error 提示，不会退回另一运行时。语法检查和每个测试用例都运行在独立、无网络、只读根目录、非 root、无 capabilities 且受 CPU/内存/PID/tmpfs/输出/墙钟限制的容器中。
 
 ```powershell
 docker compose up --build -d minio-init backend-api outbox-publisher judge-service

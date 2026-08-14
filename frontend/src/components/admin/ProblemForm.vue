@@ -12,6 +12,7 @@ const formRef = ref<FormInstance>()
 const form = reactive<ProblemWritePayload>({
   slug: '', title: '', description: '', difficulty: 'easy', training_category: 'comprehensive', input_description: '', output_description: '',
   data_constraints: '', sample_input: '', sample_output: '', sample_explanation: '', time_limit_ms: 1000,
+  starter_code_v8: null, starter_code_nodejs: null,
   memory_limit_mb: 256, source: null, tag_slugs: [],
 })
 const original = ref('')
@@ -33,6 +34,7 @@ function initialize(problem: AdminProblem | null): void {
     input_description: problem.input_description, output_description: problem.output_description,
     data_constraints: problem.data_constraints, sample_input: problem.sample_input, sample_output: problem.sample_output,
     sample_explanation: problem.sample_explanation, time_limit_ms: problem.time_limit_ms,
+    starter_code_v8: problem.starter_code_v8, starter_code_nodejs: problem.starter_code_nodejs,
     memory_limit_mb: problem.memory_limit_mb, source: problem.source, tag_slugs: problem.tags.map((tag) => tag.slug),
   })
   original.value = JSON.stringify(form)
@@ -70,6 +72,8 @@ defineExpose({ markSaved: () => { original.value = JSON.stringify(form); emit('d
       <ElFormItem label="样例解释" prop="sample_explanation" :error="fieldErrors?.['sample_explanation']"><ElInput v-model="form.sample_explanation" type="textarea" :rows="5" /></ElFormItem>
       <ElFormItem label="公开样例输入"><ElInput v-model="form.sample_input" type="textarea" :rows="7" class="mono-input" /></ElFormItem>
       <ElFormItem label="公开样例输出"><ElInput v-model="form.sample_output" type="textarea" :rows="7" class="mono-input" /></ElFormItem>
+      <ElFormItem label="JavaScript V8 初始模板"><ElInput v-model="form.starter_code_v8" type="textarea" :rows="8" class="mono-input" placeholder="留空时使用平台 readline()/print() 通用模板" /></ElFormItem>
+      <ElFormItem label="Node.js 初始模板"><ElInput v-model="form.starter_code_nodejs" type="textarea" :rows="8" class="mono-input" placeholder="留空时使用平台 stdin/stdout 通用模板" /></ElFormItem>
       <ElFormItem label="时间限制（毫秒）" :error="fieldErrors?.['time_limit_ms']"><ElInputNumber v-model="form.time_limit_ms" :min="100" :max="30000" :step="100" /></ElFormItem>
       <ElFormItem label="内存限制（MB）" :error="fieldErrors?.['memory_limit_mb']"><ElInputNumber v-model="form.memory_limit_mb" :min="16" :max="2048" :step="16" /></ElFormItem>
     </div>

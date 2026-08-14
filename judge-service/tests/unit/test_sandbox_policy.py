@@ -1,14 +1,32 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
+from docker.errors import ImageNotFound
 
 from app.core.config import Settings
 from app.domain.models import SubmissionStatus
+from app.errors import InfrastructureError
 from app.infrastructure.sandbox import V8_COMPAT_RUNNER, DockerSandbox
 
 
 class FakeDockerClient:
     pass
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_missing_image_error_and_exception_chain_do_not_leak_image() -> None:
+    client = Mock()
+    client.images.get.side_effect = ImageNotFound("private.registry/runtime@sha256:secret")
+    settings = Settings(_env_file=None, sandbox_pull_images=False)
+    sandbox = DockerSandbox(settings, client)
+
+    with pytest.raises(InfrastructureError) as caught:
+        await sandbox._ensure_image("private.registry/runtime@sha256:secret")
+
+    assert "private.registry" not in str(caught.value)
+    assert "sha256" not in str(caught.value)
+    assert caught.value.__cause__ is None
 
 
 @pytest.mark.unit
@@ -54,7 +72,12 @@ async def test_javascript_modes_use_node_syntax_check(language: str) -> None:
 
     assert result.succeeded is True
     image, command, files, *_limits = sandbox._execute.await_args.args
-    assert image == settings.sandbox_node_image
+    expected_image = (
+        settings.sandbox_v8_image
+        if language == "javascript-v8"
+        else settings.sandbox_node_image
+    )
+    assert image == expected_image
     assert "node --check /workspace/main.js" in command[-1]
     assert files["main.js"][0] == b"const value = 1;"
 
@@ -79,11 +102,15 @@ async def test_v8_runtime_injects_only_compatibility_runner() -> None:
 
     assert result.status is SubmissionStatus.ACCEPTED
     image, command, files, *_limits = sandbox._execute.await_args.args
-    assert image == settings.sandbox_node_image
+    assert image == settings.sandbox_v8_image
     assert "v8-runner.cjs" in command[-1]
     assert files["v8-runner.cjs"][0] == V8_COMPAT_RUNNER
     runner = V8_COMPAT_RUNNER.decode()
     assert "readline:" in runner and "print:" in runner
+    assert "cursor < input.length ? input[cursor++] : undefined" in runner
+    assert "values.map(String).join(' ') + '\\n'" in runner
+    assert "Object.setPrototypeOf(readline, null)" in runner
+    assert "Object.setPrototypeOf(print, null)" in runner
     assert "context.process" not in runner
     assert "context.require" not in runner
     assert "context.Buffer" not in runner
@@ -111,3 +138,39 @@ async def test_node_runtime_does_not_inject_v8_runner() -> None:
     _image, command, files, *_limits = sandbox._execute.await_args.args
     assert "node /workspace/main.js" in command[-1]
     assert set(files) == {"main.js", "input"}
+
+
+@pytest.mark.unit
+def test_node_mode_misuse_gets_controlled_diagnostics_without_internal_paths() -> None:
+    readline = DockerSandbox._controlled_diagnostic(
+        "nodejs",
+        b"ReferenceError: readline is not defined at /workspace/main.js:1:1",
+        "fallback",
+    )
+    printing = DockerSandbox._controlled_diagnostic(
+        "nodejs",
+        b"ReferenceError: print is not defined at /workspace/main.js:1:1",
+        "fallback",
+    )
+
+    assert readline == (
+        "Node.js API error: readline() is unavailable; "
+        "use fs.readFileSync(0, 'utf8')."
+    )
+    assert printing == (
+        "Node.js API error: print() is unavailable; use console.log() "
+        "or process.stdout.write()."
+    )
+    assert "/workspace" not in readline + printing
+
+
+@pytest.mark.unit
+def test_runtime_diagnostics_never_echo_internal_commands_or_images() -> None:
+    diagnostic = DockerSandbox._controlled_diagnostic(
+        "javascript-v8",
+        b"Runtime Error: failed at /workspace/main.js node:22-bookworm-slim",
+        "fallback",
+    )
+
+    assert "/workspace" not in diagnostic
+    assert "node:22" not in diagnostic

@@ -28,21 +28,55 @@ const vm = require('vm');
 const input = fs.readFileSync(0, 'utf8').replace(/\\r\\n?/g, '\\n').split('\\n');
 if (input.length && input[input.length - 1] === '') input.pop();
 let cursor = 0;
-const output = [];
-const context = Object.create(null);
-Object.assign(context, {
-  readline: () => cursor < input.length ? input[cursor++] : undefined,
-  print: (...values) => output.push(values.map(String).join(' ')),
+const sandbox = Object.create(null);
+const readline = () => cursor < input.length ? input[cursor++] : undefined;
+const print = (...values) => fs.writeSync(1, values.map(String).join(' ') + '\\n');
+// Host callbacks are stripped of Function.prototype so user code cannot reach
+// the runner realm through callback.constructor. Docker remains the security boundary.
+Object.setPrototypeOf(readline, null);
+Object.setPrototypeOf(print, null);
+Object.freeze(readline);
+Object.freeze(print);
+Object.defineProperties(sandbox, {
+  readline: {
+    value: readline,
+    writable: false,
+    configurable: false,
+    enumerable: true,
+  },
+  print: {
+    value: print,
+    writable: false,
+    configurable: false,
+    enumerable: true,
+  },
 });
-context.globalThis = context;
-Object.freeze(context);
+const context = vm.createContext(sandbox, {
+  name: 'javascript-v8-acm',
+  codeGeneration: { strings: false, wasm: false },
+});
+function controlledDiagnostic(error) {
+  const raw = error && typeof error.message === 'string' ? error.message : '';
+  if (/\\brequire is not defined\\b/.test(raw)) {
+    return 'V8 API error: require is unavailable; use readline() and print().';
+  }
+  if (/\\bprocess is not defined\\b/.test(raw)) {
+    return 'V8 API error: process is unavailable; use print() for stdout.';
+  }
+  if (/\\bBuffer is not defined\\b/.test(raw)) {
+    return 'V8 API error: Buffer is unavailable in JavaScript V8 mode.';
+  }
+  if (/\\b(?:fs|document|window) is not defined\\b/.test(raw)) {
+    return 'V8 API error: this API is unavailable in JavaScript V8 mode.';
+  }
+  const safe = raw.replace(/[\\r\\n]+/g, ' ').replace(/\\/workspace\\/[^ ]*/g, '[source]');
+  return `Runtime Error: ${safe.slice(0, 500) || 'user program failed'}`;
+}
 try {
   const source = fs.readFileSync('/workspace/main.js', 'utf8');
-  new vm.Script(source, { filename: 'main.js' }).runInNewContext(context);
-  if (output.length) process.stdout.write(output.join('\\n') + '\\n');
+  new vm.Script(source, { filename: 'main.js' }).runInContext(context);
 } catch (error) {
-  const message = error && error.stack ? error.stack : String(error);
-  process.stderr.write(message + '\\n');
+  fs.writeSync(2, controlledDiagnostic(error) + '\\n');
   process.exitCode = 1;
 }
 """
@@ -67,23 +101,23 @@ class DockerSandbox:
     async def ping(self) -> None:
         try:
             await asyncio.to_thread(self.client.ping)
-        except DockerException as exc:
-            raise InfrastructureError("Docker daemon is unavailable") from exc
+        except DockerException:
+            raise InfrastructureError("Docker daemon is unavailable") from None
 
     async def _ensure_image(self, image: str) -> None:
         if image in self._available_images:
             return
         try:
             await asyncio.to_thread(self.client.images.get, image)
-        except ImageNotFound as exc:
+        except ImageNotFound:
             if not self.settings.sandbox_pull_images:
-                raise InfrastructureError(f"sandbox image is not preloaded: {image}") from exc
+                raise InfrastructureError("required sandbox image is not preloaded") from None
             try:
                 await asyncio.to_thread(self.client.images.pull, image)
-            except DockerException as pull_exc:
-                raise InfrastructureError(f"failed to pull sandbox image: {image}") from pull_exc
-        except DockerException as exc:
-            raise InfrastructureError("failed to inspect sandbox image") from exc
+            except DockerException:
+                raise InfrastructureError("failed to pull required sandbox image") from None
+        except DockerException:
+            raise InfrastructureError("failed to inspect sandbox image") from None
         self._available_images.add(image)
 
     def _container_options(self, image: str, command: list[str], memory_mb: int) -> dict[str, Any]:
@@ -182,12 +216,28 @@ class DockerSandbox:
         try:
             raw_socket.sendall(payload)
             raw_socket.shutdown(socket.SHUT_WR)
-            while raw_socket.recv(4096):
-                pass
+            while True:
+                try:
+                    chunk = raw_socket.recv(4096)
+                except RuntimeError as exc:
+                    if "socket after connection was closed" not in str(exc):
+                        raise
+                    break
+                if not chunk:
+                    break
         finally:
-            stream.close()
-        inspection = self.client.api.exec_inspect(exec_id)
-        return inspection.get("ExitCode") == 0
+            try:
+                stream.close()
+            except RuntimeError:
+                pass
+
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            exit_code = self.client.api.exec_inspect(exec_id).get("ExitCode")
+            if exit_code is not None:
+                return exit_code == 0
+            time.sleep(0.01)
+        return False
 
     @staticmethod
     def _state(container: Any) -> dict[str, Any]:
@@ -245,8 +295,8 @@ class DockerSandbox:
                     await asyncio.to_thread(container.kill)
             except InfrastructureError:
                 raise
-            except DockerException as exc:
-                raise InfrastructureError("Docker sandbox execution failed") from exc
+            except (DockerException, OSError, RuntimeError):
+                raise InfrastructureError("Docker sandbox execution failed") from None
 
             elapsed_ms = max(0, int((time.monotonic() - started) * 1000))
             state = await asyncio.to_thread(self._state, container)
@@ -361,8 +411,8 @@ class DockerSandbox:
             return CompileResult(True, artifact=artifact)
         except InfrastructureError:
             raise
-        except (DockerException, UnicodeDecodeError, ValueError) as exc:
-            raise InfrastructureError("Docker compilation failed") from exc
+        except (DockerException, OSError, RuntimeError, UnicodeDecodeError, ValueError):
+            raise InfrastructureError("Docker compilation failed") from None
         finally:
             if container is not None:
                 try:
@@ -408,11 +458,13 @@ class DockerSandbox:
             return await self._compile_python(source)
         if language == "cpp":
             return await self._compile_cpp_with_artifact(source)
-        if language in {"javascript-v8", "nodejs"}:
-            return await self._compile_javascript(source)
+        if language == "javascript-v8":
+            return await self._compile_javascript(source, self.settings.sandbox_v8_image)
+        if language == "nodejs":
+            return await self._compile_javascript(source, self.settings.sandbox_node_image)
         raise JudgeConfigurationError(f"unsupported language: {language}")
 
-    async def _compile_javascript(self, source: bytes) -> CompileResult:
+    async def _compile_javascript(self, source: bytes, image: str) -> CompileResult:
         command = self._wrapper(
             "node --check /workspace/main.js",
             self.settings.sandbox_output_limit_bytes,
@@ -427,7 +479,7 @@ class DockerSandbox:
             timed_out,
             oom_killed,
         ) = await self._execute(
-            self.settings.sandbox_node_image,
+            image,
             command,
             {"main.js": (source, 0o400), "input": (b"", 0o400)},
             self.settings.sandbox_compile_timeout_seconds,
@@ -438,8 +490,12 @@ class DockerSandbox:
         if oom_killed or exit_code == 137:
             return CompileResult(False, diagnostic="syntax check memory limit exceeded")
         if exit_code != 0:
-            diagnostic = stderr[:16_384].decode("utf-8", errors="replace")
-            return CompileResult(False, diagnostic=diagnostic or "JavaScript syntax error")
+            return CompileResult(
+                False,
+                diagnostic=self._controlled_diagnostic(
+                    "javascript", stderr, "JavaScript syntax error"
+                ),
+            )
         return CompileResult(True)
 
     async def run_case(
@@ -464,7 +520,7 @@ class DockerSandbox:
             program = "node /workspace/main.js"
             files = {"main.js": (source, 0o400), "input": (stdin, 0o400)}
         elif language == "javascript-v8":
-            image = self.settings.sandbox_node_image
+            image = self.settings.sandbox_v8_image
             program = "node --no-warnings /workspace/v8-runner.cjs"
             files = {
                 "main.js": (source, 0o400),
@@ -500,6 +556,21 @@ class DockerSandbox:
                 None,
                 "wall-clock limit exceeded",
             )
+        output_limit = self.settings.sandbox_output_limit_bytes
+        if (
+            len(stdout) >= output_limit
+            or len(stderr) >= output_limit
+            or exit_code == 153
+            or b"File too large" in stderr
+        ):
+            return SandboxRunResult(
+                SubmissionStatus.OUTPUT_LIMIT_EXCEEDED,
+                b"",
+                elapsed_ms,
+                memory_used_kb,
+                exit_code,
+                "output limit exceeded",
+            )
         if oom_killed:
             return SandboxRunResult(
                 SubmissionStatus.MEMORY_LIMIT_EXCEEDED,
@@ -518,23 +589,16 @@ class DockerSandbox:
                 exit_code,
                 "process was killed at the configured memory limit",
             )
-        output_limit = self.settings.sandbox_output_limit_bytes
-        if (
-            len(stdout) >= output_limit
-            or len(stderr) >= output_limit
-            or exit_code == 153
-            or b"File too large" in stderr
-        ):
-            return SandboxRunResult(
-                SubmissionStatus.OUTPUT_LIMIT_EXCEEDED,
-                b"",
-                elapsed_ms,
-                memory_used_kb,
-                exit_code,
-                "output limit exceeded",
+        if exit_code != 0 and any(
+            marker in stderr
+            for marker in (
+                b"MemoryError",
+                b"std::bad_alloc",
+                b"JavaScript heap out of memory",
+                b"Reached heap limit",
+                b"FatalProcessOutOfMemory",
+                b"Ineffective mark-compacts",
             )
-        if exit_code != 0 and (
-            b"MemoryError" in stderr or b"std::bad_alloc" in stderr
         ):
             return SandboxRunResult(
                 SubmissionStatus.MEMORY_LIMIT_EXCEEDED,
@@ -545,14 +609,16 @@ class DockerSandbox:
                 "memory allocation failed at the configured limit",
             )
         if exit_code != 0:
-            diagnostic = stderr[:4096].decode("utf-8", errors="replace")
+            diagnostic = self._controlled_diagnostic(
+                language, stderr, "process exited with a non-zero status"
+            )
             return SandboxRunResult(
                 SubmissionStatus.RUNTIME_ERROR,
                 stdout,
                 elapsed_ms,
                 memory_used_kb,
                 exit_code,
-                diagnostic or "process exited with a non-zero status",
+                diagnostic,
             )
         return SandboxRunResult(
             SubmissionStatus.ACCEPTED,
@@ -561,3 +627,35 @@ class DockerSandbox:
             memory_used_kb,
             exit_code,
         )
+
+    @staticmethod
+    def _controlled_diagnostic(language: str, stderr: bytes, fallback: str) -> str:
+        text = stderr.decode("utf-8", errors="replace")
+        if language == "nodejs":
+            if "readline is not defined" in text:
+                return (
+                    "Node.js API error: readline() is unavailable; "
+                    "use fs.readFileSync(0, 'utf8')."
+                )
+            if "print is not defined" in text:
+                return (
+                    "Node.js API error: print() is unavailable; use console.log() "
+                    "or process.stdout.write()."
+                )
+        for line in text.replace("\r", "\n").split("\n"):
+            stripped = line.strip()
+            if stripped.startswith(
+                ("V8 API error:", "Runtime Error:", "SyntaxError:", "ReferenceError:",
+                 "TypeError:", "RangeError:", "Error:")
+            ):
+                safe = stripped
+                for sensitive in (
+                    "node:22-bookworm-slim",
+                    "node:22-alpine",
+                    "node --no-warnings /workspace/v8-runner.cjs",
+                    "node /workspace/main.js",
+                ):
+                    safe = safe.replace(sensitive, "[runtime]")
+                safe = safe.replace("/workspace/", "[source]/")
+                return safe[:1000]
+        return fallback

@@ -120,6 +120,8 @@ class Problem(Base):
     sample_explanation: Mapped[str] = mapped_column(
         Text, nullable=False, default="", server_default=""
     )
+    starter_code_v8: Mapped[Optional[str]] = mapped_column(Text)
+    starter_code_nodejs: Mapped[Optional[str]] = mapped_column(Text)
     time_limit_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=1000)
     memory_limit_mb: Mapped[int] = mapped_column(Integer, nullable=False, default=256)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -371,6 +373,10 @@ class Language(Base):
     version: Mapped[str] = mapped_column(String(30), nullable=False)
     monaco_language: Mapped[str] = mapped_column(String(30), nullable=False)
     source_filename: Mapped[str] = mapped_column(String(100), nullable=False)
+    runtime_mode: Mapped[Optional[str]] = mapped_column(String(20))
+    input_api: Mapped[Optional[str]] = mapped_column(String(100))
+    output_api: Mapped[Optional[str]] = mapped_column(String(100))
+    eof_value: Mapped[Optional[str]] = mapped_column(String(30))
     compile_command: Mapped[Optional[str]] = mapped_column(Text)
     run_command: Mapped[str] = mapped_column(Text, nullable=False)
     docker_image: Mapped[str] = mapped_column(Text, nullable=False)
