@@ -412,7 +412,9 @@ class JudgeRepository:
                 ).mappings().one_or_none()
                 if attempt is None:
                     return False
-                await self._insert_attempt_results(connection, job.attempt_id, result)
+                await self._insert_attempt_results(
+                    connection, job.attempt_id, result, job.mode
+                )
 
                 effective = result.status is not SubmissionStatus.SYSTEM_ERROR
                 if attempt["kind"] == "initial" or effective:
@@ -500,7 +502,17 @@ class JudgeRepository:
         return True
 
     @staticmethod
-    async def _insert_attempt_results(connection, attempt_id: UUID, result: JudgeResult) -> None:
+    async def _insert_attempt_results(
+        connection,
+        attempt_id: UUID,
+        result: JudgeResult,
+        mode: SubmissionMode,
+    ) -> None:
+        # Sample/custom cases are ephemeral inputs created by the worker and have
+        # no backing test_cases or test_case_groups rows. Their attempt keeps only
+        # aggregate fields and the bounded public stdout.
+        if mode is not SubmissionMode.JUDGE:
+            return
         case_rows = [
             {
                 "attempt_id": attempt_id,

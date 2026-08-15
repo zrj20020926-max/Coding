@@ -176,7 +176,10 @@ class DockerSandbox:
             "tty": False,
             "auto_remove": False,
             "log_config": LogConfig(type=LogConfig.types.NONE),
-            "labels": {"codearena.role": "untrusted-sandbox"},
+            "labels": {
+                "codearena.role": "untrusted-sandbox",
+                "codearena.environment": self.settings.sandbox_environment_label,
+            },
         }
 
     @staticmethod

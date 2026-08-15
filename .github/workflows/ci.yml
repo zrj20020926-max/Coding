@@ -9,48 +9,49 @@ permissions:
   contents: read
 
 jobs:
-  ai:
-    name: AI service checks
+  frontend-fast:
+    name: frontend-fast
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ai-service
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run type-check
+      - run: npm run test:run
+      - run: npm run build
+      - name: Keep fast mocked browser flows
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+
+  backend-unit:
+    name: backend-unit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: ai-service/pyproject.toml
+          cache-dependency-path: backend-api/pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - name: Ruff
-        run: ruff check .
-      - name: Security and worker unit tests
-        run: pytest -m unit
+      - run: ruff check .
+      - run: pytest -m unit
 
-  judge:
-    name: Judge service checks
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: judge-service
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: judge-service/pyproject.toml
-      - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e ".[dev]"
-      - name: Ruff
-        run: ruff check .
-      - name: Unit tests
-        run: pytest -m unit
-
-  backend:
-    name: Backend checks
+  backend-postgres:
+    name: backend-postgres
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -79,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Start isolated MinIO
         run: |
-          docker run -d --name codearena-content-minio \
+          docker run -d --name codearena-postgres-tests-minio \
             -p 9000:9000 \
             -e MINIO_ROOT_USER=contenttest \
             -e MINIO_ROOT_PASSWORD=content_test_password \
@@ -88,7 +89,6 @@ jobs:
             curl -fsS http://localhost:9000/minio/health/ready && exit 0
             sleep 2
           done
-          docker logs codearena-content-minio
           exit 1
       - uses: actions/setup-python@v5
         with:
@@ -97,46 +97,126 @@ jobs:
           cache-dependency-path: backend-api/pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - name: Ruff
-        run: ruff check .
-      - name: Fast unit tests
-        run: pytest -m unit
-      - name: PostgreSQL integration tests
-        run: pytest -m integration
-      - name: Validate Python 3.12 and C++20 reference solutions
-        working-directory: .
-        run: |
-          docker compose -f docker-compose.content-test.yml run --build --rm catalog-validator-test
-          docker compose -f docker-compose.content-test.yml run --rm catalog-cpp-validator-test
+      - run: pytest -m integration
       - name: Judge PostgreSQL integration
         run: |
-          python -m pip install -e "../judge-service"
+          python -m pip install -e "../judge-service[dev]"
           cd ../judge-service
           pytest -m integration
 
-  frontend:
-    name: Frontend checks
+  judge-unit:
+    name: judge-unit
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: judge-service
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: judge-service/pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: ruff check .
+      - run: pytest -m unit
+
+  judge-javascript-sandbox:
+    name: judge-javascript-sandbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: judge-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: judge-service/pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Preload JavaScript runtime images
+        run: |
+          docker pull node:22-bookworm-slim
+          docker pull node:22-alpine
+      - name: Execute hostile JavaScript in real Docker sandboxes
+        env:
+          RUN_SANDBOX_TESTS: "1"
+        run: pytest -m sandbox
+
+  content-validation:
+    name: content-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest, bootstrap, MinIO checksums and JavaScript references
+        run: >-
+          docker compose -p codearena-content-validation
+          -f docker-compose.content-test.yml
+          up --build --exit-code-from catalog-validator-test catalog-validator-test
+      - name: Remove isolated validation state
+        if: always()
+        run: >-
+          docker compose -p codearena-content-validation
+          -f docker-compose.content-test.yml
+          down -v --remove-orphans
+
+  full-stack-e2e:
+    name: full-stack-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      FULL_STACK_COMPOSE_PROJECT: codearena-full-stack-e2e
+      FULL_STACK_FRONTEND_PORT: "18080"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - name: ESLint
-        run: npm run lint
-      - name: TypeScript
-        run: npm run type-check
-      - name: Vitest
-        run: npm run test:run
-      - name: Production build
-        run: npm run build
+        working-directory: frontend
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: Critical browser flow
-        run: npm run test:e2e
+        working-directory: frontend
+      - name: Resolve Docker socket group
+        run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
+      - name: Run isolated no-mock full-stack suite
+        run: bash scripts/full-stack-e2e.sh
+      - name: Re-sanitize failure artifacts
+        if: always()
+        run: python scripts/sanitize_e2e_artifacts.py artifacts/full-stack-e2e
+      - name: Upload sanitized diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-stack-e2e-sanitized
+          path: artifacts/full-stack-e2e
+          if-no-files-found: warn
+          retention-days: 7
+
+  ai-service:
+    name: ai-service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ai-service/pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: ruff check .
+      - run: pytest -m unit

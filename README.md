@@ -24,7 +24,7 @@
 - 正式判题终态事务性更新进度与统计，支持收藏列表、难度/标签统计和幂等统计重建
 - 公开题单、用户完成进度、管理员排序/发布/下线，以及按服务端时区生成的每日一题
 - 分页讨论与最多三级回复，支持编辑、软删除、锁帖、置顶、举报、敏感词待审和管理员审计
-- Playwright 关键浏览器流程测试
+- Playwright 快速 Mock 流程与独立空环境、真实 API/Judge 的 full-stack E2E
 
 独立 `ai-service` 已提供用户主动触发的 JavaScript ACM 输入输出诊断；浏览器和 `backend-api` 都不会执行用户代码，AI 也不参与正式判题决策。
 
@@ -49,7 +49,7 @@
 │  ├─ src/components/editor/            # 懒加载 Monaco 编辑器
 │  ├─ src/stores/submissions.ts         # 提交、防重、轮询与恢复
 │  ├─ src/**/*.test.ts                  # Vitest 测试
-│  └─ e2e/                              # Playwright 关键做题闭环
+│  └─ e2e/                              # Playwright 快速 Mock 与真实全栈做题闭环
 ├─ docs/
 ├─ docker-compose.yml
 └─ docker-compose.test.yml
@@ -256,6 +256,22 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+### 无 Mock 的 full-stack E2E
+
+完整测试使用固定前缀 `codearena-full-stack-e2e` 的独立 Compose project，在 tmpfs 中从空
+PostgreSQL、Redis 和 MinIO 启动，顺序执行 migration、内容初始化、API、Outbox、Judge 与
+前端。它不会连接或删除开发环境的数据卷：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/full-stack-e2e.ps1
+```
+
+Linux 与 CI 使用 `bash scripts/full-stack-e2e.sh`。测试先执行数据库与公开 DTO 内容门禁，
+再通过真实浏览器、真实 HTTP 和 Docker Judge 验证 V8、Node.js、输出格式、恢复与隔离场景。
+失败诊断只保留脱敏后的 Compose 状态、服务日志、JUnit、截图和 Playwright trace；不会保留
+密码、Token、Cookie、用户源码、隐藏测试数据、对象键或 checksum。完整运行方式、覆盖范围
+和故障恢复见 [真实全栈 E2E](docs/full-stack-e2e.md)。
+
 ## 完整训练闭环
 
 - `/problems/:slug`：题面与懒加载 ACM 编辑器。`Ctrl/⌘ Enter` 运行公开样例，`Ctrl/⌘ Shift Enter` 正式提交，`Shift Alt F` 格式化。
@@ -265,7 +281,9 @@ npm run test:e2e
 
 ## CI
 
-`.github/workflows/ci.yml` 定义了可复现的后端与前端检查：`pytest`（单元与真实 PostgreSQL 集成测试）、`ruff`、`eslint`、`type-check`、Vitest、Playwright 和生产构建。
+`.github/workflows/ci.yml` 将检查拆分为 `frontend-fast`、`backend-unit`、`backend-postgres`、
+`judge-unit`、`judge-javascript-sandbox`、`content-validation` 和 `full-stack-e2e`。快速 Mock
+浏览器流程继续保留，真实全栈任务则从空基础设施启动且不使用 `page.route()`。
 
 当前远端通过 Gitee 与 GitHub 镜像。GitHub 仓库运行现有 Actions；如使用 Gitee Go，应在其流水线中复用上述命令。
 
@@ -283,6 +301,7 @@ npm run test:e2e
 - [内容运营 API](docs/content-operations.md)
 - [内容初始化系统](docs/content-bootstrap.md)
 - [Judge 安全与故障模型](docs/judge-security.md)
+- [真实全栈 E2E](docs/full-stack-e2e.md)
 
 ## 提交控制平面
 

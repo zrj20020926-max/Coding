@@ -294,6 +294,30 @@ async def test_node_child_processes_are_bounded_by_pid_limit(
 
 
 @pytest.mark.asyncio
+async def test_node_cannot_fill_temporary_storage_beyond_file_limit(
+    sandbox: DockerSandbox,
+) -> None:
+    source = b"require('fs').writeFileSync('/tmp/fill', Buffer.alloc(2 * 1024 * 1024));"
+    result = await run(sandbox, "nodejs", source, timeout_ms=2000)
+
+    assert result.status in {
+        SubmissionStatus.RUNTIME_ERROR,
+        SubmissionStatus.OUTPUT_LIMIT_EXCEEDED,
+    }
+
+
+@pytest.mark.asyncio
+async def test_v8_cannot_access_files_or_spawn_children(
+    sandbox: DockerSandbox,
+) -> None:
+    source = b"require('child_process').spawn('sh');"
+    result = await run(sandbox, "javascript-v8", source)
+
+    assert result.status is SubmissionStatus.RUNTIME_ERROR
+    assert result.diagnostic is not None and "require is unavailable" in result.diagnostic
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("language", ["javascript-v8", "nodejs"])
 async def test_javascript_syntax_error_is_compile_error(
     sandbox: DockerSandbox,

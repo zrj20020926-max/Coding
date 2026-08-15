@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.domain.models import CaseResult, JudgeResult, SubmissionStatus
+from app.domain.models import CaseResult, GroupResult, JudgeResult, SubmissionStatus
 from app.infrastructure.database import JudgeRepository
 
 
@@ -209,16 +209,27 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
 
         assert sample_id is not None
         sample_job = await claim_running(repository, sample_id, sample_owner)
+        ephemeral_case_id = uuid4()
         sample = JudgeResult(
             status=SubmissionStatus.ACCEPTED,
             case_results=[
                 CaseResult(
-                    uuid4(),
+                    ephemeral_case_id,
                     SubmissionStatus.ACCEPTED,
                     7,
                     1024,
                     0,
                     Decimal("100"),
+                    ephemeral_case_id,
+                )
+            ],
+            group_results=[
+                GroupResult(
+                    group_id=ephemeral_case_id,
+                    status=SubmissionStatus.ACCEPTED,
+                    score=Decimal("100"),
+                    passed_case_count=1,
+                    total_case_count=1,
                 )
             ],
             total_case_count=1,
@@ -263,6 +274,22 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
                 ),
                 {"submission_id": sample_id},
             )
+            sample_attempt_cases = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM submission_attempt_case_results acr "
+                    "JOIN submission_attempts a ON a.id=acr.attempt_id "
+                    "WHERE a.submission_id=:submission_id"
+                ),
+                {"submission_id": sample_id},
+            )
+            sample_attempt_groups = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM submission_attempt_group_results agr "
+                    "JOIN submission_attempts a ON a.id=agr.attempt_id "
+                    "WHERE a.submission_id=:submission_id"
+                ),
+                {"submission_id": sample_id},
+            )
 
         assert progress == {"attempt_count": 1, "accepted": True}
         assert stats == {
@@ -272,6 +299,8 @@ async def test_formal_and_sample_finalization_use_distinct_progress_rules() -> N
         }
         assert sample_row == {"status": "Accepted", "sample_output": "3\n"}
         assert sample_cases == 0
+        assert sample_attempt_cases == 0
+        assert sample_attempt_groups == 0
     finally:
         async with engine.begin() as connection:
             if user_id is not None and problem_id is not None:

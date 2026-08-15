@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     sandbox_cpp_image: str = "gcc:14.2-bookworm"
     sandbox_v8_image: str = "node:22-bookworm-slim"
     sandbox_node_image: str = "node:22-alpine"
+    sandbox_environment_label: str = Field(
+        default="local", pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$"
+    )
     sandbox_pull_images: bool = True
     sandbox_cpus: float = Field(default=0.5, gt=0, le=4)
     sandbox_pids_limit: int = Field(default=32, ge=4, le=256)

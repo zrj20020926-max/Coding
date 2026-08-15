@@ -135,6 +135,28 @@ async def test_infrastructure_failure_is_retryable_and_not_finalized() -> None:
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_new_worker_recovers_compiling_submission_after_worker_failure() -> None:
+    job = pending_job()
+    repository = FakeRepository(job)
+    failed_worker = JudgeWorker(
+        Settings(_env_file=None), FakeRedis(), repository, FakeEngine(fail=True)
+    )
+
+    assert await failed_worker.process_submission(job.id) is MessageDisposition.RETRY
+    assert repository.job.status is SubmissionStatus.COMPILING
+
+    recovered_engine = FakeEngine()
+    recovered_worker = JudgeWorker(
+        Settings(_env_file=None), FakeRedis(), repository, recovered_engine
+    )
+    assert await recovered_worker.process_submission(job.id) is MessageDisposition.ACK
+    assert repository.job.status is SubmissionStatus.ACCEPTED
+    assert recovered_engine.calls == 1
+    assert repository.finalize_calls == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_old_worker_cannot_overwrite_a_new_terminal_status() -> None:
     job = replace(pending_job(), status=SubmissionStatus.RUNNING)
     repository = FakeRepository(job)

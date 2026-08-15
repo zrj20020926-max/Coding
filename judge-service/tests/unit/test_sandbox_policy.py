@@ -50,6 +50,10 @@ def test_sandbox_policy_has_no_privileged_escape_hatches() -> None:
     assert "exec" in options["tmpfs"]["/workspace"]
     assert "volumes" not in options
     assert "mounts" not in options
+    assert options["labels"] == {
+        "codearena.role": "untrusted-sandbox",
+        "codearena.environment": "local",
+    }
     file_size_limit = next(
         limit for limit in options["ulimits"] if limit["Name"] == "fsize"
     )

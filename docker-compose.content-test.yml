@@ -154,6 +154,10 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+    networks:
+      default:
+        aliases:
+          - backend-api
 
   outbox-publisher-content-test:
     build:
@@ -186,6 +190,8 @@ services:
       JUDGE_CONSUMER_NAME: catalog-worker
       JUDGE_BLOCK_MS: "250"
       JUDGE_CLAIM_IDLE_MS: "10000"
+      JUDGE_LOCK_TTL_MS: "10000"
+      JUDGE_DATABASE_LEASE_SECONDS: "10"
       MINIO_ENDPOINT: minio-content-test:9000
       MINIO_ACCESS_KEY: contenttest
       MINIO_SECRET_KEY: content_test_password
@@ -195,11 +201,12 @@ services:
       SANDBOX_NODE_IMAGE: node:22-alpine
       SANDBOX_PULL_IMAGES: "false"
       SANDBOX_CPUS: "1"
+      SANDBOX_ENVIRONMENT_LABEL: codearena-full-stack-e2e
       DOCKER_HOST: unix:///var/run/docker.sock
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     group_add:
-      - "0"
+      - "${DOCKER_GID:-0}"
     depends_on:
       outbox-publisher-content-test:
         condition: service_started
@@ -217,3 +224,36 @@ services:
         condition: service_healthy
       judge-service-content-test:
         condition: service_started
+
+  content-invariants-e2e:
+    build:
+      context: ./backend-api
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      DATABASE_URL: postgresql+asyncpg://content_test:content_test_password@postgres-content-test:5432/codearena_content_test
+      FULL_STACK_API_URL: http://backend-api-content-test:8000/api/v1
+    command: ["python", "/fullstack/verify_bootstrap.py"]
+    volumes:
+      - ./backend-api/tests/fullstack:/fullstack:ro
+    depends_on:
+      backend-api-content-test:
+        condition: service_healthy
+
+  frontend-full-stack-e2e:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+    ports:
+      - "${FULL_STACK_FRONTEND_PORT:-18080}:80"
+    depends_on:
+      backend-api-content-test:
+        condition: service_healthy
+    healthcheck:
+      # Alpine resolves localhost to ::1 first, while this Nginx server intentionally
+      # binds only IPv4. Pin the probe to loopback IPv4 so health reflects HTTP readiness.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

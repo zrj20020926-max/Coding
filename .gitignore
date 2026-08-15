@@ -27,6 +27,7 @@ coverage/
 .cache/
 .tmp/
 test-results/
+artifacts/
 
 # Editors and OS
 .idea/
@@ -37,4 +38,3 @@ Thumbs.db
 # Runtime data
 data/
 *.log
-
