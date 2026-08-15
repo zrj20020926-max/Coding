@@ -11,9 +11,15 @@ const pending: AIAnalysis = {
   id: 'analysis-1',
   submission_id: 'submission-1',
   status: 'pending',
-  failure_reason: null,
-  time_complexity: null,
-  space_complexity: null,
+  runtime_mismatch: null,
+  input_reading_issue: null,
+  line_parsing_issue: null,
+  token_parsing_issue: null,
+  whitespace_issue: null,
+  eof_issue: null,
+  numeric_issue: null,
+  output_format_issue: null,
+  performance_issue: null,
   suggestions: [],
   guiding_questions: [],
   confidence: null,
@@ -29,9 +35,8 @@ const pending: AIAnalysis = {
 const completed: AIAnalysis = {
   ...pending,
   status: 'completed',
-  failure_reason: '循环边界可能少处理一个元素',
-  time_complexity: 'O(n)',
-  space_complexity: 'O(1)',
+  runtime_mismatch: { detected: false, summary: '运行模式一致' },
+  input_reading_issue: { detected: true, summary: '读取入口可能错误' },
   suggestions: ['检查循环终止条件'],
   guiding_questions: ['n=1 时会发生什么？'],
   confidence: 'medium',
@@ -86,6 +91,29 @@ describe('AI analysis store', () => {
 
     await store.load('submission-1')
 
-    expect(store.error).toBe('AI 分析暂未配置')
+    expect(store.error).toBe('AI 输入输出诊断暂未配置')
+  })
+
+  it('does not start polling when the provider is not configured', async () => {
+    vi.useFakeTimers()
+    vi.mocked(requestAIAnalysis).mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        data: {
+          detail: {
+            code: 'AI_PROVIDER_NOT_CONFIGURED',
+            message: 'AI input/output diagnosis is not configured',
+          },
+        },
+      },
+    })
+    const store = useAIAnalysisStore()
+
+    await store.request('submission-1')
+    await vi.advanceTimersByTimeAsync(120_000)
+
+    expect(store.error).toBe('AI 输入输出诊断暂未配置')
+    expect(getAIAnalysis).not.toHaveBeenCalled()
+    vi.useRealTimers()
   })
 })

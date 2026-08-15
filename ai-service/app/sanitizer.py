@@ -5,6 +5,10 @@ from app.core.config import Settings
 from app.domain import AnalysisJob
 
 REDACTION_RULES = (
+    (
+        re.compile(r"(?i)\b(?:SECRET_HIDDEN_CASE|HIDDEN_(?:INPUT|OUTPUT|TEST_CASE))\b"),
+        "[REDACTED_SENSITIVE]",
+    ),
     (re.compile(r"(?i)\b(?:bearer\s+)?eyJ[a-zA-Z0-9_.-]{20,}"), "[REDACTED_TOKEN]"),
     (
         re.compile(
@@ -30,28 +34,40 @@ def sanitize_text(value: str | None, limit: int) -> str:
 
 
 def build_safe_input(job: AnalysisJob, source_code: str, settings: Settings) -> dict[str, Any]:
-    problem = {
+    exercise = {
         "title": sanitize_text(job.problem_title, 500),
         "description": sanitize_text(job.problem_description, settings.max_problem_chars),
-        "input_description": sanitize_text(job.input_description, 8000),
-        "output_description": sanitize_text(job.output_description, 8000),
-        "sample_input": sanitize_text(job.sample_input, 8000),
-        "sample_output": sanitize_text(job.sample_output, 8000),
-        "time_limit_ms": job.time_limit_ms,
-        "memory_limit_mb": job.memory_limit_mb,
+        "input_format": sanitize_text(job.input_description, 8000),
+        "output_format": sanitize_text(job.output_description, 8000),
+        "public_samples": [
+            {
+                "stdin": sanitize_text(job.sample_input, 8000),
+                "stdout": sanitize_text(job.sample_output, 8000),
+            }
+        ],
     }
+    format_mismatch = job.submission_status == "Wrong Answer"
+    if job.submission_status == "Output Limit Exceeded":
+        format_summary = "聚合结果显示 stdout 超出平台输出上限；未提供任何测试数据。"
+    elif format_mismatch:
+        format_summary = "聚合结果显示 stdout 与期望结果不一致；未提供任何测试数据。"
+    else:
+        format_summary = "聚合结果未直接表明输出格式不匹配。"
     return {
-        "problem": problem,
-        "language": sanitize_text(job.language_slug, 50),
+        "exercise": exercise,
+        "runtime": sanitize_text(job.language_slug, 50),
         "source_code": sanitize_text(source_code, settings.max_source_chars),
-        "compiler_output": sanitize_text(
-            job.compiler_output, settings.max_compiler_output_chars
-        ),
-        "failure_summary": {
+        "execution_error": {
+            "compiler_output": sanitize_text(
+                job.compiler_output, settings.max_compiler_output_chars
+            ),
+            "runtime_error": sanitize_text(
+                job.error_message, settings.max_failure_message_chars
+            ),
+        },
+        "judge_summary": {
             "status": job.submission_status,
-            "time_used_ms": job.time_used_ms,
-            "memory_used_kb": job.memory_used_kb,
-            "passed_case_count": job.passed_case_count,
-            "total_case_count": job.total_case_count,
+            "format_mismatch": format_mismatch,
+            "format_error_summary": format_summary,
         },
     }

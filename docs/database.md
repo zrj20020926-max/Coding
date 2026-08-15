@@ -150,14 +150,14 @@ erDiagram
 
 公开查询只返回已发布题单、公开题目和审核通过且未软删除的内容。作者能看到自己的待审内容，管理员能在审核接口中访问全部状态。举报聚合计数使用条件插入后的原子增量，不依赖先读后写；评论计数仅统计公开可见评论，并在审核状态变化时原子调整。遗留 `like_count` 暂无写接口；启用点赞前必须增加用户—内容关系表，以关系唯一约束作为计数幂等来源。
 
-## AI 分析、成本与审计
+## AI 输入输出诊断、成本与审计
 
-`20260811_0008` 扩展已有 `ai_analyses`，增加冗余所有权、输入 fingerprint、结构化引导问题、缓存来源、重试、延迟、成本与安全错误字段；同时新增：
+`20260811_0008` 扩展已有 `ai_analyses`，增加冗余所有权、输入 fingerprint、结构化引导问题、缓存来源、重试、延迟、成本与安全错误字段；`20260815_0018` 新增 `diagnostic_report JSONB` 和对象类型约束，用于 JavaScript ACM 输入输出诊断，同时保留旧字段以支持滚动升级和历史数据读取。相关表包括：
 
 | ORM | 表 | 关键约束 |
 | --- | --- | --- |
-| `AIAnalysis` | `ai_analyses` | 每个 submission 唯一；user 外键；状态使用既有 PostgreSQL ENUM；已完成 fingerprint 与待处理任务使用部分索引 |
+| `AIAnalysis` | `ai_analyses` | 每个 submission 唯一；user 外键；状态使用既有 PostgreSQL ENUM；`diagnostic_report` 必须为 JSON object；已完成 fingerprint 与待处理任务使用部分索引 |
 | `AIUsageRecord` | `ai_usage_records` | analysis 唯一，幂等记录 token、微美元成本与缓存命中 |
 | `AuditLog` | `audit_logs` | actor 可空，目标使用稳定字符串，metadata 仅接受业务白名单字段 |
 
-数据库不保存完整 Prompt。公开 DTO 不包含 provider request id、token、成本、fingerprint、MinIO object key 或内部错误。AI Worker 的 SQL 没有更新 `submissions.status` 的权限路径，正式 Judge 状态仍是唯一权威结果。
+数据库不保存完整 Prompt。`diagnostic_report` 只保存运行模式、输入读取、行/token/空白、EOF、数值、输出格式和性能九类诊断；公开 DTO 再次按字段白名单过滤，不包含 provider request id、token、成本、fingerprint、MinIO object key 或内部错误。AI Worker 的 SQL 没有更新 `submissions.status` 的权限路径，正式 Judge 状态仍是唯一权威结果。

@@ -61,6 +61,7 @@ class AIAnalysis(Base):
         ai_analysis_status_type, nullable=False, default=AIAnalysisStatus.PENDING
     )
     request_fingerprint: Mapped[str] = mapped_column(CHAR(64), nullable=False)
+    diagnostic_report: Mapped[Optional[dict[str, Any]]] = mapped_column(json_type)
     failure_reason: Mapped[Optional[str]] = mapped_column(Text)
     failure_summary: Mapped[Optional[str]] = mapped_column(Text)
     time_complexity: Mapped[Optional[str]] = mapped_column(String(100))

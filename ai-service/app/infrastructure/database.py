@@ -56,12 +56,11 @@ class AnalysisRepository:
                         """
                         SELECT a.id AS analysis_id, a.submission_id, a.user_id, a.status::text,
                                s.source_object_key, s.status::text AS submission_status,
-                               s.compiler_output, s.error_message, s.time_used_ms,
-                               s.memory_used_kb, s.passed_case_count, s.total_case_count,
+                               s.compiler_output, s.error_message,
                                l.slug AS language_slug,
                                p.title AS problem_title, p.description AS problem_description,
                                p.input_description, p.output_description,
-                               p.sample_input, p.sample_output, p.time_limit_ms, p.memory_limit_mb
+                               p.sample_input, p.sample_output
                         FROM ai_analyses a
                         JOIN submissions s ON s.id = a.submission_id AND s.user_id = a.user_id
                         JOIN users u ON u.id = a.user_id AND u.is_active
@@ -69,7 +68,9 @@ class AnalysisRepository:
                         JOIN languages l ON l.id = s.language_id
                         WHERE a.id = :id
                           AND s.status IN ('Wrong Answer', 'Compile Error', 'Runtime Error',
-                                           'Time Limit Exceeded', 'Memory Limit Exceeded')
+                                           'Time Limit Exceeded', 'Memory Limit Exceeded',
+                                           'Output Limit Exceeded')
+                          AND l.slug IN ('javascript-v8', 'nodejs')
                         """
                     ),
                     {"id": analysis_id},
@@ -117,8 +118,8 @@ class AnalysisRepository:
                 text(
                     """
                     UPDATE ai_analyses
-                    SET status = 'completed', failure_reason = :failure_reason,
-                        time_complexity = :time_complexity, space_complexity = :space_complexity,
+                    SET status = 'completed', diagnostic_report = CAST(:diagnostic_report AS jsonb),
+                        failure_reason = NULL, time_complexity = NULL, space_complexity = NULL,
                         suggestions = CAST(:suggestions AS jsonb),
                         guiding_questions = CAST(:guiding_questions AS jsonb),
                         confidence = :confidence, provider = :provider, model_name = :model_name,
@@ -131,9 +132,9 @@ class AnalysisRepository:
                 ),
                 {
                     "id": job.analysis_id,
-                    "failure_reason": result.output.failure_reason,
-                    "time_complexity": result.output.time_complexity,
-                    "space_complexity": result.output.space_complexity,
+                    "diagnostic_report": json.dumps(
+                        result.output.diagnostic_report(), ensure_ascii=False
+                    ),
                     "suggestions": json.dumps(result.output.suggestions, ensure_ascii=False),
                     "guiding_questions": json.dumps(
                         result.output.guiding_questions, ensure_ascii=False

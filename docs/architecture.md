@@ -32,9 +32,9 @@ Failed submission -> AI outbox/stream -> ai-service -> model provider
 | `frontend` | 登录、训练课程、速查手册、题单、每日一题、讨论、ACM 编辑器、提交/结果展示、个人中心 | 保存密钥、执行代码 |
 | `backend-api` | JWT 会话、训练内容、内容运营、提交记录、任务入队、权限校验 | 编译或运行用户代码 |
 | `judge-service` | 消费提交、拉取对象、启动沙箱、逐用例判题、上报结果 | 用户认证、公开 REST API |
-| `ai-service` | 读取失败上下文、脱敏、生成诊断和复杂度建议 | 决定正式判题结果 |
+| `ai-service` | 读取 JavaScript 失败上下文、脱敏并生成 stdin/stdout 结构化诊断 | 决定正式判题结果或提供算法答案 |
 
-AI 队列与 Judge 队列使用不同 Redis Stream 和 consumer group。API 事务只创建分析记录与 Outbox 事件，事件 payload 仅有 `analysis_id`；AI Worker 重新验证提交所有权、公开题目和失败终态。它只拥有源码 bucket 的读取权限，不配置隐藏测试 bucket，也不挂载 Docker socket。
+AI 队列与 Judge 队列使用不同 Redis Stream 和 consumer group。API 事务只创建分析记录与 Outbox 事件，事件 payload 仅有 `analysis_id`；AI Worker 重新验证提交所有权、公开题目、失败终态以及 `javascript-v8`/`nodejs` 运行模式。它只拥有源码 bucket 的读取权限，不配置隐藏测试 bucket，也不挂载 Docker socket。Provider 未受控配置时 API 立即降级，不创建任务或启动前端轮询。
 
 ## 3. 核心数据流
 

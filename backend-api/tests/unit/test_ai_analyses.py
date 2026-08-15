@@ -12,6 +12,23 @@ from app.models.problem import Language, Problem, ProblemDifficulty, ProblemVisi
 from app.models.submission import Outbox, Submission, SubmissionStatus
 from tests.unit.conftest import active_test_set
 
+DIAGNOSTIC_REPORT = {
+    "runtime_mismatch": {"detected": False, "summary": "运行模式一致"},
+    "input_reading_issue": {"detected": True, "summary": "可能未正确读取 stdin"},
+    "line_parsing_issue": {"detected": False, "summary": "未发现按行解析问题"},
+    "token_parsing_issue": {"detected": False, "summary": "未发现 token 解析问题"},
+    "whitespace_issue": {"detected": False, "summary": "未发现空白问题"},
+    "eof_issue": {"detected": False, "summary": "未发现 EOF 问题"},
+    "numeric_issue": {"detected": False, "summary": "未发现数值问题"},
+    "output_format_issue": {"detected": True, "summary": "stdout 格式可能不一致"},
+    "performance_issue": {"detected": False, "summary": "未发现性能问题"},
+}
+
+
+@pytest.fixture(autouse=True)
+def enable_ai_analysis(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "ai_analysis_enabled", True)
+
 
 async def register(client: AsyncClient, username: str) -> dict[str, str]:
     response = await client.post(
@@ -190,9 +207,10 @@ async def test_completed_fingerprint_cache_does_not_consume_model_quota(
     )
     assert first_analysis is not None
     first_analysis.status = AIAnalysisStatus.COMPLETED
-    first_analysis.failure_reason = "cached reason"
-    first_analysis.time_complexity = "O(n)"
-    first_analysis.space_complexity = "O(1)"
+    first_analysis.diagnostic_report = DIAGNOSTIC_REPORT
+    first_analysis.failure_reason = "legacy algorithm analysis"
+    first_analysis.time_complexity = "O(n^2)"
+    first_analysis.space_complexity = "O(n)"
     first_analysis.suggestions = ["cached suggestion"]
     first_analysis.guiding_questions = ["cached question"]
     first_analysis.confidence = "medium"
@@ -227,12 +245,137 @@ async def test_completed_fingerprint_cache_does_not_consume_model_quota(
     assert cached.status_code == 202
     assert cached.json()["reused"] is True
     assert cached.json()["quota"] is None
-    assert cached.json()["analysis"]["failure_reason"] == "cached reason"
+    assert cached.json()["analysis"]["input_reading_issue"]["detected"] is True
+    assert cached.json()["analysis"]["output_format_issue"]["detected"] is True
     assert cached.json()["analysis"]["cached"] is True
+    cached_analysis = await db_session.scalar(
+        select(AIAnalysis).where(AIAnalysis.submission_id == second.id)
+    )
+    assert cached_analysis is not None
+    assert cached_analysis.failure_reason is None
+    assert cached_analysis.time_complexity is None
+    assert cached_analysis.space_complexity is None
     ai_events = await db_session.scalar(
         select(func.count(Outbox.id)).where(Outbox.event_type == "ai.analysis.requested")
     )
     assert ai_events == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_public_diagnostic_dto_filters_untrusted_sensitive_text(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    problem, _ = await seed_catalog(db_session)
+    headers = await register(client, "ai_public_filter_user")
+    submission = await create_failed_submission(client, db_session, headers, problem)
+    queued = await client.post(
+        f"/api/v1/submissions/{submission.id}/ai-analysis", headers=headers
+    )
+    analysis = await db_session.get(AIAnalysis, UUID(queued.json()["analysis"]["id"]))
+    assert analysis is not None
+    analysis.status = AIAnalysisStatus.COMPLETED
+    analysis.diagnostic_report = {
+        **DIAGNOSTIC_REPORT,
+        "input_reading_issue": {
+            "detected": True,
+            "summary": "hidden_input=s3://private-bucket/case-1.in",
+            "object_key": "private-bucket/case-1.in",
+        },
+        "reference_solution": "must not be serialized",
+    }
+    analysis.suggestions = ["read MinIO://private-bucket/case-1.out"]
+    analysis.guiding_questions = ["Can you inspect the public input format?"]
+    analysis.confidence = "high"
+    analysis.completed_at = datetime.now(timezone.utc)
+    await db_session.commit()
+
+    response = await client.get(
+        f"/api/v1/submissions/{submission.id}/ai-analysis", headers=headers
+    )
+
+    assert response.status_code == 200
+    serialized = response.text
+    for forbidden in (
+        "private-bucket",
+        "object_key",
+        "reference_solution",
+        "hidden_input",
+        "s3://",
+        "MinIO://",
+    ):
+        assert forbidden not in serialized
+    assert response.json()["input_reading_issue"]["summary"] == "诊断内容已因安全策略隐藏。"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_non_javascript_runtime_is_not_analyzable(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    problem, language = await seed_catalog(db_session)
+    headers = await register(client, "ai_runtime_guard_user")
+    submission = await create_failed_submission(client, db_session, headers, problem)
+    language.slug = "python"
+    await db_session.commit()
+
+    response = await client.post(
+        f"/api/v1/submissions/{submission.id}/ai-analysis", headers=headers
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "RUNTIME_NOT_SUPPORTED"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_output_limit_exceeded_can_request_io_diagnosis(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    problem, _ = await seed_catalog(db_session)
+    headers = await register(client, "ai_output_limit_user")
+    submission = await create_failed_submission(
+        client,
+        db_session,
+        headers,
+        problem,
+        status=SubmissionStatus.OUTPUT_LIMIT_EXCEEDED,
+    )
+
+    response = await client.post(
+        f"/api/v1/submissions/{submission.id}/ai-analysis", headers=headers
+    )
+
+    assert response.status_code == 202
+    assert response.json()["analysis"]["status"] == "pending"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_unconfigured_provider_degrades_immediately_without_queue_or_polling_state(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    problem, _ = await seed_catalog(db_session)
+    headers = await register(client, "ai_unconfigured_user")
+    submission = await create_failed_submission(client, db_session, headers, problem)
+    monkeypatch.setattr(settings, "ai_analysis_enabled", False)
+
+    response = await client.post(
+        f"/api/v1/submissions/{submission.id}/ai-analysis", headers=headers
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == {
+        "code": "AI_PROVIDER_NOT_CONFIGURED",
+        "message": "AI input/output diagnosis is not configured",
+    }
+    assert await db_session.scalar(select(func.count(AIAnalysis.id))) == 0
+    ai_events = await db_session.scalar(
+        select(func.count(Outbox.id)).where(Outbox.event_type == "ai.analysis.requested")
+    )
+    assert ai_events == 0
 
 
 @pytest.mark.unit

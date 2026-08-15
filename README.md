@@ -26,7 +26,7 @@
 - 分页讨论与最多三级回复，支持编辑、软删除、锁帖、置顶、举报、敏感词待审和管理员审计
 - Playwright 关键浏览器流程测试
 
-独立 `ai-service` 已提供用户主动触发的失败提交建议分析；浏览器和 `backend-api` 都不会执行用户代码，AI 也不参与正式判题决策。
+独立 `ai-service` 已提供用户主动触发的 JavaScript ACM 输入输出诊断；浏览器和 `backend-api` 都不会执行用户代码，AI 也不参与正式判题决策。
 
 ## 目录
 
@@ -44,7 +44,7 @@
 │  └─ tests/
 │     ├─ unit/                          # SQLite + FakeRedis 快速测试
 │     └─ integration/                   # 真实 PostgreSQL 测试
-├─ ai-service/                         # 隔离的建议型 AI 分析 Worker
+├─ ai-service/                         # 隔离的 JavaScript I/O 诊断 Worker
 ├─ frontend/
 │  ├─ src/components/editor/            # 懒加载 Monaco 编辑器
 │  ├─ src/stores/submissions.ts         # 提交、防重、轮询与恢复
@@ -76,12 +76,12 @@ Docker Compose 会在 API 启动前执行安全迁移入口。全新数据库执
 `POST /api/v1/auth/logout-all`。Refresh Token 仅通过 HttpOnly Cookie 传输，不进入响应 JSON；
 登录和注册同时按客户端 IP 与规范化账号执行 Redis 限流。
 
-## AI 分析 API
+## AI 输入输出诊断 API
 
-- `POST /api/v1/submissions/{id}/ai-analysis`：当前用户主动分析本人已结束的失败提交。
+- `POST /api/v1/submissions/{id}/ai-analysis`：当前用户主动诊断本人已结束的 JavaScript 失败提交。
 - `GET /api/v1/submissions/{id}/ai-analysis`：查询结构化分析结果。
 
-AI 与 Judge 使用独立 Redis Stream；AI 只给出错误原因、复杂度、改进建议和引导问题，不修改判题状态。模型输入不含隐藏用例、标准答案、对象键、凭证或其他用户数据，前端固定提示建议可能不准确。配额、缓存、成本、脱敏与部署边界见 [AI 分析文档](docs/ai-analysis.md)，生产观测、告警、备份、Secret Manager 和 digest 规范见 [生产运维文档](docs/production-operations.md)。
+AI 与 Judge 使用独立 Redis Stream。诊断只面向 `javascript-v8` 与 `nodejs`，检查运行模式混用、stdin 读取、行/token/空白/EOF、Number/BigInt、stdout 格式和大输入性能；不会提供算法解答，也不修改判题状态。模型输入不含隐藏用例、标准答案、参考实现、对象键、凭证或其他用户数据，前端固定提示诊断可能不准确。默认 `AI_ANALYSIS_ENABLED=false`；只有受控配置 Provider 后才同时开启该开关。配额、缓存、成本、脱敏与部署边界见 [AI 诊断文档](docs/ai-analysis.md)，生产观测、告警、备份、Secret Manager 和 digest 规范见 [生产运维文档](docs/production-operations.md)。
 
 ## 训练课程 API
 

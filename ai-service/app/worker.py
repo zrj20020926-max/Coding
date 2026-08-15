@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from dataclasses import replace
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -20,6 +21,7 @@ from app.core.observability import (
     QUEUE_PENDING,
     TOKENS,
 )
+from app.diagnostics import apply_static_diagnostics
 from app.infrastructure.database import AnalysisRepository
 from app.infrastructure.object_storage import SourceStore
 from app.provider import (
@@ -118,13 +120,17 @@ class AIWorker:
                     self.provider.analyze(safe_input),
                     timeout=self.settings.ai_timeout_seconds,
                 )
+                result = replace(
+                    result,
+                    output=apply_static_diagnostics(result.output, safe_input),
+                )
                 break
             except (ProviderTransientError, TimeoutError):
                 if attempt >= self.settings.ai_max_retries:
                     await self.repository.fail(
                         job,
                         "AI_PROVIDER_UNAVAILABLE",
-                        "AI analysis is temporarily unavailable; please retry later",
+                        "AI input/output diagnosis is temporarily unavailable; please retry later",
                     )
                     ANALYSES.labels("failed_provider").inc()
                     return MessageDisposition.ACK
@@ -135,7 +141,7 @@ class AIWorker:
                 await self.repository.fail(
                     job,
                     "AI_PROVIDER_NOT_CONFIGURED",
-                    "AI analysis is not configured",
+                    "AI input/output diagnosis is not configured",
                 )
                 ANALYSES.labels("failed_not_configured").inc()
                 return MessageDisposition.ACK
@@ -143,7 +149,7 @@ class AIWorker:
                 await self.repository.fail(
                     job,
                     "AI_RESPONSE_INVALID",
-                    "AI analysis could not produce a safe structured response",
+                    "AI diagnosis could not produce a safe structured response",
                 )
                 ANALYSES.labels("failed_response").inc()
                 return MessageDisposition.ACK

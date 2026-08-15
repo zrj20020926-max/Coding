@@ -15,9 +15,15 @@ describe('AIAnalysisPanel', () => {
       id: 'analysis-1',
       submission_id: 'submission-1',
       status: 'completed',
-      failure_reason: '可能存在边界错误',
-      time_complexity: 'O(n)',
-      space_complexity: 'O(1)',
+      runtime_mismatch: { detected: false, summary: '运行模式一致' },
+      input_reading_issue: { detected: true, summary: '可能存在输入读取问题' },
+      line_parsing_issue: { detected: false, summary: '未发现按行解析问题' },
+      token_parsing_issue: { detected: false, summary: '未发现 token 解析问题' },
+      whitespace_issue: { detected: true, summary: '无条件 trim 可能丢失空行' },
+      eof_issue: { detected: false, summary: '未发现 EOF 问题' },
+      numeric_issue: { detected: false, summary: '未发现数值问题' },
+      output_format_issue: { detected: true, summary: '可能包含多余输出' },
+      performance_issue: { detected: false, summary: '未发现性能问题' },
       suggestions: ['检查下标范围'],
       guiding_questions: ['空输入如何处理？'],
       confidence: 'low',
@@ -33,9 +39,11 @@ describe('AIAnalysisPanel', () => {
       props: { submissionId: 'submission-1' },
     })
 
-    await vi.waitFor(() => expect(wrapper.text()).toContain('可能存在边界错误'))
-    expect(wrapper.text()).toContain('AI 建议可能不准确')
-    expect(wrapper.text()).toContain('O(n)')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('可能存在输入读取问题'))
+    expect(wrapper.text()).toContain('AI 输入输出诊断可能不准确')
+    expect(wrapper.text()).toContain('运行模式混用')
+    expect(wrapper.text()).toContain('空格与空行')
+    expect(wrapper.text()).toContain('需关注')
     expect(wrapper.text()).toContain('检查下标范围')
     expect(wrapper.html()).not.toContain('object_key')
     expect(wrapper.html()).not.toContain('hidden_input')

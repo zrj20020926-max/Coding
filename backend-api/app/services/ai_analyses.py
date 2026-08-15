@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from time import time
 from typing import Optional
@@ -25,12 +26,32 @@ from app.models.problem import ProblemVisibility
 from app.models.submission import Outbox, Submission, SubmissionStatus
 from app.schemas.ai import AIAnalysisPublic, AIAnalysisTriggered, AIQuotaPublic
 
+DIAGNOSTIC_FIELDS = (
+    "runtime_mismatch",
+    "input_reading_issue",
+    "line_parsing_issue",
+    "token_parsing_issue",
+    "whitespace_issue",
+    "eof_issue",
+    "numeric_issue",
+    "output_format_issue",
+    "performance_issue",
+)
+SUPPORTED_AI_RUNTIMES = {"javascript-v8", "nodejs"}
+PUBLIC_SENSITIVE_PATTERN = re.compile(
+    r"(?i)(?:s3|minio)://|object[_ -]?key|source_object_key|"
+    r"hidden[_ -]?(?:input|output|test|case)|standard[_ -]?answer|"
+    r"reference[_ -]?(?:solution|implementation)|docker[_ -]?(?:image|socket)|"
+    r"compile[_ -]?command|bearer\s+eyJ|api[_-]?key"
+)
+
 ANALYZABLE_FAILURES = {
     SubmissionStatus.WRONG_ANSWER,
     SubmissionStatus.COMPILE_ERROR,
     SubmissionStatus.RUNTIME_ERROR,
     SubmissionStatus.TIME_LIMIT_EXCEEDED,
     SubmissionStatus.MEMORY_LIMIT_EXCEEDED,
+    SubmissionStatus.OUTPUT_LIMIT_EXCEEDED,
 }
 
 
@@ -50,16 +71,14 @@ def ai_error(
 
 def _fingerprint(submission: Submission) -> str:
     safe_summary = {
+        "diagnostic_schema": 2,
         "problem_id": submission.problem_id,
         "problem_updated_at": submission.problem.updated_at.isoformat(),
         "language": submission.language.slug,
         "source_checksum": submission.source_checksum,
         "status": submission.status.value,
         "compiler_output": (submission.compiler_output or "")[:16_000],
-        "time_used_ms": submission.time_used_ms,
-        "memory_used_kb": submission.memory_used_kb,
-        "passed_case_count": submission.passed_case_count,
-        "total_case_count": submission.total_case_count,
+        "runtime_error": (submission.error_message or "")[:4_000],
     }
     encoded = json.dumps(safe_summary, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
@@ -99,20 +118,43 @@ async def _consume_quota(cache: Redis, user_id: UUID) -> AIQuotaPublic:
 
 
 def to_ai_public(analysis: AIAnalysis) -> AIAnalysisPublic:
+    report = analysis.diagnostic_report if isinstance(analysis.diagnostic_report, dict) else {}
+
+    def public_text(value: object, limit: int = 1000) -> str | None:
+        if not isinstance(value, str) or not value.strip():
+            return None
+        normalized = value.strip()[:limit]
+        if PUBLIC_SENSITIVE_PATTERN.search(normalized):
+            return "诊断内容已因安全策略隐藏。"
+        return normalized
+
+    def public_items(value: object) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [safe for item in value[:8] if (safe := public_text(item)) is not None]
+
+    def finding(field_name: str) -> dict[str, object] | None:
+        value = report.get(field_name)
+        if not isinstance(value, dict):
+            return None
+        detected = value.get("detected")
+        summary = public_text(value.get("summary"))
+        if not isinstance(detected, bool) or summary is None:
+            return None
+        return {"detected": detected, "summary": summary}
+
     return AIAnalysisPublic(
         id=analysis.id,
         submission_id=analysis.submission_id,
         status=analysis.status,
-        failure_reason=analysis.failure_reason,
-        time_complexity=analysis.time_complexity,
-        space_complexity=analysis.space_complexity,
-        suggestions=analysis.suggestions or [],
-        guiding_questions=analysis.guiding_questions or [],
+        **{field_name: finding(field_name) for field_name in DIAGNOSTIC_FIELDS},
+        suggestions=public_items(analysis.suggestions),
+        guiding_questions=public_items(analysis.guiding_questions),
         confidence=analysis.confidence,
         cached=analysis.cached_from_id is not None,
         retry_count=analysis.retry_count,
         error_code=analysis.error_code,
-        error_message=analysis.error_message,
+        error_message=public_text(analysis.error_message),
         created_at=analysis.created_at,
         updated_at=analysis.updated_at,
         completed_at=analysis.completed_at,
@@ -159,6 +201,12 @@ async def trigger_analysis(
             "SUBMISSION_NOT_ANALYZABLE",
             "only completed failed submissions can be analyzed",
         )
+    if submission.language.slug not in SUPPORTED_AI_RUNTIMES:
+        raise ai_error(
+            status.HTTP_409_CONFLICT,
+            "RUNTIME_NOT_SUPPORTED",
+            "AI input/output diagnosis only supports JavaScript V8 and Node.js",
+        )
 
     existing = await get_owned_analysis(db, submission_id, user_id)
     if existing is not None and existing.status is not AIAnalysisStatus.FAILED:
@@ -186,6 +234,7 @@ async def trigger_analysis(
         .where(
             AIAnalysis.request_fingerprint == fingerprint,
             AIAnalysis.status == AIAnalysisStatus.COMPLETED,
+            AIAnalysis.diagnostic_report.is_not(None),
             AIAnalysis.user_id == user_id,
             AIAnalysis.submission_id != submission_id,
         )
@@ -196,16 +245,20 @@ async def trigger_analysis(
     failure_summary = json.dumps(
         {
             "status": submission.status.value,
-            "time_used_ms": submission.time_used_ms,
-            "memory_used_kb": submission.memory_used_kb,
-            "passed_case_count": submission.passed_case_count,
-            "total_case_count": submission.total_case_count,
+            "format_mismatch": submission.status is SubmissionStatus.WRONG_ANSWER,
         },
         sort_keys=True,
         separators=(",", ":"),
     )
     quota = None
     if cached is None:
+        if not settings.ai_analysis_enabled:
+            AI_ANALYSIS_REQUESTS.labels("not_configured").inc()
+            raise ai_error(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                "AI_PROVIDER_NOT_CONFIGURED",
+                "AI input/output diagnosis is not configured",
+            )
         try:
             quota = await _consume_quota(cache, user_id)
         except HTTPException as exc:
@@ -237,6 +290,7 @@ async def trigger_analysis(
         analysis.request_fingerprint = fingerprint
         analysis.failure_summary = failure_summary
         analysis.failure_reason = None
+        analysis.diagnostic_report = None
         analysis.time_complexity = None
         analysis.space_complexity = None
         analysis.suggestions = None
@@ -252,9 +306,10 @@ async def trigger_analysis(
         AI_ANALYSIS_CACHE_HITS.inc()
         AI_ANALYSIS_REQUESTS.labels("cache_hit").inc()
         analysis.status = AIAnalysisStatus.COMPLETED
-        analysis.failure_reason = cached.failure_reason
-        analysis.time_complexity = cached.time_complexity
-        analysis.space_complexity = cached.space_complexity
+        analysis.failure_reason = None
+        analysis.diagnostic_report = dict(cached.diagnostic_report or {})
+        analysis.time_complexity = None
+        analysis.space_complexity = None
         analysis.suggestions = list(cached.suggestions or [])
         analysis.guiding_questions = list(cached.guiding_questions or [])
         analysis.confidence = cached.confidence

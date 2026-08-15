@@ -30,7 +30,30 @@ async def test_migrations_preserve_postgresql_features(
     try:
         async with engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            assert revision == "20260814_0017"
+            assert revision == "20260815_0018"
+
+            ai_analysis_columns = set(
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT column_name FROM information_schema.columns "
+                            "WHERE table_schema = 'public' AND table_name = 'ai_analyses'"
+                        )
+                    )
+                ).scalars()
+            )
+            assert "diagnostic_report" in ai_analysis_columns
+            ai_analysis_constraints = set(
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT constraint_name FROM information_schema.table_constraints "
+                            "WHERE table_schema = 'public' AND table_name = 'ai_analyses'"
+                        )
+                    )
+                ).scalars()
+            )
+            assert "ck_ai_diagnostic_report_object" in ai_analysis_constraints
 
             problem_columns = set(
                 (

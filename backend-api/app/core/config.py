@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     judge_supported_languages: str = "javascript-v8,nodejs"
     submission_stream_name: str = "codearena:judge:submissions"
     ai_analysis_stream_name: str = "codearena:ai:analyses"
+    ai_analysis_enabled: bool = False
     ai_analysis_daily_quota: int = Field(default=5, ge=1, le=100)
     ai_analysis_quota_window_seconds: int = Field(default=86_400, ge=60, le=604_800)
     outbox_batch_size: int = Field(default=50, ge=1, le=500)

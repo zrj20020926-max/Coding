@@ -1,13 +1,24 @@
 export type AIAnalysisStatus = 'pending' | 'running' | 'completed' | 'failed'
 export type AIConfidence = 'low' | 'medium' | 'high'
 
+export interface AIDiagnosticFinding {
+  detected: boolean
+  summary: string
+}
+
 export interface AIAnalysis {
   id: string
   submission_id: string
   status: AIAnalysisStatus
-  failure_reason: string | null
-  time_complexity: string | null
-  space_complexity: string | null
+  runtime_mismatch: AIDiagnosticFinding | null
+  input_reading_issue: AIDiagnosticFinding | null
+  line_parsing_issue: AIDiagnosticFinding | null
+  token_parsing_issue: AIDiagnosticFinding | null
+  whitespace_issue: AIDiagnosticFinding | null
+  eof_issue: AIDiagnosticFinding | null
+  numeric_issue: AIDiagnosticFinding | null
+  output_format_issue: AIDiagnosticFinding | null
+  performance_issue: AIDiagnosticFinding | null
   suggestions: string[]
   guiding_questions: string[]
   confidence: AIConfidence | null

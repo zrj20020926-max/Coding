@@ -9,8 +9,8 @@ const POLL_INTERVAL_MS = 1800
 const POLL_TIMEOUT_MS = 90_000
 
 function analysisFailureMessage(code: string | null, fallback: string | null): string {
-  if (code === 'AI_PROVIDER_NOT_CONFIGURED') return 'AI 分析暂未配置'
-  return fallback || 'AI 分析暂时不可用，请稍后重新分析'
+  if (code === 'AI_PROVIDER_NOT_CONFIGURED') return 'AI 输入输出诊断暂未配置'
+  return fallback || 'AI 输入输出诊断暂时不可用，请稍后重试'
 }
 
 export const useAIAnalysisStore = defineStore('ai-analysis', () => {
@@ -34,7 +34,7 @@ export const useAIAnalysisStore = defineStore('ai-analysis', () => {
     const poll = async (): Promise<void> => {
       if (currentGeneration !== generation) return
       if (Date.now() - startedAt >= POLL_TIMEOUT_MS) {
-        error.value = 'AI 分析等待超时，请稍后刷新重试'
+        error.value = 'AI 输入输出诊断等待超时，请稍后刷新重试'
         return
       }
       try {
@@ -50,7 +50,7 @@ export const useAIAnalysisStore = defineStore('ai-analysis', () => {
         }
       } catch (reason) {
         if (currentGeneration !== generation) return
-        error.value = getApiErrorMessage(reason, 'AI 分析状态加载失败')
+        error.value = getApiErrorMessage(reason, 'AI 输入输出诊断状态加载失败')
         timer = setTimeout(() => void poll(), POLL_INTERVAL_MS * 2)
       }
     }
@@ -75,7 +75,7 @@ export const useAIAnalysisStore = defineStore('ai-analysis', () => {
       }
     } catch (reason) {
       if (getApiErrorCode(reason) !== 'AI_ANALYSIS_NOT_FOUND') {
-        error.value = getApiErrorMessage(reason, 'AI 分析加载失败')
+        error.value = getApiErrorMessage(reason, 'AI 输入输出诊断加载失败')
       }
     } finally {
       loading.value = false
@@ -100,7 +100,12 @@ export const useAIAnalysisStore = defineStore('ai-analysis', () => {
         startPolling(submissionId)
       }
     } catch (reason) {
-      error.value = getApiErrorMessage(reason, 'AI 分析请求失败，请稍后重试')
+      const code = getApiErrorCode(reason)
+      error.value = analysisFailureMessage(
+        code ?? null,
+        getApiErrorMessage(reason, 'AI 输入输出诊断请求失败，请稍后重试'),
+      )
+      if (code === 'AI_PROVIDER_NOT_CONFIGURED') stopPolling()
     } finally {
       requesting.value = false
     }

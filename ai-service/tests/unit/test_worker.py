@@ -3,7 +3,7 @@ from uuid import uuid4
 import pytest
 
 from app.core.config import Settings
-from app.domain import AIAnalysisOutput, ProviderResult
+from app.domain import AIAnalysisOutput, DiagnosticFinding, ProviderResult
 from app.provider import (
     ProviderNotConfiguredError,
     ProviderPermanentError,
@@ -64,9 +64,14 @@ class RetryProvider:
             raise ProviderTransientError("timeout")
         return ProviderResult(
             output=AIAnalysisOutput(
-                failure_reason="Likely off-by-one error",
-                time_complexity="O(n)",
-                space_complexity="O(1)",
+                **{
+                    field: DiagnosticFinding(detected=False, summary="No issue detected")
+                    for field in (
+                        "runtime_mismatch", "input_reading_issue", "line_parsing_issue",
+                        "token_parsing_issue", "whitespace_issue", "eof_issue",
+                        "numeric_issue", "output_format_issue", "performance_issue",
+                    )
+                },
                 suggestions=["Check loop boundaries"],
                 guiding_questions=["What happens for n=1?"],
                 confidence="medium",
@@ -124,7 +129,7 @@ async def test_worker_degrades_safely_without_changing_submission_state() -> Non
     assert disposition is MessageDisposition.ACK
     assert repository.failed == (
         "AI_RESPONSE_INVALID",
-        "AI analysis could not produce a safe structured response",
+        "AI diagnosis could not produce a safe structured response",
     )
     assert repository.job.submission_status == original_submission_status
 
@@ -141,7 +146,7 @@ async def test_worker_reports_unconfigured_provider_without_leaking_details() ->
     assert disposition is MessageDisposition.ACK
     assert repository.failed == (
         "AI_PROVIDER_NOT_CONFIGURED",
-        "AI analysis is not configured",
+        "AI input/output diagnosis is not configured",
     )
     assert "secret" not in repository.failed[1]
     assert repository.job.submission_status == original_submission_status

@@ -406,11 +406,15 @@ a { color: inherit; text-decoration: none; }
 .ai-analysis-panel section > p { line-height: 1.75; }
 .ai-analysis-loading, .ai-analysis-empty { padding: 18px 0 4px; color: var(--muted); }
 .ai-quota, .ai-cache-note { color: var(--muted); font-size: 11px; }
-.ai-complexity-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
-.ai-complexity-grid > div { padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
-.ai-complexity-grid span, .ai-complexity-grid strong { display: block; }
-.ai-complexity-grid span { color: var(--muted); font-size: 10px; }
-.ai-complexity-grid strong { margin-top: 6px; font: 13px 'DM Mono', monospace; }
+.ai-diagnostic-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-top: 18px; }
+.ai-diagnostic-heading span { color: var(--muted); font-size: 11px; }
+.ai-diagnostic-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.ai-diagnostic-grid article { padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.ai-diagnostic-grid article.detected { border-color: #d4b45f; background: color-mix(in srgb, #fff1b8 28%, var(--bg)); }
+.ai-diagnostic-grid article > header { display: flex; justify-content: space-between; gap: 12px; }
+.ai-diagnostic-grid article > header span { color: var(--muted); font-size: 10px; }
+.ai-diagnostic-grid article.detected > header span { color: #9a6500; font-weight: 700; }
+.ai-diagnostic-grid article p { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
 .detail-skeleton { display: grid; gap: 18px; margin-top: 28px; padding: 42px; min-height: 560px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); }
 .detail-title-skeleton { width: 55%; height: 48px; }
 .detail-meta-skeleton { width: 32%; }
@@ -655,6 +659,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 @media (max-width: 620px) {
+  .ai-diagnostic-grid { grid-template-columns: 1fr; }
   .guide-page { padding-top: 38px; padding-bottom: 72px; }
   .guide-hero { gap: 24px; padding-bottom: 30px; }
   .guide-hero h1 { font-size: 43px; }
