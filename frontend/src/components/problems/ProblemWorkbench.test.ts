@@ -8,7 +8,7 @@ import ProblemWorkbench from '@/components/problems/ProblemWorkbench.vue'
 import { getProblemLanguages } from '@/services/problems'
 import { createSubmission, getSubmissionDetail, getSubmissionStatus } from '@/services/submissions'
 import { useAuthStore } from '@/stores/auth'
-import { useEditorStore } from '@/stores/editor'
+import { starterCodeVersion, useEditorStore } from '@/stores/editor'
 import type { ProblemDetail } from '@/types/problem'
 import type { SubmissionCreated, SubmissionDetail, SubmissionSummary } from '@/types/submission'
 
@@ -129,9 +129,10 @@ async function setup(authenticated = true) {
       accepted_count: 0, created_at: '2026-08-14T00:00:00Z',
     })
   }
+  const editorStore = useEditorStore()
   const wrapper = mount(ProblemWorkbench, { props: { problem }, global: { plugins: [pinia, router] } })
   await flushPromises()
-  return { wrapper, router }
+  return { wrapper, router, editorStore }
 }
 
 describe('ProblemWorkbench', () => {
@@ -147,8 +148,7 @@ describe('ProblemWorkbench', () => {
   })
 
   it('switches V8 and Node.js without overwriting either runtime draft', async () => {
-    const { wrapper } = await setup()
-    const editorStore = useEditorStore()
+    const { wrapper, editorStore } = await setup()
     expect(wrapper.get('[data-testid="fake-editor"]').attributes('data-runtime')).toBe('javascript-v8')
     await wrapper.get('[data-testid="source"]').setValue('print("v8 draft");')
 
@@ -164,8 +164,7 @@ describe('ProblemWorkbench', () => {
   })
 
   it('sends custom blank lines and the textarea final newline with the selected language slug', async () => {
-    const { wrapper } = await setup()
-    const editorStore = useEditorStore()
+    const { wrapper, editorStore } = await setup()
     editorStore.selectedLanguage = 'nodejs'
     await flushPromises()
     // HTML textarea values canonically use LF; CRLF visualization is covered by OutputDiff.
@@ -198,5 +197,40 @@ describe('ProblemWorkbench', () => {
     expect(createSubmission).not.toHaveBeenCalled()
     expect(anonymous.router.currentRoute.value.name).toBe('login')
     expect(anonymous.router.currentRoute.value.query['redirect']).toBe(`/problems/${problem.slug}`)
+  })
+
+  it('imports a guide template into only the requested runtime draft', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const editorStore = useEditorStore()
+    editorStore.saveDraft(
+      'user-1',
+      problem.id,
+      'nodejs',
+      starterCodeVersion(problem.starter_code_nodejs ?? ''),
+      'console.log("keep node draft");',
+    )
+    editorStore.queueGuideImport(problem.slug, 'javascript-v8', 'print("from guide");')
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/problems/:slug', name: 'problem-detail', component: { template: '<div />' } }],
+    })
+    await router.push(`/problems/${problem.slug}`)
+    useAuthStore().acceptSession('token', {
+      id: 'user-1', username: 'student', email: 'student@example.com', nickname: 'Student',
+      avatar_url: null, bio: null, is_admin: false, solved_count: 0, submission_count: 0,
+      accepted_count: 0, created_at: '2026-08-14T00:00:00Z',
+    })
+    const wrapper = mount(ProblemWorkbench, { props: { problem }, global: { plugins: [pinia, router] } })
+    await flushPromises()
+
+    expect(editorStore.selectedLanguage).toBe('javascript-v8')
+    expect((wrapper.get('[data-testid="source"]').element as HTMLTextAreaElement).value)
+      .toBe('print("from guide");')
+    editorStore.selectedLanguage = 'nodejs'
+    await flushPromises()
+    expect((wrapper.get('[data-testid="source"]').element as HTMLTextAreaElement).value)
+      .toBe('console.log("keep node draft");')
   })
 })

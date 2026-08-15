@@ -114,4 +114,17 @@ describe('editor store', () => {
     expect(defaultCodeFor('javascript-v8', { starter_code_v8: 'print(42);' }))
       .toBe('print(42);')
   })
+
+  it('queues a one-time guide import for the matching exercise and runtime', () => {
+    const store = useEditorStore()
+    store.queueGuideImport('js-acm-read-one-integer', 'javascript-v8', 'print(Number(readline()));')
+
+    expect(store.consumeGuideImport('another-exercise')).toBeNull()
+    expect(store.consumeGuideImport('js-acm-read-one-integer')).toMatchObject({
+      problemSlug: 'js-acm-read-one-integer',
+      runtime: 'javascript-v8',
+      source: 'print(Number(readline()));',
+    })
+    expect(store.consumeGuideImport('js-acm-read-one-integer')).toBeNull()
+  })
 })

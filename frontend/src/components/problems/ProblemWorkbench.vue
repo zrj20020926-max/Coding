@@ -267,7 +267,17 @@ watch(customInput, () => {
 
 onMounted(async () => {
   await editorStore.loadLanguages()
-  restoreRuntime(runtime.value)
+  const guideImport = editorStore.consumeGuideImport(props.problem.slug)
+  if (guideImport) {
+    selectedLanguage.value = guideImport.runtime
+    restoreRuntime(guideImport.runtime)
+    sourceCode.value = guideImport.source
+    templateChanged.value = false
+    saveRuntime(guideImport.runtime)
+    ElMessage.success(`已带入 ${guideImport.runtime === 'javascript-v8' ? 'JavaScript V8' : 'Node.js'} 模板`)
+  } else {
+    restoreRuntime(runtime.value)
+  }
   initialized.value = true
   if (auth.user) submissionStore.resumeActive(auth.user.id, props.problem.id)
   window.addEventListener('online', handleOnline)

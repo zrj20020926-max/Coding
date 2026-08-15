@@ -7,6 +7,15 @@ import type { JudgeLanguage } from '@/types/editor'
 
 const FONT_SIZE_KEY = 'codearena.editor.font-size'
 const LANGUAGE_KEY = 'codearena.editor.language'
+const GUIDE_IMPORT_KEY = 'codearena.guide.pending-import'
+const GUIDE_IMPORT_TTL_MS = 15 * 60 * 1000
+
+export interface GuideImport {
+  problemSlug: string
+  runtime: 'javascript-v8' | 'nodejs'
+  source: string
+  queuedAt: string
+}
 
 interface StoredDraft {
   source: string
@@ -276,6 +285,45 @@ export const useEditorStore = defineStore('editor', () => {
       ?? fallback
   }
 
+  function queueGuideImport(
+    problemSlug: string,
+    runtime: GuideImport['runtime'],
+    source: string,
+  ): void {
+    const pending: GuideImport = {
+      problemSlug,
+      runtime,
+      source,
+      queuedAt: new Date().toISOString(),
+    }
+    localStorage.setItem(GUIDE_IMPORT_KEY, JSON.stringify(pending))
+  }
+
+  function consumeGuideImport(problemSlug: string): GuideImport | null {
+    const raw = localStorage.getItem(GUIDE_IMPORT_KEY)
+    if (!raw) return null
+    try {
+      const parsed = JSON.parse(raw) as Partial<GuideImport>
+      const queuedAt = typeof parsed.queuedAt === 'string' ? Date.parse(parsed.queuedAt) : Number.NaN
+      const valid = typeof parsed.problemSlug === 'string'
+        && (parsed.runtime === 'javascript-v8' || parsed.runtime === 'nodejs')
+        && typeof parsed.source === 'string'
+        && parsed.source.length <= 128 * 1024
+        && Number.isFinite(queuedAt)
+        && Date.now() - queuedAt <= GUIDE_IMPORT_TTL_MS
+      if (!valid) {
+        localStorage.removeItem(GUIDE_IMPORT_KEY)
+        return null
+      }
+      if (parsed.problemSlug !== problemSlug) return null
+      localStorage.removeItem(GUIDE_IMPORT_KEY)
+      return parsed as GuideImport
+    } catch {
+      localStorage.removeItem(GUIDE_IMPORT_KEY)
+      return null
+    }
+  }
+
   return {
     languages,
     languagesLoading,
@@ -290,5 +338,7 @@ export const useEditorStore = defineStore('editor', () => {
     saveCustomInput,
     clearCustomInput,
     restoreCustomInput,
+    queueGuideImport,
+    consumeGuideImport,
   }
 })

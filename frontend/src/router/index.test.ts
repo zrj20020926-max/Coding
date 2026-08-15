@@ -52,7 +52,14 @@ describe('authentication route guard', () => {
 
   it('registers catalog, slug detail and an independent 404 route', () => {
     expect(router.resolve('/problems').name).toBe('problems')
-    expect(router.resolve('/handbook').name).toBe('handbook')
+    expect(router.resolve('/guide').name).toBe('guide')
+    expect(router.resolve('/guide/javascript-v8').name).toBe('guide-javascript-v8')
+    expect(router.resolve('/guide/nodejs').name).toBe('guide-nodejs')
+    expect(router.resolve('/guide/input-patterns').name).toBe('guide-input-patterns')
+    expect(router.resolve('/guide/output-patterns').name).toBe('guide-output-patterns')
+    expect(router.resolve('/guide/common-errors').name).toBe('guide-common-errors')
+    expect(router.resolve('/guide/performance').name).toBe('guide-performance')
+    expect(router.resolve('/handbook').matched[0]?.redirect).toBe('/guide')
     expect(router.resolve('/problems/a-plus-b').name).toBe('problem-detail')
     expect(router.resolve('/submissions').name).toBe('submissions')
     expect(router.resolve('/favorites').name).toBe('favorites')

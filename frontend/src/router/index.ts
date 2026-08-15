@@ -32,7 +32,44 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
     { path: '/problems', name: 'problems', component: () => import('@/views/ProblemsView.vue') },
-    { path: '/handbook', name: 'handbook', component: () => import('@/views/HandbookView.vue') },
+    { path: '/guide', name: 'guide', component: () => import('@/views/GuideView.vue') },
+    {
+      path: '/guide/javascript-v8',
+      name: 'guide-javascript-v8',
+      component: () => import('@/views/GuideView.vue'),
+      meta: { guideSection: 'javascript-v8' },
+    },
+    {
+      path: '/guide/nodejs',
+      name: 'guide-nodejs',
+      component: () => import('@/views/GuideView.vue'),
+      meta: { guideSection: 'nodejs' },
+    },
+    {
+      path: '/guide/input-patterns',
+      name: 'guide-input-patterns',
+      component: () => import('@/views/GuideView.vue'),
+      meta: { guideSection: 'input-patterns' },
+    },
+    {
+      path: '/guide/output-patterns',
+      name: 'guide-output-patterns',
+      component: () => import('@/views/GuideView.vue'),
+      meta: { guideSection: 'output-patterns' },
+    },
+    {
+      path: '/guide/common-errors',
+      name: 'guide-common-errors',
+      component: () => import('@/views/GuideView.vue'),
+      meta: { guideSection: 'common-errors' },
+    },
+    {
+      path: '/guide/performance',
+      name: 'guide-performance',
+      component: () => import('@/views/GuideView.vue'),
+      meta: { guideSection: 'performance' },
+    },
+    { path: '/handbook', redirect: '/guide' },
     { path: '/collections', name: 'collections', component: () => import('@/views/CollectionsView.vue') },
     {
       path: '/collections/:slug',
@@ -88,7 +125,11 @@ const router = createRouter({
     },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: (to, _from, savedPosition) => {
+    if (savedPosition) return savedPosition
+    if (to.hash) return { el: to.hash, top: 92, behavior: 'smooth' }
+    return { top: 0 }
+  },
 })
 
 router.beforeEach((to) => runAuthGuard(to, useAuthStore()))
